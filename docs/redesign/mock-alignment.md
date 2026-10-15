@@ -94,3 +94,21 @@ If a screen differs from the mock and this file doesn't say why, that's a bug.
 | Public snapshot checkbox | do: listed state from Manage; publishing or unlisting happens on save. Not shown in admin edit |
 | Delete book (edit mode) | do, with confirmation. Not in admin edit (the API has no admin delete) |
 | Sticky save bar: change state, Cancel, Save changes / Add to library | do: replaces the side-rail save card; on phones it sits above the tab bar |
+
+## Import books
+
+| Mock | Decision |
+| --- | --- |
+| Dialog 1080px: serif "Import books", subtitle per step, close button | do |
+| Source switch: CSV / Full backup (ZIP) / EPUB archive | do: EPUB archive opens the existing EPUB import dialog |
+| Dropzone "Drop a CSV file here", limits (50,000 rows, 10 MB, comma or semicolon), Choose file | do: limits match the API settings |
+| Column list with required columns in bold, note on `;` lists and JSON columns | do (CSV only) |
+| "Start from the template" card | do (CSV only) |
+| Review summary: file chip, rows, ready, need fixing, progress bar | do |
+| Issues grouped "fix many rows at once": replace a misspelt status, skip duplicates | do: rows are grouped by field and value; status and type groups offer the closest allowed value; every group can drop its rows. Bulk fixes call the existing row update API row by row |
+| Tabs Needs fixing / Ready / All rows | do (the API returns every row) |
+| Row: line, title, summary (error or "Novel · Reading · Ch. 837"), Fix / Edit, remove icon | do. The field error also shows under its input (WCAG error placement) |
+| Row editor: title, author, type, status with suggestions, chapters read, label, total, genres, tags, Save row | do, plus rating, priority, notes and description (existing fields) |
+| Footer hint, Cancel import, Drop N invalid rows, Finalize import | do: Finalize stays disabled until every row is ready. The dialog fits the screen and its body scrolls, so the footer is always visible (the mock grows instead). On phones the hint is hidden and the buttons fill the row |
+| Cancel confirmation "Discard draft" | do |
+| Result: Imported / Skipped cards, info note, skipped lines, imported table with "+ N more", Import another file, Go to library | do (covers are queued for lookup after import, so the note is true); the table shows every imported book in a scroll box instead of "+ N more" |

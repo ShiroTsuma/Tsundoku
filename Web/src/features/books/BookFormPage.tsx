@@ -10,6 +10,7 @@ import { HttpError } from '@/api/http'
 import type { AuthorDto, BookCoverDto, BookHtmlParseResult, BookMutationRequest } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { buttonStyles } from '@/components/ui/buttonStyles'
+import { fieldClass, textareaClass } from '@/components/ui/fieldStyles'
 import { Dialog } from '@/components/ui/Dialog'
 import { useDebouncedValue } from '@/lib/useDebouncedValue'
 import { cn } from '@/lib/utils'
@@ -1221,12 +1222,6 @@ export function BookFormPage({ mode, admin = false }: BookFormPageProps) {
     </>
   )
 }
-
-const fieldClass =
-  'h-11 w-full rounded-control border border-line-strong bg-ground px-3 text-[15px] text-ink outline-none placeholder:text-ink-3 focus:border-ink focus:ring-[3px] focus:ring-ink/15 aria-[invalid=true]:border-danger'
-
-const textareaClass =
-  'w-full resize-y rounded-control border border-line-strong bg-ground px-3 py-2.5 text-[15px] leading-relaxed text-ink outline-none placeholder:text-ink-3 focus:border-ink focus:ring-[3px] focus:ring-ink/15'
 
 const removeButtonClass =
   'flex size-8 shrink-0 items-center justify-center rounded-pill border-0 bg-transparent text-ink-3 hover:bg-hover hover:text-ink'

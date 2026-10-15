@@ -691,6 +691,10 @@ export function BooksPage() {
         open={importDialogOpen}
         onClose={() => setImportDialogOpen(false)}
         onImported={handleImportComplete}
+        onChooseEpubArchive={() => {
+          setImportDialogOpen(false)
+          setEpubImportOpen(true)
+        }}
       />
       <ScrollShortcutButtons
         showBackToTop={scrollShortcuts.showBackToTop}

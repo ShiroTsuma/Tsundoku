@@ -545,9 +545,11 @@ describe('BooksPage', () => {
     expect(menuItems[4]).toHaveTextContent(/^Full backup/)
 
     await user.click(menuItems[4]!)
-    expect(
-      screen.getByRole('heading', { name: /import books from full backup/i }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Import books' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Full backup (ZIP)' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
   })
 
   it('shows the API detail when a full export is rate limited', async () => {

@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { api } from '@/api/client'
@@ -45,6 +45,14 @@ vi.mock('sonner', () => ({
 }))
 
 describe('ImportBooksDialog', () => {
+  function uploadCsv(container: HTMLElement) {
+    fireEvent.change(container.querySelector('input[type="file"]')!, {
+      target: {
+        files: [new File(['primaryTitle,contentType,status'], 'books.csv', { type: 'text/csv' })],
+      },
+    })
+  }
+
   it('calculates import session stats without dividing empty sessions by zero', () => {
     const stats = getImportSessionStats({
       ...importSessionWithFieldErrors,
@@ -64,10 +72,8 @@ describe('ImportBooksDialog', () => {
 
     renderWithProviders(<ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />)
 
-    const dropzone = screen.getByText(/drop a csv here or use file selection/i).closest('div')
-    expect(dropzone).not.toBeNull()
-
-    fireEvent.drop(dropzone!, {
+    expect(screen.getByText('Drop a CSV file here')).toBeInTheDocument()
+    fireEvent.drop(screen.getByTestId('import-dropzone'), {
       dataTransfer: {
         files: [new File(['primaryTitle,contentType,status'], 'books.csv', { type: 'text/csv' })],
       },
@@ -81,10 +87,7 @@ describe('ImportBooksDialog', () => {
   it('rejects dropped files that are not csv', () => {
     renderWithProviders(<ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />)
 
-    const dropzone = screen.getByText(/drop a csv here or use file selection/i).closest('div')
-    expect(dropzone).not.toBeNull()
-
-    fireEvent.drop(dropzone!, {
+    fireEvent.drop(screen.getByTestId('import-dropzone'), {
       dataTransfer: {
         files: [new File(['not,csv'], 'books.txt', { type: 'text/plain' })],
       },
@@ -94,6 +97,14 @@ describe('ImportBooksDialog', () => {
     expect(toast.error).toHaveBeenCalledWith('Choose a .csv file.')
   })
 
+  it('lists the CSV columns with the required ones marked', () => {
+    renderWithProviders(<ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />)
+
+    expect(screen.getByText('primaryTitle')).toHaveTextContent('primaryTitle (required)')
+    expect(screen.getByText('authorName')).not.toHaveTextContent('required')
+    expect(screen.getByText(/50,000 rows and 10 MB/)).toBeInTheDocument()
+  })
+
   it('creates a full import session from a zip backup', async () => {
     vi.mocked(api.createFullBookImportSession).mockResolvedValue(importSessionWithFieldErrors)
 
@@ -101,17 +112,37 @@ describe('ImportBooksDialog', () => {
       <ImportBooksDialog mode="full" open onClose={vi.fn()} onImported={vi.fn()} />,
     )
 
-    const dropzone = screen
-      .getByText(/drop a backup zip here or use file selection/i)
-      .closest('div')
-    expect(dropzone).not.toBeNull()
-
+    expect(screen.getByText('Drop a backup ZIP here')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /download template/i })).not.toBeInTheDocument()
     const file = new File(['zip-content'], 'books-full-export.zip', { type: 'application/zip' })
-    fireEvent.drop(dropzone!, { dataTransfer: { files: [file] } })
+    fireEvent.drop(screen.getByTestId('import-dropzone'), { dataTransfer: { files: [file] } })
 
     await waitFor(() => {
       expect(api.createFullBookImportSession).toHaveBeenCalledWith(file)
     })
+  })
+
+  it('switches the source between CSV, full backup and the EPUB archive import', () => {
+    const onChooseEpubArchive = vi.fn()
+    renderWithProviders(
+      <ImportBooksDialog
+        open
+        onChooseEpubArchive={onChooseEpubArchive}
+        onClose={vi.fn()}
+        onImported={vi.fn()}
+      />,
+    )
+
+    const source = screen.getByRole('group', { name: 'Import source' })
+    expect(within(source).getByRole('button', { name: 'CSV' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    fireEvent.click(within(source).getByRole('button', { name: 'Full backup (ZIP)' }))
+    expect(screen.getByText('Drop a backup ZIP here')).toBeInTheDocument()
+
+    fireEvent.click(within(source).getByRole('button', { name: 'EPUB archive' }))
+    expect(onChooseEpubArchive).toHaveBeenCalledTimes(1)
   })
 
   it('asks for confirmation before dismissing an active import session', async () => {
@@ -122,26 +153,20 @@ describe('ImportBooksDialog', () => {
       <ImportBooksDialog open onClose={onClose} onImported={vi.fn()} />,
     )
 
-    const input = container.querySelector('input[type="file"]')
-    expect(input).not.toBeNull()
-
-    fireEvent.change(input!, {
-      target: {
-        files: [new File(['primaryTitle,contentType,status'], 'books.csv', { type: 'text/csv' })],
-      },
-    })
+    uploadCsv(container)
 
     await screen.findByText('Line 2')
     fireEvent.click(screen.getByRole('button', { name: /^close$/i }))
 
-    expect(screen.getByRole('heading', { name: /cancel import\?/i })).toBeInTheDocument()
+    expect(screen.getByRole('alertdialog', { name: /cancel import\?/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /keep editing/i })).toHaveFocus()
     expect(api.cancelBookImport).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: /keep editing/i }))
 
     await waitFor(() => {
-      expect(screen.queryByRole('heading', { name: /cancel import\?/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     })
     expect(onClose).not.toHaveBeenCalled()
   })
@@ -155,18 +180,11 @@ describe('ImportBooksDialog', () => {
       <ImportBooksDialog open onClose={onClose} onImported={vi.fn()} />,
     )
 
-    const input = container.querySelector('input[type="file"]')
-    expect(input).not.toBeNull()
-
-    fireEvent.change(input!, {
-      target: {
-        files: [new File(['primaryTitle,contentType,status'], 'books.csv', { type: 'text/csv' })],
-      },
-    })
+    uploadCsv(container)
 
     await screen.findByText('Line 2')
-    fireEvent.click(screen.getByRole('button', { name: /^close$/i }))
-    fireEvent.click(screen.getByRole('button', { name: /cancel import/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^cancel import$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /discard draft/i }))
 
     await waitFor(() => {
       expect(api.cancelBookImport).toHaveBeenCalledWith('session-1')
@@ -207,106 +225,126 @@ describe('ImportBooksDialog', () => {
       <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
     )
 
-    const input = container.querySelector('input[type="file"]')
-    expect(input).not.toBeNull()
-
-    fireEvent.change(input!, {
-      target: {
-        files: [new File(['primaryTitle,contentType,status'], 'books.csv', { type: 'text/csv' })],
-      },
-    })
+    uploadCsv(container)
 
     const title = await screen.findByTitle(importSessionWithLongTitle.rows[0]!.primaryTitle!)
-    expect(title).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /edit row/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /revalidate row/i })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /remove row/i })).toBeInTheDocument()
+    expect(title).toHaveClass('truncate')
+    expect(screen.getByRole('button', { name: 'Fix' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove line 2' })).toBeInTheDocument()
   })
 
-  it('mounts import row form controls only after opening a row for editing', async () => {
+  it('mounts import row form controls only after opening a row', async () => {
     vi.mocked(api.createBookImportSession).mockResolvedValue(importSessionWithFieldErrors)
 
     const { container } = renderWithProviders(
       <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
     )
 
-    const input = container.querySelector('input[type="file"]')
-    expect(input).not.toBeNull()
+    uploadCsv(container)
 
-    fireEvent.change(input!, {
-      target: {
-        files: [new File(['primaryTitle,contentType,status'], 'books.csv', { type: 'text/csv' })],
-      },
-    })
-
-    expect(await screen.findByRole('button', { name: /edit row/i })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Fix' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
     expect(screen.queryByLabelText(/^Title/)).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /revalidate row/i })).toBeDisabled()
 
-    fireEvent.click(screen.getByRole('button', { name: /edit row/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Fix' }))
 
-    expect(screen.getByRole('button', { name: /collapse/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /revalidate row/i })).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: /collapse/i })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
     expect(screen.getByLabelText(/^Title/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /save row/i })).toBeEnabled()
   })
 
-  it('keeps the import dialog inside the viewport and gives invalid rows the scroll area', async () => {
+  it('shows the summary and splits rows into Needs fixing, Ready and All rows', async () => {
+    vi.mocked(api.createBookImportSession).mockResolvedValue(importSessionWithMixedRows)
+
+    const { container } = renderWithProviders(
+      <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
+    )
+
+    uploadCsv(container)
+
+    expect(await screen.findByRole('progressbar')).toHaveAccessibleName('1 of 2 rows ready')
+    expect(screen.getByRole('tab', { name: /needs fixing 1/i })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(screen.getByText('Line 3')).toBeInTheDocument()
+    expect(screen.queryByText('Line 2')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('tab', { name: /ready 1/i }))
+    expect(screen.getByText('Line 2')).toBeInTheDocument()
+    expect(screen.getByText('Novel · Reading')).toBeInTheDocument()
+    expect(screen.queryByText('Line 3')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('tab', { name: /all rows 2/i }))
+    expect(screen.getByText('Line 2')).toBeInTheDocument()
+    expect(screen.getByText('Line 3')).toBeInTheDocument()
+  })
+
+  it('fixes a misspelt status in every row of an issue group', async () => {
+    const statusError = 'Status is required and must exist. Allowed values: Reading, Completed.'
+    const misspelt = {
+      ...importSessionWithFieldErrors.rows[0]!,
+      contentType: 'Novel',
+      status: 'Readin',
+      errors: [statusError],
+      fieldErrors: { status: [statusError] },
+    }
+    const session: BookImportSessionDto = {
+      ...importSessionWithFieldErrors,
+      totalRows: 2,
+      invalidRows: 2,
+      rows: [misspelt, { ...misspelt, rowId: 'row-2', lineNumber: 3, primaryTitle: 'Other' }],
+    }
+    vi.mocked(api.createBookImportSession).mockResolvedValue(session)
+    vi.mocked(api.updateBookImportRow).mockResolvedValue(importSessionAfterDiscardInvalid)
+
+    const { container } = renderWithProviders(
+      <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
+    )
+
+    uploadCsv(container)
+
+    expect(await screen.findByText(/2 rows · Status “Readin” does not exist/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Replace with “Reading”' }))
+
+    await waitFor(() => expect(api.updateBookImportRow).toHaveBeenCalledTimes(2))
+    expect(api.updateBookImportRow).toHaveBeenCalledWith(
+      'session-1',
+      'row-1',
+      expect.objectContaining({ status: 'Reading', primaryTitle: 'Book' }),
+    )
+    expect(api.updateBookImportRow).toHaveBeenCalledWith(
+      'session-1',
+      'row-2',
+      expect.objectContaining({ status: 'Reading', primaryTitle: 'Other' }),
+    )
+  })
+
+  it('marks import row fields with field errors and links the message to the input', async () => {
     vi.mocked(api.createBookImportSession).mockResolvedValue(importSessionWithFieldErrors)
 
     const { container } = renderWithProviders(
       <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
     )
 
-    const input = container.querySelector('input[type="file"]')
-    expect(input).not.toBeNull()
+    uploadCsv(container)
 
-    fireEvent.change(input!, {
-      target: {
-        files: [new File(['primaryTitle,contentType,status'], 'books.csv', { type: 'text/csv' })],
-      },
-    })
-
-    expect(await screen.findByTestId('import-dialog-panel')).toHaveClass(
-      'h-[calc(100vh-0.5rem)]',
-      'overflow-hidden',
-    )
-    expect(screen.getByRole('dialog')).toHaveClass('overflow-hidden')
-    expect(screen.getByTestId('import-invalid-rows-panel')).toHaveClass(
-      'min-h-0',
-      'flex-1',
-      'overflow-hidden',
-    )
-  })
-
-  it('marks import row fields with field errors', async () => {
-    vi.mocked(api.createBookImportSession).mockResolvedValue(importSessionWithFieldErrors)
-
-    const { container } = renderWithProviders(
-      <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
-    )
-
-    const input = container.querySelector('input[type="file"]')
-    expect(input).not.toBeNull()
-
-    fireEvent.change(input!, {
-      target: {
-        files: [new File(['primaryTitle,contentType,status'], 'books.csv', { type: 'text/csv' })],
-      },
-    })
-
-    const [rowError] = await screen.findAllByText(/Content type is required and must exist\./)
-    expect(rowError!.closest('.ui-surface')).toHaveClass('ui-surface--danger')
-    fireEvent.click(screen.getByRole('button', { name: /edit row/i }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Fix' }))
 
     const typeInput = screen.getByLabelText(/^Type/)
     const titleInput = screen.getByLabelText(/^Title/)
 
     expect(typeInput).toHaveAttribute('aria-invalid', 'true')
-    expect(typeInput).toHaveClass('!border-rose-500')
+    expect(typeInput).toHaveAccessibleDescription('Content type is required and must exist.')
     expect(titleInput).not.toHaveAttribute('aria-invalid')
   })
 
-  it('keeps row genres when revalidating an edited import row', async () => {
+  it('keeps row genres when saving an edited import row', async () => {
     const sessionWithGenres: BookImportSessionDto = {
       ...importSessionWithFieldErrors,
       rows: [
@@ -320,17 +358,13 @@ describe('ImportBooksDialog', () => {
       <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
     )
 
-    fireEvent.change(container.querySelector('input[type="file"]')!, {
-      target: {
-        files: [new File(['primaryTitle,contentType,status'], 'books.csv', { type: 'text/csv' })],
-      },
-    })
+    uploadCsv(container)
 
-    fireEvent.click(await screen.findByRole('button', { name: /edit row/i }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Fix' }))
     expect(screen.getByLabelText(/^Genres/)).toHaveValue('Fantasy; Action')
 
     fireEvent.change(screen.getByLabelText(/^Type/), { target: { value: 'Novel' } })
-    fireEvent.click(screen.getByRole('button', { name: /revalidate row/i }))
+    fireEvent.click(screen.getByRole('button', { name: /save row/i }))
 
     await waitFor(() =>
       expect(api.updateBookImportRow).toHaveBeenCalledWith(
@@ -352,53 +386,24 @@ describe('ImportBooksDialog', () => {
       <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
     )
 
-    const input = container.querySelector('input[type="file"]')
-    expect(input).not.toBeNull()
+    uploadCsv(container)
 
-    fireEvent.change(input!, {
-      target: {
-        files: [new File(['primaryTitle,contentType,status'], 'books.csv', { type: 'text/csv' })],
-      },
-    })
-
-    await screen.findByRole('button', { name: /edit row/i })
-    fireEvent.click(screen.getByRole('button', { name: /edit row/i }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Fix' }))
 
     const typeInput = await screen.findByRole('combobox', { name: /^Type/ })
     const statusInput = screen.getByRole('combobox', { name: /^Status/ })
 
     fireEvent.focus(typeInput)
     expect(await screen.findByRole('listbox')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Novel' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Manga' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Novel' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Manga' })).toBeInTheDocument()
 
     fireEvent.focus(statusInput)
-    expect(screen.getByRole('button', { name: 'Reading' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Completed' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Reading' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Completed' })).toBeInTheDocument()
   })
 
-  it('does not repeat field error text under the inputs', async () => {
-    vi.mocked(api.createBookImportSession).mockResolvedValue(importSessionWithFieldErrors)
-
-    const { container } = renderWithProviders(
-      <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
-    )
-
-    const input = container.querySelector('input[type="file"]')
-    expect(input).not.toBeNull()
-
-    fireEvent.change(input!, {
-      target: {
-        files: [new File(['primaryTitle,contentType,status'], 'books.csv', { type: 'text/csv' })],
-      },
-    })
-
-    expect(await screen.findAllByText(/Content type is required and must exist\./)).toHaveLength(1)
-    expect(screen.queryByText('Suggestions: Novel, Manga')).not.toBeInTheDocument()
-    expect(screen.queryByText('Suggestions: Reading, Completed')).not.toBeInTheDocument()
-  })
-
-  it('discards all invalid rows and keeps valid rows in session summary', async () => {
+  it('drops all invalid rows and enables finalize', async () => {
     vi.mocked(api.createBookImportSession).mockResolvedValue(importSessionWithMixedRows)
     vi.mocked(api.deleteInvalidBookImportRows).mockResolvedValue(importSessionAfterDiscardInvalid)
 
@@ -406,36 +411,29 @@ describe('ImportBooksDialog', () => {
       <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
     )
 
-    const input = container.querySelector('input[type="file"]')
-    expect(input).not.toBeNull()
+    uploadCsv(container)
 
-    fireEvent.change(input!, {
-      target: {
-        files: [new File(['primaryTitle,contentType,status'], 'books.csv', { type: 'text/csv' })],
-      },
-    })
-
-    const discardInvalidButton = await screen.findByRole('button', { name: /discard all invalid/i })
-    const closeButton = screen.getByRole('button', { name: /^close$/i })
+    const dropInvalidButton = await screen.findByRole('button', { name: 'Drop 1 invalid row' })
+    const cancelButton = screen.getByRole('button', { name: /^cancel import$/i })
     const finalizeButton = screen.getByRole('button', { name: /finalize import/i })
 
+    expect(finalizeButton).toBeDisabled()
     expect(
-      closeButton.compareDocumentPosition(discardInvalidButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+      cancelButton.compareDocumentPosition(dropInvalidButton) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(
-      discardInvalidButton.compareDocumentPosition(finalizeButton) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
+      dropInvalidButton.compareDocumentPosition(finalizeButton) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
 
-    fireEvent.click(discardInvalidButton)
+    fireEvent.click(dropInvalidButton)
 
     await waitFor(() => {
       expect(api.deleteInvalidBookImportRows).toHaveBeenCalledWith('session-mixed')
     })
 
-    expect(screen.queryByRole('button', { name: /discard all invalid/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /invalid row/i })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /finalize import/i })).toBeEnabled()
-    expect(screen.getByText('All rows are valid')).toBeInTheDocument()
+    expect(screen.getByText('Every row is ready')).toBeInTheDocument()
   })
 
   it('shows imported titles with type and list-formatted progress after finalizing', async () => {
@@ -448,19 +446,11 @@ describe('ImportBooksDialog', () => {
       <ImportBooksDialog open onClose={onClose} onImported={onImported} />,
     )
 
-    const input = container.querySelector('input[type="file"]')
-    expect(input).not.toBeNull()
+    uploadCsv(container)
 
-    fireEvent.change(input!, {
-      target: {
-        files: [new File(['primaryTitle,contentType,status'], 'books.csv', { type: 'text/csv' })],
-      },
-    })
+    fireEvent.click(await screen.findByRole('button', { name: /finalize import/i }))
 
-    expect(await screen.findByText('All rows are valid')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /finalize import/i }))
-
-    expect(await screen.findByText('Imported books')).toBeInTheDocument()
+    expect(await screen.findByText('Import finished.')).toBeInTheDocument()
     expect(screen.getByText('Imported')).toBeInTheDocument()
     expect(screen.getByText('Skipped')).toBeInTheDocument()
     expect(screen.getByText('The Novel')).toBeInTheDocument()
@@ -469,9 +459,24 @@ describe('ImportBooksDialog', () => {
     expect(onImported).toHaveBeenCalledWith(importFinalizeFullSuccess)
     expect(onClose).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: /^close$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /go to library/i }))
 
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('goes back to the upload step to import another file', async () => {
+    vi.mocked(api.createBookImportSession).mockResolvedValue(importSessionAfterDiscardInvalid)
+    vi.mocked(api.finalizeBookImport).mockResolvedValue(importFinalizeFullSuccess)
+
+    const { container } = renderWithProviders(
+      <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
+    )
+
+    uploadCsv(container)
+    fireEvent.click(await screen.findByRole('button', { name: /finalize import/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /import another file/i }))
+
+    expect(screen.getByText('Drop a CSV file here')).toBeInTheDocument()
   })
 
   it('keeps the imported books summary table scrollable for large imports', async () => {
@@ -489,23 +494,13 @@ describe('ImportBooksDialog', () => {
       <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
     )
 
-    const input = container.querySelector('input[type="file"]')
-    expect(input).not.toBeNull()
-
-    fireEvent.change(input!, {
-      target: {
-        files: [new File(['primaryTitle,contentType,status'], 'books.csv', { type: 'text/csv' })],
-      },
-    })
+    uploadCsv(container)
 
     fireEvent.click(await screen.findByRole('button', { name: /finalize import/i }))
 
     expect(await screen.findByText('1,000')).toBeInTheDocument()
     expect(screen.getByText('Imported Book 30')).toBeInTheDocument()
-
-    const summaryTable = screen.getByRole('table')
-    expect(summaryTable.parentElement).toHaveClass('overflow-auto')
-    expect(summaryTable.parentElement).toHaveClass('max-h-[min(28rem,55vh)]')
+    expect(screen.getByTestId('import-result-scroll')).toHaveClass('overflow-auto')
   })
 
   it('keeps partial finalize messages visible on the success screen', async () => {
@@ -516,21 +511,14 @@ describe('ImportBooksDialog', () => {
       <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
     )
 
-    const input = container.querySelector('input[type="file"]')
-    expect(input).not.toBeNull()
-
-    fireEvent.change(input!, {
-      target: {
-        files: [new File(['primaryTitle,contentType,status'], 'books.csv', { type: 'text/csv' })],
-      },
-    })
+    uploadCsv(container)
 
     fireEvent.click(await screen.findByRole('button', { name: /finalize import/i }))
 
-    const partialMessages = await screen.findByText('Partial import messages')
-    expect(partialMessages.closest('.ui-surface')).toHaveClass('ui-surface--danger')
     expect(
-      screen.getByText("Line 3: title 'Existing Book' already exists for content type 'Novel'."),
+      await screen.findByText(
+        "Line 3: title 'Existing Book' already exists for content type 'Novel'.",
+      ),
     ).toBeInTheDocument()
     expect(screen.getByText('Skipped')).toBeInTheDocument()
   })
@@ -543,14 +531,7 @@ describe('ImportBooksDialog', () => {
       <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
     )
 
-    const input = container.querySelector('input[type="file"]')
-    expect(input).not.toBeNull()
-
-    fireEvent.change(input!, {
-      target: {
-        files: [new File(['primaryTitle,contentType,status'], 'books.csv', { type: 'text/csv' })],
-      },
-    })
+    uploadCsv(container)
 
     fireEvent.click(await screen.findByRole('button', { name: /finalize import/i }))
 

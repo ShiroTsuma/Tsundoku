@@ -1694,17 +1694,6 @@ select.ui-control {
   background: var(--qs-accent);
 }
 
-.import-dropzone {
-  border-color: var(--qs-border-strong);
-  border-radius: var(--qs-panel-radius);
-  background: var(--qs-surface);
-}
-
-.import-dropzone--active {
-  border-color: var(--qs-accent);
-  background: var(--qs-surface-raised);
-}
-
 .analytics-chart-surface
   :where(.recharts-wrapper, .recharts-surface, .recharts-layer, svg, g, path, rect, circle):focus {
   outline: none;

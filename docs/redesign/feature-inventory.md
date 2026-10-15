@@ -114,3 +114,28 @@ Known follow-ups: the summary panel and the export and import menus still use th
 - [~] New: public snapshot checkbox (listed state from Manage, applied on save) and Delete book in edit mode
 
 - [~] Saved views (localStorage) and the Ctrl K jump palette are new
+
+## Import books dialog (CSV and full backup) — opened from Import / Export on `/books` — rebuilt
+
+### Upload
+- [x] Two modes: CSV and full backup ZIP (picked in the Import / Export menu); EPUB archive import is a separate dialog. `[~]` a source switch in the dialog changes between them; EPUB archive opens the EPUB dialog
+- [x] Drop a file or choose one; wrong extension shows "Choose a .csv/.zip file."; parsing shows a spinner and "Parsing CSV draft…" / "Reading full backup…"
+- [x] Download template (CSV mode only)
+- [x] Note that nothing is written until final save; full backup note that EPUB files use the EPUB archive import
+- [x] API errors shown in a toast
+
+### Review
+- [x] Summary: file name, rows, valid, invalid; progress bar of valid rows
+- [x] Invalid rows listed (virtualised for big files), each with line number, title (or "Untitled row") and its errors. `[~]` tabs Needs fixing / Ready / All rows; ready rows show type, status and chapter; errors read "Status “Readin” does not exist"
+- [x] Edit a row: title, author, genres, tags, type and status (with suggestion lists of allowed values), current label, current chapter, total chapters, rating, priority, notes, description; field errors marked on the inputs; only one row open at a time, scrolled into view. `[~]` the field error text shows under its input (linked with aria-describedby)
+- [x] Revalidate (save) a row; remove a row; toasts for each. `[~]` "Save row"; remove is an icon button
+- [~] New: issues grouped across rows, with "Replace with …" for a misspelt status or type and "Drop these rows"
+- [x] Discard all invalid rows ("Drop N invalid rows")
+- [x] Finalize import (only when every row is valid)
+- [x] "All rows are valid" state
+- [x] Closing with a draft asks "Cancel import?" (Keep editing / Discard draft) and cancels the session on the server
+
+### Result
+- [x] Imported and skipped counts; partial import messages
+- [x] Table of imported books (title, type, progress)
+- [x] Close; the library refreshes after an import. `[~]` "Go to library" closes, "Import another file" goes back to the upload step
