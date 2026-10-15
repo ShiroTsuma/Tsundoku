@@ -162,7 +162,7 @@ function TokenPill({
         type="button"
         aria-label={`Remove filter ${token}`}
         onClick={onRemove}
-        className="mr-1 flex size-[22px] items-center justify-center rounded border-0 bg-transparent text-current opacity-70 hover:opacity-100"
+        className="mr-1 flex size-6 items-center justify-center rounded border-0 bg-transparent text-current opacity-70 hover:opacity-100"
       >
         <X aria-hidden="true" className="size-3" strokeWidth={2.4} />
       </button>
@@ -280,7 +280,7 @@ export function StatusTabs({
                 selected
                   ? 'border-accent font-semibold text-ink'
                   : count === 0
-                    ? 'border-transparent font-medium text-ink-disabled'
+                    ? 'border-transparent font-medium text-ink-3 hover:text-ink'
                     : 'border-transparent font-medium text-ink-2 hover:text-ink',
               )}
             >
@@ -465,7 +465,7 @@ export function TypeChips({
                 selected
                   ? 'border-line-focus bg-selected font-semibold text-ink'
                   : count === 0
-                    ? 'border-line bg-transparent text-ink-disabled'
+                    ? 'border-line bg-transparent text-ink-3 hover:border-line-strong hover:text-ink'
                     : 'border-line bg-transparent text-ink-2 hover:border-line-strong hover:text-ink',
               )}
             >

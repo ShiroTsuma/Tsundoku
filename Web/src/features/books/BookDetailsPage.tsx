@@ -286,7 +286,7 @@ export function BookDetailsPage() {
               {book.description ? (
                 <>
                   <p
-                    className="m-0 max-w-[760px] text-[15px] leading-relaxed whitespace-pre-line text-ink"
+                    className="m-0 max-w-prose text-[15px] leading-relaxed whitespace-pre-line text-ink"
                     ref={descriptionRef}
                     style={descriptionStyle}
                   >

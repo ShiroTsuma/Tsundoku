@@ -223,11 +223,17 @@ function MetadataTooltip({
     }
 
     const handler = () => onViewportChange()
+    // Esc dismisses the tooltip without moving focus.
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false)
+    }
     window.addEventListener('resize', handler)
     window.addEventListener('scroll', handler, true)
+    window.addEventListener('keydown', onKeyDown)
     return () => {
       window.removeEventListener('resize', handler)
       window.removeEventListener('scroll', handler, true)
+      window.removeEventListener('keydown', onKeyDown)
     }
   }, [isOpen])
 
@@ -258,6 +264,8 @@ function MetadataTooltip({
             triggerRef.current = element
           }}
           type="button"
+          // Tap opens it on touch screens, where there is no hover (Safari doesn't focus buttons on tap).
+          onClick={showTooltip}
           onBlur={() => setIsOpen(false)}
           onFocus={showTooltip}
           onMouseEnter={showTooltip}

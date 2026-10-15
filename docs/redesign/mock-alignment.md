@@ -57,7 +57,7 @@ If a screen differs from the mock and this file doesn't say why, that's a bug.
 | Priority card with "not set" | do |
 | Actions: Log progress, Edit, Find EPUB, ⋯ | do: ⋯ holds Search cover and Delete book (with confirmation) |
 | Delete book | do: in the ⋯ menu; the old danger panel is gone |
-| About | do (Show more / Show less kept) |
+| About | do (Show more / Show less kept); text measure 65ch instead of 760px, see [ux-review.md](ux-review.md) |
 | Genres & tags: solid genre chips, outline tag chips, "Show all N" | do: chips link to the library filtered by `genre:` / `tag:`; descriptions still show on hover or focus |
 | Reading history timeline | do (the +n / −n delta pill stays: existing feature) |
 | EPUB panel header with file count and size | do |

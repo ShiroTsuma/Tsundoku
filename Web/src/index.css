@@ -79,6 +79,9 @@
     min-width: 320px;
     min-height: 100%;
     background: var(--qs-bg);
+    /* Keep focused and scrolled-to elements clear of the sticky header and the bottom bars. */
+    scroll-padding-top: 5rem;
+    scroll-padding-bottom: 6rem;
   }
 
   body {
@@ -1821,6 +1824,15 @@ select.ui-control {
   .app-session-actions {
     grid-column: auto;
     grid-row: auto;
+  }
+}
+
+/* iOS zooms into fields with text under 16px. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
   }
 }
 

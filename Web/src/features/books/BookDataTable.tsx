@@ -39,7 +39,11 @@ export function BookDataTable<T extends { id: string }>({
   const tableMinWidthRem = getBookTableMinWidthRem(columns, actionsWidthRem)
 
   return (
-    <div className={`book-table-scroll ${wrapperClassName} max-w-full overflow-x-auto`}>
+    <div
+      className={`book-table-scroll ${wrapperClassName} max-w-full overflow-x-auto`}
+      // Focused cells scroll clear of the sticky actions column.
+      style={{ scrollPaddingInlineEnd: `${String(actionsWidthRem)}rem` }}
+    >
       <table
         className="w-full table-fixed border-collapse text-left text-sm [&_td:first-child]:pl-4 [&_td:last-child]:pr-4 [&_th:first-child]:pl-4 [&_th:last-child]:pr-4"
         style={{ minWidth: `${tableMinWidthRem}rem` }}
