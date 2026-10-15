@@ -25,7 +25,7 @@ describe('RegisterPage', () => {
     const user = userEvent.setup()
     renderWithProviders(<RegisterPage />, { route: '/register' })
 
-    const passwordInput = screen.getByPlaceholderText('Password')
+    const passwordInput = screen.getByLabelText('Password')
 
     expect(
       screen.queryByRole('listitem', { name: 'Missing: At least 8 characters' }),
@@ -53,12 +53,12 @@ describe('RegisterPage', () => {
     const user = userEvent.setup()
     renderWithProviders(<RegisterPage />, { route: '/register' })
 
-    await user.type(screen.getByPlaceholderText('Username'), 'reader')
-    await user.type(screen.getByPlaceholderText('Email'), 'reader@example.com')
-    await user.type(screen.getByPlaceholderText('Password'), 'weak')
-    await user.click(screen.getByRole('button', { name: /register/i }))
+    await user.type(screen.getByLabelText('Username'), 'reader')
+    await user.type(screen.getByLabelText('Email'), 'reader@example.com')
+    await user.type(screen.getByLabelText('Password'), 'weak')
+    await user.click(screen.getByRole('button', { name: /create account/i }))
 
-    expect(screen.getByPlaceholderText('Password')).toHaveFocus()
+    expect(screen.getByLabelText('Password')).toHaveFocus()
     expect(
       screen.getByRole('listitem', { name: 'Missing: At least 8 characters' }),
     ).toBeInTheDocument()
@@ -74,10 +74,10 @@ describe('RegisterPage', () => {
     const user = userEvent.setup()
     renderWithProviders(<RegisterPage />, { route: '/register' })
 
-    const passwordInput = screen.getByPlaceholderText('Password')
+    const passwordInput = screen.getByLabelText('Password')
     await user.click(passwordInput)
     await user.type(passwordInput, 'weak')
-    await user.click(screen.getByRole('button', { name: /register/i }))
+    await user.click(screen.getByRole('button', { name: /create account/i }))
 
     expect(passwordInput).toHaveFocus()
     expect(
@@ -97,10 +97,10 @@ describe('RegisterPage', () => {
     const user = userEvent.setup()
     renderWithProviders(<RegisterPage />, { route: '/register' })
 
-    await user.type(screen.getByPlaceholderText('Username'), 'reader')
-    await user.type(screen.getByPlaceholderText('Email'), 'reader@example.com')
-    await user.type(screen.getByPlaceholderText('Password'), 'Password123!')
-    await user.click(screen.getByRole('button', { name: /register/i }))
+    await user.type(screen.getByLabelText('Username'), 'reader')
+    await user.type(screen.getByLabelText('Email'), 'reader@example.com')
+    await user.type(screen.getByLabelText('Password'), 'Password123!')
+    await user.click(screen.getByRole('button', { name: /create account/i }))
 
     await waitFor(() => expect(api.register).toHaveBeenCalled())
     expect(vi.mocked(api.register).mock.calls[0]?.[0]).toEqual({
@@ -128,13 +128,13 @@ describe('RegisterPage', () => {
     const user = userEvent.setup()
     renderWithProviders(<RegisterPage />, { route: '/register' })
 
-    await user.type(screen.getByPlaceholderText('Username'), 'reader')
-    await user.type(screen.getByPlaceholderText('Email'), 'reader@example.com')
-    await user.type(screen.getByPlaceholderText('Password'), 'Password123!')
-    await user.click(screen.getByRole('button', { name: /register/i }))
+    await user.type(screen.getByLabelText('Username'), 'reader')
+    await user.type(screen.getByLabelText('Email'), 'reader@example.com')
+    await user.type(screen.getByLabelText('Password'), 'Password123!')
+    await user.click(screen.getByRole('button', { name: /create account/i }))
 
     expect(await screen.findByText('Email is invalid.')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Password')).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('Password')).toHaveAttribute('aria-invalid', 'true')
     expect(
       screen.queryByText('Password must contain at least one uppercase letter.'),
     ).not.toBeInTheDocument()
@@ -157,10 +157,10 @@ describe('RegisterPage', () => {
     const user = userEvent.setup()
     renderWithProviders(<RegisterPage />, { route: '/register' })
 
-    await user.type(screen.getByPlaceholderText('Username'), 'reader')
-    await user.type(screen.getByPlaceholderText('Email'), 'reader@example.com')
-    await user.type(screen.getByPlaceholderText('Password'), 'Password123!')
-    await user.click(screen.getByRole('button', { name: /register/i }))
+    await user.type(screen.getByLabelText('Username'), 'reader')
+    await user.type(screen.getByLabelText('Email'), 'reader@example.com')
+    await user.type(screen.getByLabelText('Password'), 'Password123!')
+    await user.click(screen.getByRole('button', { name: /create account/i }))
 
     expect(
       await screen.findByText("Account with username 'reader' already exists."),

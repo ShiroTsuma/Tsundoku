@@ -156,3 +156,15 @@ No mock board; built from the Library and form system.
 | Lists | One bordered list box like the library table; rows with name, secondary line, pills, row-size actions |
 | Books | Cover thumbnail, title, author · type, Listed / Private pill with the snapshot date. What is missing before a book can be listed is written in the row (not only in a tooltip), with a link to edit the book |
 | Dialogs | The shared Dialog (serif title, footer with actions); delete asks inline as before |
+
+## Log in and Register
+
+No mock board; built from the system.
+
+| Element | Decision |
+| --- | --- |
+| Frame | Centered 400px panel on the grained page with the header's brand mark (book icon + serif "Novelki") above it |
+| Title | Serif "Log in" / "Create account" with one line under it; no eyebrow |
+| Fields | Visible labels (they were placeholders only), the form field style, `autocomplete` values so password managers fill them, a show/hide toggle on passwords |
+| Errors | Under the field and linked to it (`aria-describedby`); the password checklist uses check icons and stays visible while the password is invalid |
+| Button | Full-width primary, "Logging in…" / "Creating account…" while busy |

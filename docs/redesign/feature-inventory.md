@@ -191,3 +191,14 @@ Known follow-ups: the summary panel and the export and import menus still use th
 - [x] List publicly, Refresh snapshot, Unlist, with toasts; Discover and Manage refresh afterwards
 - [x] Listing needs description, author, genre, tag and a stored cover; the button is disabled. `[~]` the missing items are written in the row with an Edit book link (the tooltip stays)
 - [x] Hint that listing creates a public snapshot and imports never change
+
+## Log in (`/login`) and Register (`/register`) — restyled
+
+- [x] Log in with an email or a username (an `@` decides which) and a password; API error detail in a toast; goes to `/books` on success
+- [x] Link to Register / Log in
+- [x] Register: username (3–32), email (valid, up to 100), password (8+, upper, lower, number, symbol, up to 128) checked before sending
+- [x] Password checklist shown while the field has focus, each rule announced as Met / Missing. `[~]` check icons instead of [x]; stays visible while the password is invalid
+- [x] Field errors under username and email; password problems shown through the checklist, focus moves to the password field
+- [x] API validation errors mapped to fields (username, email, password), form-level message otherwise, toast with the detail
+- [x] Success toast "Account created. You can log in now." and redirect to `/login`
+- [~] New: visible labels, autocomplete for password managers, show/hide password, errors linked to their fields, busy button text

@@ -4,8 +4,10 @@ import { toast } from 'sonner'
 import { useRef, useState } from 'react'
 import { api } from '@/api/client'
 import { HttpError } from '@/api/http'
-import { buttonClass, inputClass } from '@/components/app/designTokens'
-import { AuthFrame } from './LoginPage'
+import { Check, Circle } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { cn } from '@/lib/utils'
+import { AuthField, AuthFrame } from './AuthFrame'
 
 type RegisterFormValues = {
   username: string
@@ -84,92 +86,99 @@ export function RegisterPage() {
     setErrors((current) => ({ ...current, [field]: undefined, form: undefined }))
   }
 
+  const passwordInvalid = Boolean(errors.password)
+  const showChecklist = passwordFocused || passwordInvalid
+  const checklist = showChecklist ? (
+    <ul
+      aria-label="Password requirements"
+      className="m-0 flex list-none flex-col gap-1 p-0 text-[13px]"
+    >
+      {passwordRules.map((rule) => {
+        const met = rule.isMet(values.password)
+        return (
+          <li
+            aria-label={`${met ? 'Met' : 'Missing'}: ${rule.label}`}
+            className={cn(
+              'flex items-center gap-1.5',
+              met ? 'text-status-finished-ink' : 'text-ink-3',
+            )}
+            key={rule.id}
+          >
+            {met ? (
+              <Check aria-hidden="true" className="size-3.5" />
+            ) : (
+              <Circle aria-hidden="true" className="size-3.5" />
+            )}
+            {rule.label}
+          </li>
+        )
+      })}
+    </ul>
+  ) : null
+
   return (
-    <AuthFrame title="Register" description="Create a reader account.">
-      <form className="grid gap-4" noValidate onSubmit={handleSubmit}>
-        <FieldError error={errors.username}>
-          <input
-            aria-invalid={errors.username ? 'true' : undefined}
-            className={inputClass}
-            name="username"
-            placeholder="Username"
-            value={values.username}
-            onChange={(event) => updateField('username', event.target.value)}
-          />
-        </FieldError>
-        <FieldError error={errors.email}>
-          <input
-            aria-invalid={errors.email ? 'true' : undefined}
-            className={inputClass}
-            name="email"
-            placeholder="Email"
-            type="email"
-            value={values.email}
-            onChange={(event) => updateField('email', event.target.value)}
-          />
-        </FieldError>
-        <FieldError>
-          <input
-            aria-invalid={errors.password ? 'true' : undefined}
-            className={inputClass}
-            name="password"
-            placeholder="Password"
-            ref={passwordInputRef}
-            type="password"
-            value={values.password}
-            onChange={(event) => updateField('password', event.target.value)}
-            onBlur={() => setPasswordFocused(false)}
-            onFocus={() => setPasswordFocused(true)}
-          />
-        </FieldError>
-        {passwordFocused ? (
-          <ul className="grid gap-1 text-xs text-slate-500">
-            {passwordRules.map((rule) => {
-              const met = rule.isMet(values.password)
-              return (
-                <li
-                  aria-label={`${met ? 'Met' : 'Missing'}: ${rule.label}`}
-                  className={met ? 'text-emerald-500' : 'text-slate-500'}
-                  key={rule.id}
-                >
-                  {met ? '[x]' : '[ ]'} {rule.label}
-                </li>
-              )
-            })}
-          </ul>
+    <AuthFrame
+      description="Make an account to start tracking what you read."
+      footer={
+        <>
+          Already have an account?{' '}
+          <Link className="font-medium text-ink underline underline-offset-4" to="/login">
+            Log in
+          </Link>
+        </>
+      }
+      title="Create account"
+    >
+      <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit}>
+        <AuthField
+          autoCapitalize="none"
+          autoComplete="username"
+          error={errors.username}
+          label="Username"
+          name="username"
+          spellCheck={false}
+          value={values.username}
+          onChange={(event) => updateField('username', event.target.value)}
+        />
+        <AuthField
+          autoComplete="email"
+          error={errors.email}
+          label="Email"
+          name="email"
+          type="email"
+          value={values.email}
+          onChange={(event) => updateField('email', event.target.value)}
+        />
+        <AuthField
+          aria-invalid={passwordInvalid ? 'true' : undefined}
+          autoComplete="new-password"
+          hint={checklist}
+          label="Password"
+          name="password"
+          password
+          ref={passwordInputRef}
+          value={values.password}
+          onBlur={() => setPasswordFocused(false)}
+          onChange={(event) => updateField('password', event.target.value)}
+          onFocus={() => setPasswordFocused(true)}
+        />
+        {errors.form ? (
+          <p className="m-0 text-[13px] text-danger-ink" role="alert">
+            {errors.form}
+          </p>
         ) : null}
-        {errors.form ? <p className="text-sm text-red-600">{errors.form}</p> : null}
-        <button
-          className={buttonClass}
+        <Button
+          className="mt-2 w-full"
           disabled={mutation.isPending}
+          size="lg"
           type="submit"
+          variant="primary"
           onMouseDown={(event) => event.preventDefault()}
         >
-          Register
-        </button>
+          {mutation.isPending ? 'Creating account…' : 'Create account'}
+        </Button>
       </form>
-      <p className="mt-4 text-sm text-slate-500">
-        Already have an account?{' '}
-        <Link className="ui-inline-link" to="/login">
-          Log in
-        </Link>
-      </p>
     </AuthFrame>
-  )
-}
-
-function FieldError({
-  children,
-  error,
-}: {
-  children: React.ReactNode
-  error?: string | undefined
-}) {
-  return (
-    <label className="grid gap-1">
-      {children}
-      {error ? <span className="text-xs text-red-600">{error}</span> : null}
-    </label>
   )
 }
 

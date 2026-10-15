@@ -690,31 +690,6 @@ select.ui-control {
   background: var(--qs-surface-raised);
 }
 
-.auth-frame {
-  display: grid;
-  min-height: 100vh;
-  place-items: center;
-  padding: 2.5rem 1rem;
-}
-
-.auth-panel {
-  width: 100%;
-  max-width: 28rem;
-  padding: 1.5rem;
-}
-
-.auth-brand-mark {
-  display: grid;
-  width: 2.5rem;
-  height: 2.5rem;
-  flex: none;
-  place-items: center;
-  border: 1px solid var(--qs-border-strong);
-  border-radius: var(--qs-control-radius);
-  color: var(--qs-accent-strong);
-  background: var(--qs-surface-raised);
-}
-
 .ui-page-header {
   display: flex;
   flex-wrap: wrap;
