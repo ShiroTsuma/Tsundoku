@@ -1,8 +1,9 @@
-import { ChevronLeft, ChevronRight, ArrowDown, ArrowUp } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import type { Dispatch, RefObject, SetStateAction } from 'react'
-import { inputClass } from '@/components/app/designTokens'
 import { bookListPageSizeOptions } from './bookListState'
+import { fieldClass } from '@/components/ui/fieldStyles'
 
 const paginationDirectionButtonClass =
   'inline-flex min-h-9 min-w-9 items-center justify-center gap-1 rounded-control border border-line bg-transparent px-2.5 text-sm text-ink transition hover:border-line-strong hover:bg-hover'
@@ -60,7 +61,7 @@ export function BookListFooter({
             <span>Per page</span>
             <span className="relative inline-flex">
               <select
-                className={`${inputClass} ui-control--compact-select ui-control--page-size h-9 min-h-9 py-0`}
+                className={cn(fieldClass, 'h-9 w-[4.75rem] appearance-none py-0 pr-8 text-sm')}
                 value={pageSize}
                 onChange={(event) => setPageSize(event.target.value)}
               >
@@ -70,6 +71,10 @@ export function BookListFooter({
                   </option>
                 ))}
               </select>
+              <ChevronDown
+                aria-hidden="true"
+                className="pointer-events-none absolute top-1/2 right-2.5 size-3.5 -translate-y-1/2 text-ink-2"
+              />
             </span>
           </label>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -153,7 +158,7 @@ export function ScrollShortcutButtons({
       {showBackToTop ? (
         <button
           aria-label="Back to top"
-          className="ui-icon-button--round inline-flex h-11 w-11 items-center justify-center rounded-full border border-line-strong bg-raised text-ink shadow-popover transition hover:bg-selected"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-line-strong bg-raised text-ink shadow-popover transition hover:bg-selected"
           type="button"
           onClick={onBackToTop}
         >
@@ -163,7 +168,7 @@ export function ScrollShortcutButtons({
       {showGoDown ? (
         <button
           aria-label="Go to bottom"
-          className="ui-icon-button--round inline-flex h-11 w-11 items-center justify-center rounded-full border border-line-strong bg-raised text-ink shadow-popover transition hover:bg-selected"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-line-strong bg-raised text-ink shadow-popover transition hover:bg-selected"
           type="button"
           onClick={onGoDown}
         >
@@ -283,7 +288,7 @@ function PageGapJumpPopover({
         aria-invalid={!isValid && value.length > 0 ? 'true' : undefined}
         data-gap-id={gapId}
         aria-label="Page number"
-        className={`${inputClass} min-h-11 w-full text-center ${!isValid && value.length > 0 ? '!border-rose-500' : ''}`}
+        className={cn(fieldClass, 'w-full text-center')}
         inputMode="numeric"
         max={totalPages}
         min={1}

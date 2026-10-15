@@ -10,7 +10,6 @@ import {
   type BookFileList,
   type FileJob,
 } from '@/api/bookFiles'
-import { buttonVariants, controlClass } from '@/components/app/designTokens'
 import { Button } from '@/components/ui/Button'
 import { EpubSearchDialog, type EpubSearchBook } from '@/features/epubSearch/EpubSearchDialog'
 import { useEpubDownload } from '@/features/epubSearch/queries'
@@ -20,6 +19,8 @@ import { fileError } from './files/fileJobs'
 import { FileDownloadDialog } from './files/FileDownloadDialog'
 import { FileImportDialog } from './files/FileImportDialog'
 import { FileContents } from './files/FileContents'
+import { buttonStyles } from '@/components/ui/buttonStyles'
+import { fieldClass } from '@/components/ui/fieldStyles'
 
 function useBookFiles(bookId?: string, snapshotId?: string) {
   return useQuery<BookFileList | BookFile[]>({
@@ -411,7 +412,7 @@ export function BookFilesDialog({
           <>
             {bookId && (
               <button
-                className={buttonVariants.ghost}
+                className={buttonStyles({ variant: 'ghost', size: 'sm' })}
                 type="button"
                 disabled={mutation.isPending}
                 onClick={() => {
@@ -425,12 +426,12 @@ export function BookFilesDialog({
                 {manage ? 'Done' : 'Manage'}
               </button>
             )}
-            <button className={buttonVariants.secondary} type="button" onClick={onClose}>
+            <button className={buttonStyles({ size: 'sm' })} type="button" onClick={onClose}>
               Close
             </button>
             {!manage && active.length > 0 && (
               <button
-                className={buttonVariants.primary}
+                className={buttonStyles({ variant: 'primary', size: 'sm' })}
                 type="button"
                 onClick={() => setDownloadOpen(true)}
               >
@@ -438,7 +439,11 @@ export function BookFilesDialog({
               </button>
             )}
             {bookId && manage && (
-              <button className={buttonVariants.primary} type="button" onClick={add}>
+              <button
+                className={buttonStyles({ variant: 'primary', size: 'sm' })}
+                type="button"
+                onClick={add}
+              >
                 {resumable ? 'Resume import' : 'Add EPUB / ZIP'}
               </button>
             )}
@@ -452,7 +457,7 @@ export function BookFilesDialog({
                 `${formatFileSize(own.usedStorageBytes)} / ${formatFileSize(own.maxStorageBytes)} storage (including trash)`}
             </span>
             <button
-              className={buttonVariants.secondary}
+              className={buttonStyles({ size: 'sm' })}
               type="button"
               aria-pressed={trashOpen}
               onClick={() => {
@@ -475,7 +480,7 @@ export function BookFilesDialog({
         ) : query.isError ? (
           <p role="alert" className="file-error">
             Could not load EPUBs.{' '}
-            <button className={buttonVariants.secondary} onClick={() => void query.refetch()}>
+            <button className={buttonStyles({ size: 'sm' })} onClick={() => void query.refetch()}>
               Retry
             </button>
           </p>
@@ -502,7 +507,7 @@ export function BookFilesDialog({
                         }}
                       >
                         <input
-                          className={controlClass}
+                          className={fieldClass}
                           aria-label="File title"
                           maxLength={250}
                           value={title}
@@ -510,13 +515,13 @@ export function BookFilesDialog({
                           onChange={(e) => setTitle(e.target.value)}
                         />
                         <button
-                          className={buttonVariants.primary}
+                          className={buttonStyles({ variant: 'primary', size: 'sm' })}
                           disabled={mutation.isPending || !title.trim()}
                         >
                           Save
                         </button>
                         <button
-                          className={buttonVariants.secondary}
+                          className={buttonStyles({ size: 'sm' })}
                           type="button"
                           onClick={() => setEditing(undefined)}
                         >
@@ -535,7 +540,7 @@ export function BookFilesDialog({
                   </div>
                   {!manage && (
                     <button
-                      className={buttonVariants.secondary}
+                      className={buttonStyles({ size: 'sm' })}
                       type="button"
                       aria-label={`Download ${file.title}`}
                       disabled={Boolean(downloading)}
@@ -549,7 +554,7 @@ export function BookFilesDialog({
                     <div className="book-file-actions">
                       {trashOpen ? (
                         <button
-                          className={buttonVariants.secondary}
+                          className={buttonStyles({ size: 'sm' })}
                           disabled={mutation.isPending}
                           onClick={() => mutateBook((id) => bookFilesApi.restore(id, file.id))}
                         >
@@ -581,7 +586,7 @@ export function BookFilesDialog({
                             </label>
                           )}
                           <button
-                            className={buttonVariants.ghost}
+                            className={buttonStyles({ variant: 'ghost', size: 'sm' })}
                             disabled={mutation.isPending}
                             aria-label={`Rename ${file.title}`}
                             onClick={() => {
@@ -592,7 +597,7 @@ export function BookFilesDialog({
                             <Pencil size={16} />
                           </button>
                           <button
-                            className={buttonVariants.ghost}
+                            className={buttonStyles({ variant: 'ghost', size: 'sm' })}
                             disabled={mutation.isPending || index === 0}
                             aria-label={`Move ${file.title} up`}
                             onClick={() => move(index, -1)}
@@ -600,7 +605,7 @@ export function BookFilesDialog({
                             <ArrowUp size={16} />
                           </button>
                           <button
-                            className={buttonVariants.ghost}
+                            className={buttonStyles({ variant: 'ghost', size: 'sm' })}
                             disabled={mutation.isPending || index === active.length - 1}
                             aria-label={`Move ${file.title} down`}
                             onClick={() => move(index, 1)}
@@ -608,7 +613,7 @@ export function BookFilesDialog({
                             <ArrowDown size={16} />
                           </button>
                           <button
-                            className={buttonVariants.ghost}
+                            className={buttonStyles({ variant: 'ghost', size: 'sm' })}
                             disabled={mutation.isPending}
                             aria-label={`Remove ${file.title}`}
                             onClick={() => setDeleting(file)}
@@ -624,7 +629,7 @@ export function BookFilesDialog({
             </div>
             {rows.length > visible && (
               <button
-                className={buttonVariants.secondary}
+                className={buttonStyles({ size: 'sm' })}
                 onClick={() => setVisible((v) => v + 50)}
               >
                 Show more ({rows.length - visible} remaining)
@@ -664,14 +669,14 @@ export function BookFilesDialog({
           footer={
             <>
               <button
-                className={buttonVariants.secondary}
+                className={buttonStyles({ size: 'sm' })}
                 disabled={mutation.isPending}
                 onClick={() => setDeleting(undefined)}
               >
                 Cancel
               </button>
               <button
-                className={buttonVariants.destructive}
+                className={buttonStyles({ variant: 'danger', size: 'sm' })}
                 disabled={mutation.isPending}
                 onClick={() => mutateBook((id) => bookFilesApi.remove(id, deleting.id))}
               >

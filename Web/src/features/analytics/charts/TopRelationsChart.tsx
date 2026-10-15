@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import type { BookAnalyticsRelationCountDto } from '@/api/types'
-import { buttonVariants } from '@/components/app/designTokens'
 import { fieldQuery, formatCount, formatPercent } from './chartUtils'
 import { DrilldownLink } from './DrilldownLink'
 import { toLimitedRelationRows } from './topRelationsData'
+import { buttonStyles } from '@/components/ui/buttonStyles'
 
 type TopRelationsChartProps = {
   field: 'genre' | 'tag'
@@ -60,7 +60,7 @@ export function TopRelationsChart({ field, items, title }: TopRelationsChartProp
           {remainingCount > 0 ? (
             <button
               aria-expanded={expanded}
-              className={buttonVariants.ghost}
+              className={buttonStyles({ variant: 'ghost', size: 'sm' })}
               type="button"
               onClick={() => setVisibleLimit((current) => current + moreLimit)}
             >
@@ -70,7 +70,7 @@ export function TopRelationsChart({ field, items, title }: TopRelationsChartProp
           {expanded ? (
             <button
               aria-expanded={expanded}
-              className={buttonVariants.ghost}
+              className={buttonStyles({ variant: 'ghost', size: 'sm' })}
               type="button"
               onClick={() => setVisibleLimit(topLimit)}
             >

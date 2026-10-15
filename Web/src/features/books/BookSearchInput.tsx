@@ -13,7 +13,6 @@ import {
 } from 'lucide-react'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { api } from '@/api/client'
-import { Surface } from '@/components/app/DesignSystem'
 import { useDebouncedValue } from '@/lib/useDebouncedValue'
 import {
   analyzeBookSearch,
@@ -343,9 +342,9 @@ export function BookSearchInput({
   )
 
   return appearance === 'panel' ? (
-    <Surface className="relative grid gap-2 p-4" tone="muted">
+    <div className="relative grid gap-2 rounded-panel border border-line bg-sunk p-4">
       {content}
-    </Surface>
+    </div>
   ) : (
     <div className="relative grid gap-2">{content}</div>
   )

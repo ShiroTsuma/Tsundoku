@@ -1,14 +1,15 @@
 import { useMutation } from '@tanstack/react-query'
-import { AlertTriangle, ArrowLeft, Braces, Check, FileCode2, X } from 'lucide-react'
-import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react'
+import { AlertTriangle, ArrowLeft, Braces, Check, FileCode2 } from 'lucide-react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { api } from '@/api/client'
 import { HttpError } from '@/api/http'
 import type { BookHtmlParseResult } from '@/api/types'
-import { buttonVariants } from '@/components/app/designTokens'
-import { Badge, DialogPanel } from '@/components/app/DesignSystem'
+import { Dialog } from '@/components/ui/Dialog'
+import { Pill } from '@/components/ui/ListParts'
 import { useBodyScrollLock } from '@/components/app/useBodyScrollLock'
-import { buttonClass, inputClass, secondaryButtonClass } from '@/components/app/designTokens'
 import type { BookFormValues } from './bookFormSchema'
+import { buttonStyles } from '@/components/ui/buttonStyles'
+import { fieldClass } from '@/components/ui/fieldStyles'
 
 export type BookHtmlParseField =
   | 'primaryTitle'
@@ -69,21 +70,10 @@ export function BookHtmlParseDialog({
     onClose()
   }
 
-  const closeOnEscapeKey = useEffectEvent((event: KeyboardEvent) => {
-    if (event.key === 'Escape') closeAndReset()
-  })
-
   useEffect(() => {
     if (!open) return
     const frame = window.requestAnimationFrame(() => textareaRef.current?.focus())
-    const closeOnEscape = (event: KeyboardEvent) => {
-      closeOnEscapeKey(event)
-    }
-    window.addEventListener('keydown', closeOnEscape)
-    return () => {
-      window.cancelAnimationFrame(frame)
-      window.removeEventListener('keydown', closeOnEscape)
-    }
+    return () => window.cancelAnimationFrame(frame)
   }, [open])
 
   if (!open) return null
@@ -105,121 +95,16 @@ export function BookHtmlParseDialog({
   }
 
   return (
-    <div className="book-html-dialog-backdrop" role="presentation" onClick={closeAndReset}>
-      <DialogPanel
-        aria-labelledby={titleId}
-        aria-modal="true"
-        className="book-html-dialog"
-        role="dialog"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <header className="book-html-dialog__header">
-          <div className="book-html-dialog__mark" aria-hidden="true">
-            <FileCode2 className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="ui-eyebrow">Metadata resolver</div>
-            <h2 className="book-html-dialog__title" id={titleId}>
-              Parse page HTML
-            </h2>
-            <p className="book-html-dialog__intro">
-              Paste the full HTML of a supported book page. For sites such as AniList, copy the
-              loaded page HTML from your browser’s developer tools. Nothing is saved until you
-              review and apply it.
-            </p>
-          </div>
-          <button
-            aria-label="Close HTML parser"
-            className={`${buttonVariants.ghost} ui-icon-button`}
-            type="button"
-            onClick={closeAndReset}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </header>
-
-        {result ? (
-          <div className="book-html-dialog__content">
-            <div className="book-html-dialog__source-row">
-              <div>
-                <div className="text-sm font-semibold text-[var(--qs-text)]">Detected source</div>
-                <div className="mt-1 text-xs text-[var(--qs-muted)]">
-                  Select the metadata that should be applied to this draft.
-                </div>
-              </div>
-              <Badge tone="accent">{result.source}</Badge>
-            </div>
-            <div className="book-html-preview-grid">
-              {previewFields.map((field) => (
-                <label
-                  className={`book-html-preview ${selected.has(field.key) ? 'book-html-preview--selected' : ''}`}
-                  key={field.key}
-                >
-                  <input
-                    checked={selected.has(field.key)}
-                    className="sr-only"
-                    type="checkbox"
-                    onChange={() => toggleField(field.key)}
-                  />
-                  <span className="book-html-preview__check" aria-hidden="true">
-                    {selected.has(field.key) ? <Check className="h-3.5 w-3.5" /> : null}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="book-html-preview__heading">
-                      <span>{field.label}</span>
-                      {field.conflict ? (
-                        <span className="book-html-preview__conflict">replace / merge</span>
-                      ) : null}
-                    </span>
-                    <span className="book-html-preview__value">{field.value}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-            {result.warnings.length ? (
-              <div className="book-html-warnings" role="status">
-                <AlertTriangle className="mt-0.5 h-4 w-4 flex-none" />
-                <div>
-                  <div className="text-sm font-semibold">
-                    Review{' '}
-                    {result.warnings.length === 1
-                      ? 'one warning'
-                      : `${result.warnings.length} warnings`}
-                  </div>
-                  <ul className="mt-1 grid gap-1 text-xs">
-                    {result.warnings.map((warning, index) => (
-                      <li key={`${warning}-${index}`}>{warning}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <div className="book-html-dialog__content">
-            <label className="grid gap-2" htmlFor={`${titleId}-input`}>
-              <span className="text-sm font-semibold text-[var(--qs-text)]">Full page HTML</span>
-              <textarea
-                className={`${inputClass} book-html-dialog__textarea`}
-                id={`${titleId}-input`}
-                placeholder="<!doctype html>…"
-                ref={textareaRef}
-                spellCheck={false}
-                value={html}
-                onChange={(event) => setHtml(event.target.value)}
-              />
-            </label>
-            <div aria-live="polite">
-              {error ? <div className="book-html-dialog__error">{error}</div> : null}
-            </div>
-          </div>
-        )}
-
-        <footer className="book-html-dialog__footer">
+    <Dialog
+      open
+      description="Paste the full HTML of a supported book page. For sites such as AniList, copy the loaded page HTML from your browser’s developer tools. Nothing changes until you review and apply it."
+      footer={
+        <>
           {result ? (
             <>
+              <span className="flex-1" />
               <button
-                className={secondaryButtonClass}
+                className={buttonStyles({ size: 'sm' })}
                 type="button"
                 onClick={() => {
                   parseMutation.reset()
@@ -229,7 +114,7 @@ export function BookHtmlParseDialog({
                 <ArrowLeft className="h-4 w-4" /> Back to HTML
               </button>
               <button
-                className={buttonClass}
+                className={buttonStyles({ variant: 'primary', size: 'sm' })}
                 disabled={selected.size === 0}
                 type="button"
                 onClick={() => {
@@ -242,11 +127,11 @@ export function BookHtmlParseDialog({
             </>
           ) : (
             <>
-              <div className="book-html-dialog__privacy">
+              <div className="mr-auto flex items-center gap-2 text-[13px] text-ink-3">
                 <Braces className="h-4 w-4" /> Parsed as text; scripts are never executed.
               </div>
               <button
-                className={buttonClass}
+                className={buttonStyles({ variant: 'primary', size: 'sm' })}
                 disabled={!html.trim() || parseMutation.isPending}
                 type="button"
                 onClick={() => parseMutation.mutate(html)}
@@ -256,9 +141,90 @@ export function BookHtmlParseDialog({
               </button>
             </>
           )}
-        </footer>
-      </DialogPanel>
-    </div>
+        </>
+      }
+      scrollBody
+      title="Parse page HTML"
+      widthClassName="max-w-[880px]"
+      onClose={closeAndReset}
+    >
+      {result ? (
+        <div className="book-html-dialog__content">
+          <div className="book-html-dialog__source-row">
+            <div>
+              <div className="text-sm font-semibold text-ink">Detected source</div>
+              <div className="mt-1 text-xs text-ink-2">
+                Select the metadata that should be applied to this draft.
+              </div>
+            </div>
+            <Pill>{result.source}</Pill>
+          </div>
+          <div className="book-html-preview-grid">
+            {previewFields.map((field) => (
+              <label
+                className={`book-html-preview ${selected.has(field.key) ? 'book-html-preview--selected' : ''}`}
+                key={field.key}
+              >
+                <input
+                  checked={selected.has(field.key)}
+                  className="sr-only"
+                  type="checkbox"
+                  onChange={() => toggleField(field.key)}
+                />
+                <span className="book-html-preview__check" aria-hidden="true">
+                  {selected.has(field.key) ? <Check className="h-3.5 w-3.5" /> : null}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="book-html-preview__heading">
+                    <span>{field.label}</span>
+                    {field.conflict ? (
+                      <span className="book-html-preview__conflict">replace / merge</span>
+                    ) : null}
+                  </span>
+                  <span className="book-html-preview__value">{field.value}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          {result.warnings.length ? (
+            <div className="book-html-warnings" role="status">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-none" />
+              <div>
+                <div className="text-sm font-semibold">
+                  Review{' '}
+                  {result.warnings.length === 1
+                    ? 'one warning'
+                    : `${result.warnings.length} warnings`}
+                </div>
+                <ul className="mt-1 grid gap-1 text-xs">
+                  {result.warnings.map((warning, index) => (
+                    <li key={`${warning}-${index}`}>{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="book-html-dialog__content">
+          <label className="grid gap-2" htmlFor={`${titleId}-input`}>
+            <span className="text-sm font-semibold text-ink">Full page HTML</span>
+            <textarea
+              className={`${fieldClass} book-html-dialog__textarea`}
+              id={`${titleId}-input`}
+              placeholder="<!doctype html>…"
+              ref={textareaRef}
+              spellCheck={false}
+              value={html}
+              onChange={(event) => setHtml(event.target.value)}
+            />
+          </label>
+          <div aria-live="polite">
+            {error ? <div className="book-html-dialog__error">{error}</div> : null}
+          </div>
+        </div>
+      )}
+    </Dialog>
   )
 }
 

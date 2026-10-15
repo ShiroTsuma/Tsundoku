@@ -129,146 +129,9 @@
   }
 }
 
-.ui-button {
-  display: inline-flex;
-  min-height: 40px;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0 1rem;
-  border: 1px solid transparent;
-  border-radius: var(--radius-control);
-  font-size: 0.875rem;
-  font-weight: 500;
-  line-height: 1.15;
-  transition:
-    color 140ms ease,
-    background-color 140ms ease,
-    border-color 140ms ease;
-}
-
-.ui-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.46;
-}
-
-.ui-button--primary {
-  font-weight: 600;
-  border-color: var(--qs-accent);
-  color: var(--color-ink-inverse);
-  background: var(--qs-accent);
-}
-
-.ui-button--primary:hover:not(:disabled) {
-  border-color: var(--qs-accent-strong);
-  background: var(--qs-accent-strong);
-}
-
-.ui-button--secondary {
-  border-color: var(--qs-border-strong);
-  color: var(--qs-text);
-  background: var(--qs-surface-raised);
-}
-
-.ui-button--secondary:hover:not(:disabled) {
-  border-color: var(--color-line-focus);
-  color: var(--qs-text);
-  background: var(--color-selected);
-}
-
-.ui-button--ghost {
-  border-color: transparent;
-  color: var(--qs-muted);
-  background: transparent;
-}
-
-.ui-button--ghost:hover:not(:disabled) {
-  border-color: var(--qs-border-strong);
-  color: var(--qs-text);
-  background: var(--qs-surface-raised);
-}
-
-.ui-button--destructive {
-  border-color: var(--color-danger-line);
-  color: var(--color-danger-ink);
-  background: var(--color-danger-soft);
-}
-
-.ui-button--destructive:hover:not(:disabled) {
-  border-color: var(--qs-danger);
-  background: var(--color-danger-line);
-}
-
-.ui-icon-button {
-  width: 44px;
-  padding-inline: 0;
-}
-
-.ui-icon-button--round {
-  border-radius: 9999px;
-}
-
-.ui-control {
-  width: 100%;
-  min-height: 44px;
-  padding: 0.65rem 0.75rem;
-  border: 1px solid var(--qs-border-strong);
-  border-radius: var(--qs-control-radius);
-  outline: none;
-  color: var(--qs-text);
-  background: var(--qs-surface-muted);
-  font-size: 0.875rem;
-  font-weight: 400;
-  transition:
-    border-color 140ms ease,
-    background-color 140ms ease;
-}
-
-.ui-control::placeholder {
-  color: var(--qs-subtle);
-}
-
-.ui-control:hover:not(:disabled) {
-  border-color: #5a5d63;
-}
-
-.ui-control:focus {
-  border-color: var(--qs-accent);
-  outline: 3px solid rgb(236 234 228 / 0.16);
-  outline-offset: 0;
-  background: var(--qs-bg);
-}
-
-.ui-control:disabled {
-  cursor: not-allowed;
-  color: var(--qs-subtle);
-  background: var(--qs-surface);
-}
-
-.ui-control.ui-control--compact-select {
-  width: 4rem;
-  padding-right: 2rem;
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-.ui-control.ui-control--page-size {
-  width: 4.75rem;
-}
-
 .pagination-page-button {
   border: 0;
   border-radius: 999px;
-}
-
-select.ui-control {
-  padding-right: 2.25rem;
-  color-scheme: dark;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23b0aea7' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  background-position: right 0.75rem center;
-  background-repeat: no-repeat;
 }
 
 .ui-form-field {
@@ -300,36 +163,6 @@ select.ui-control {
   font-size: 0.75rem;
   font-weight: 620;
   pointer-events: none;
-}
-
-.ui-surface {
-  border: 1px solid var(--qs-border);
-  border-radius: var(--qs-panel-radius);
-  color: var(--qs-text);
-  background: var(--qs-surface);
-}
-
-.ui-surface--elevated {
-  border-color: var(--qs-border-strong);
-  background: var(--qs-surface-raised);
-}
-
-.ui-surface--danger {
-  border-color: var(--color-danger-line);
-  color: var(--color-danger-ink);
-  background: var(--color-danger-soft);
-}
-
-.ui-surface--success {
-  border-color: var(--color-status-finished);
-  color: var(--color-status-finished-ink);
-  background: var(--color-status-finished-soft);
-}
-
-.ui-surface--warning {
-  border-color: var(--color-status-hold);
-  color: var(--color-status-hold-ink);
-  background: var(--color-status-hold-soft);
 }
 
 .ui-inline-link,
@@ -420,76 +253,6 @@ select.ui-control {
   color: var(--qs-text);
   background: var(--qs-surface-raised);
   font-size: 0.875rem;
-}
-
-.ui-page-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  justify-content: space-between;
-  gap: 1rem 2rem;
-  padding-bottom: 0.9rem;
-  border-bottom: 1px solid var(--qs-border);
-}
-
-.ui-eyebrow {
-  margin-bottom: 0.25rem;
-  color: var(--qs-accent);
-  font-size: 0.68rem;
-  font-weight: 720;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.ui-display-title {
-  color: var(--qs-text);
-  font-family: 'IBM Plex Sans Variable', 'IBM Plex Sans', sans-serif;
-  font-size: clamp(1.75rem, 3vw, 2.4rem);
-  font-weight: 650;
-  letter-spacing: -0.035em;
-  line-height: 1.04;
-}
-
-.ui-page-description {
-  max-width: 64ch;
-  margin-top: 0.35rem;
-  color: var(--qs-muted);
-  font-size: 0.875rem;
-}
-
-.ui-page-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-
-.ui-badge {
-  display: inline-flex;
-  min-height: 1.75rem;
-  align-items: center;
-  border: 1px solid var(--qs-border-strong);
-  border-radius: 999px;
-  padding: 0.25rem 0.65rem;
-  color: var(--qs-text);
-  background: var(--qs-surface-raised);
-  font-size: 0.72rem;
-  font-weight: 680;
-}
-
-.ui-badge--accent {
-  border-color: var(--color-line-focus);
-  color: var(--color-ink);
-  background: var(--color-selected);
-}
-
-.ui-dialog-panel {
-  width: 100%;
-  border: 1px solid var(--qs-border-strong);
-  border-radius: var(--qs-dialog-radius);
-  color: var(--qs-text);
-  background: var(--qs-surface-raised);
-  box-shadow: var(--qs-dialog-shadow);
 }
 
 /* Compatibility layer for existing page composition. */
@@ -584,65 +347,6 @@ select.ui-control {
   background: var(--qs-surface-raised);
 }
 
-.book-html-dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: var(--color-overlay);
-  backdrop-filter: blur(8px);
-}
-
-.book-html-dialog {
-  display: grid;
-  width: min(58rem, 100%);
-  max-height: min(52rem, calc(100dvh - 2rem));
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  overflow: hidden;
-}
-
-.book-html-dialog__header {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.9rem;
-  padding: 1.25rem;
-  border-bottom: 1px solid var(--qs-border);
-  background:
-    linear-gradient(120deg, rgb(236 234 228 / 0.08), transparent 45%), var(--qs-surface-raised);
-}
-
-.book-html-dialog__mark {
-  display: grid;
-  width: 2.75rem;
-  height: 2.75rem;
-  flex: none;
-  place-items: center;
-  border: 1px solid var(--color-line-focus);
-  border-radius: var(--qs-control-radius);
-  color: var(--qs-accent-strong);
-  background: var(--color-selected);
-  box-shadow: inset 0 0 18px rgb(236 234 228 / 0.06);
-}
-
-.book-html-dialog__title {
-  margin-top: 0.15rem;
-  color: var(--qs-text);
-  font-family: 'IBM Plex Sans Variable', 'IBM Plex Sans', sans-serif;
-  font-size: 1.25rem;
-  font-weight: 670;
-  letter-spacing: -0.025em;
-}
-
-.book-html-dialog__intro {
-  max-width: 64ch;
-  margin-top: 0.25rem;
-  color: var(--qs-muted);
-  font-size: 0.82rem;
-  line-height: 1.5;
-}
-
 .book-html-dialog__content {
   min-height: 0;
   overflow-y: auto;
@@ -653,7 +357,7 @@ select.ui-control {
   min-height: min(25rem, 48dvh);
   resize: vertical;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.76rem;
+  font-size: 0.8125rem;
   line-height: 1.55;
   tab-size: 2;
 }
@@ -686,21 +390,18 @@ select.ui-control {
   cursor: pointer;
   transition:
     border-color 140ms ease,
-    background-color 140ms ease,
-    transform 140ms ease;
+    background-color 140ms ease;
 }
 
 .book-html-preview:hover,
 .book-html-preview:focus-within {
   border-color: var(--color-line-focus);
-  transform: translateY(-1px);
 }
 
 .book-html-preview--selected {
   border-color: var(--color-line-focus);
   color: var(--qs-text);
   background: var(--color-raised);
-  box-shadow: inset 3px 0 0 var(--qs-accent);
 }
 
 .book-html-preview__check {
@@ -726,15 +427,15 @@ select.ui-control {
   justify-content: space-between;
   gap: 0.5rem;
   color: var(--qs-text);
-  font-size: 0.75rem;
-  font-weight: 680;
+  font-size: 0.8125rem;
+  font-weight: 600;
 }
 
 .book-html-preview__conflict {
   flex: none;
   color: var(--color-status-hold-ink);
-  font-size: 0.58rem;
-  font-weight: 700;
+  font-size: 0.6875rem;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -744,7 +445,7 @@ select.ui-control {
   margin-top: 0.3rem;
   overflow: hidden;
   color: inherit;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   line-height: 1.45;
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
@@ -768,26 +469,6 @@ select.ui-control {
   border-color: var(--color-danger-line);
   background: var(--color-danger-soft);
   font-size: 0.8rem;
-}
-
-.book-html-dialog__footer {
-  display: flex;
-  min-height: 4.5rem;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  padding: 1rem 1.25rem;
-  border-top: 1px solid var(--qs-border);
-  background: var(--color-surface);
-}
-
-.book-html-dialog__privacy {
-  display: inline-flex;
-  margin-right: auto;
-  align-items: center;
-  gap: 0.45rem;
-  color: var(--qs-muted);
-  font-size: 0.7rem;
 }
 
 .book-column-switch {
@@ -931,45 +612,13 @@ select.ui-control {
 }
 
 @media (max-width: 480px) {
-  .ui-page-actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
 
-  .book-html-dialog-backdrop {
-    align-items: end;
-    padding: 0;
-  }
-
-  .book-html-dialog {
-    max-height: 94dvh;
-    border-radius: var(--qs-dialog-radius) var(--qs-dialog-radius) 0 0;
-  }
-
-  .book-html-dialog__header,
-  .book-html-dialog__content,
-  .book-html-dialog__footer {
+  .book-html-dialog__content {
     padding-inline: 1rem;
-  }
-
-  .book-html-dialog__mark {
-    display: none;
   }
 
   .book-html-preview-grid {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .book-html-dialog__footer {
-    flex-wrap: wrap;
-  }
-
-  .book-html-dialog__footer > button {
-    flex: 1;
-  }
-
-  .book-html-dialog__privacy {
-    width: 100%;
   }
 }
 

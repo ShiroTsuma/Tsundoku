@@ -1,10 +1,10 @@
 import { X, ZoomIn } from 'lucide-react'
 import { useEffect, type ReactNode } from 'react'
 import type { BookCoverSummaryDto } from '@/api/types'
-import { buttonVariants } from '@/components/app/designTokens'
 import { useBodyScrollLock } from '@/components/app/useBodyScrollLock'
 import { useCoverLoadPermission } from './useCoverLoadPermission'
 import { useResolvedCoverImage } from './useResolvedCoverImage'
+import { buttonStyles } from '@/components/ui/buttonStyles'
 
 type BookCoverArtworkProps = {
   title: string
@@ -98,7 +98,7 @@ export function BookCoverArtwork({
         {resolvedImageUrl && onRemove ? (
           <button
             aria-label={removeLabel}
-            className={`${buttonVariants.destructive} ui-icon-button ui-icon-button--round absolute left-3 top-3 opacity-0 group-hover:opacity-100`}
+            className={`${buttonStyles({ variant: 'danger', size: 'iconSm' })} rounded-full absolute left-3 top-3 opacity-0 group-hover:opacity-100`}
             type="button"
             onClick={onRemove}
           >
@@ -142,7 +142,7 @@ export function BookCoverArtwork({
       {resolvedImageUrl ? (
         <button
           aria-label={removeLabel}
-          className={`${buttonVariants.destructive} ui-icon-button ui-icon-button--round absolute left-3 top-3 z-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100`}
+          className={`${buttonStyles({ variant: 'danger', size: 'iconSm' })} rounded-full absolute left-3 top-3 z-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100`}
           type="button"
           onClick={onRemove}
         >
@@ -195,7 +195,7 @@ export function CoverLightbox({
       <div aria-modal="true" className="relative max-h-[90vh] w-full max-w-4xl" role="dialog">
         <button
           aria-label="Close preview"
-          className={`${buttonVariants.ghost} ui-icon-button absolute right-3 top-3 z-10`}
+          className={`${buttonStyles({ variant: 'ghost', size: 'iconSm' })} absolute right-3 top-3 z-10`}
           type="button"
           onClick={onClose}
         >
@@ -209,7 +209,7 @@ export function CoverLightbox({
               src={imageUrl}
             />
             {footer ? (
-              <div className="ui-surface ui-surface--elevated px-4 py-3 text-sm text-slate-100">
+              <div className="rounded-panel border border-line-strong bg-raised px-4 py-3 text-sm text-ink shadow-popover">
                 {footer}
               </div>
             ) : null}

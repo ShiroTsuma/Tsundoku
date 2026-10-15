@@ -264,7 +264,7 @@ describe('BookCoverSection', () => {
       await Promise.resolve()
     })
 
-    expect(container.querySelector('.ui-icon-button')).toHaveClass('ui-icon-button--round')
+    expect(container.querySelector('button.rounded-full')).toBeInTheDocument()
   })
 
   it('prunes older cached variants even when existing cache keys are relative urls', async () => {

@@ -6,10 +6,10 @@ import {
   type BookFile,
   type FileJob,
 } from '@/api/bookFiles'
-import { buttonVariants } from '@/components/app/designTokens'
 import { FileContents } from './FileContents'
 import { FileJobProgress, FileModal } from './FileDialogs'
 import { fileError, isJobWorking, useFileJob } from './fileJobs'
+import { buttonStyles } from '@/components/ui/buttonStyles'
 
 export function FileDownloadDialog({
   files,
@@ -131,16 +131,20 @@ export function FileDownloadDialog({
       footer={
         <>
           {!selection && (
-            <button className={buttonVariants.ghost} disabled={busy} onClick={() => void back()}>
+            <button
+              className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+              disabled={busy}
+              onClick={() => void back()}
+            >
               Back to selection
             </button>
           )}
-          <button className={buttonVariants.secondary} onClick={() => void close()}>
+          <button className={buttonStyles({ size: 'sm' })} onClick={() => void close()}>
             {isJobWorking(job.data) ? 'Cancel' : 'Close'}
           </button>
           {selection && (
             <button
-              className={buttonVariants.primary}
+              className={buttonStyles({ variant: 'primary', size: 'sm' })}
               disabled={busy || chosen.length === 0}
               onClick={() => void prepare()}
             >
@@ -149,7 +153,7 @@ export function FileDownloadDialog({
           )}
           {job.data?.status === 'Ready' && (
             <button
-              className={buttonVariants.primary}
+              className={buttonStyles({ variant: 'primary', size: 'sm' })}
               disabled={busy}
               onClick={() => void download()}
             >
@@ -167,7 +171,7 @@ export function FileDownloadDialog({
       {job.isError && (
         <p className="file-error" role="alert">
           {fileError(job.error)}{' '}
-          <button className={buttonVariants.secondary} onClick={() => void job.refetch()}>
+          <button className={buttonStyles({ size: 'sm' })} onClick={() => void job.refetch()}>
             Retry
           </button>
         </p>
@@ -241,7 +245,10 @@ export function FileDownloadDialog({
             ))}
           </div>
           {files.length > visible && (
-            <button className={buttonVariants.secondary} onClick={() => setVisible((v) => v + 50)}>
+            <button
+              className={buttonStyles({ size: 'sm' })}
+              onClick={() => setVisible((v) => v + 50)}
+            >
               Show more files
             </button>
           )}
@@ -256,7 +263,7 @@ export function FileDownloadDialog({
                 {started.has(file.id) && <span className="file-hint">Download started</span>}
               </div>
               <button
-                className={buttonVariants.secondary}
+                className={buttonStyles({ size: 'sm' })}
                 disabled={busy}
                 onClick={() => void download(file.id)}
               >
@@ -269,7 +276,7 @@ export function FileDownloadDialog({
         <>
           {job.data && <FileJobProgress job={job.data} />}
           {job.data?.status === 'Failed' && (
-            <button className={buttonVariants.secondary} onClick={() => void back()}>
+            <button className={buttonStyles({ size: 'sm' })} onClick={() => void back()}>
               Change selection and retry
             </button>
           )}

@@ -8,11 +8,12 @@ import {
   type ImportEntry,
   type ImportSelection,
 } from '@/api/bookFiles'
-import { buttonVariants, controlClass } from '@/components/app/designTokens'
 import { useDebouncedValue } from '@/lib/useDebouncedValue'
 import { FileJobProgress, FileModal } from './FileDialogs'
 import { fileError, isJobWorking, useFileJob } from './fileJobs'
 import { FileContents } from './FileContents'
+import { buttonStyles } from '@/components/ui/buttonStyles'
+import { fieldClass } from '@/components/ui/fieldStyles'
 
 export function FileImportDialog({
   bookId,
@@ -193,7 +194,11 @@ export function FileImportDialog({
       onClose={() => void close()}
       footer={
         <>
-          <button type="button" className={buttonVariants.secondary} onClick={() => void close()}>
+          <button
+            type="button"
+            className={buttonStyles({ size: 'sm' })}
+            onClick={() => void close()}
+          >
             {busy || isJobWorking(job)
               ? 'Cancel operation'
               : job?.status === 'Ready'
@@ -203,7 +208,7 @@ export function FileImportDialog({
           {job?.status === 'Ready' && (
             <button
               type="button"
-              className={buttonVariants.primary}
+              className={buttonStyles({ variant: 'primary', size: 'sm' })}
               disabled={busy || selectionInvalid}
               onClick={() => void confirm()}
             >
@@ -226,7 +231,7 @@ export function FileImportDialog({
       {jobQuery.isError && (
         <p className="file-error" role="alert">
           {fileError(jobQuery.error)}{' '}
-          <button className={buttonVariants.secondary} onClick={() => void jobQuery.refetch()}>
+          <button className={buttonStyles({ size: 'sm' })} onClick={() => void jobQuery.refetch()}>
             Retry status
           </button>
         </p>
@@ -235,7 +240,7 @@ export function FileImportDialog({
         <>
           {resume && (
             <button
-              className={buttonVariants.secondary}
+              className={buttonStyles({ size: 'sm' })}
               type="button"
               onClick={() => {
                 setInitial(resume)
@@ -272,7 +277,7 @@ export function FileImportDialog({
               }}
             />
             <button
-              className={buttonVariants.primary}
+              className={buttonStyles({ variant: 'primary', size: 'sm' })}
               type="button"
               disabled={busy || Boolean(resume) || limits.isPending || limits.isError}
               onClick={() => input.current?.click()}
@@ -290,7 +295,10 @@ export function FileImportDialog({
             {limits.isError && (
               <p role="alert">
                 Could not load upload limits.{' '}
-                <button onClick={() => void limits.refetch()} className={buttonVariants.secondary}>
+                <button
+                  onClick={() => void limits.refetch()}
+                  className={buttonStyles({ size: 'sm' })}
+                >
                   Retry
                 </button>
               </p>
@@ -309,7 +317,7 @@ export function FileImportDialog({
           <div className="file-selection-bar">
             <strong>{selected.size} selected</strong>
             <button
-              className={buttonVariants.secondary}
+              className={buttonStyles({ size: 'sm' })}
               type="button"
               onClick={() =>
                 setSelected(
@@ -320,7 +328,7 @@ export function FileImportDialog({
               Select valid files
             </button>
             <button
-              className={buttonVariants.ghost}
+              className={buttonStyles({ variant: 'ghost', size: 'sm' })}
               type="button"
               onClick={() => setSelected(new Set())}
             >
@@ -331,7 +339,7 @@ export function FileImportDialog({
             <label className="file-hint">
               Find target books
               <input
-                className={controlClass}
+                className={fieldClass}
                 value={search}
                 placeholder="Search your library for an existing book"
                 onChange={(e) => setSearch(e.target.value)}
@@ -340,7 +348,7 @@ export function FileImportDialog({
                 <span role="alert">
                   Could not load books.{' '}
                   <button
-                    className={buttonVariants.secondary}
+                    className={buttonStyles({ size: 'sm' })}
                     onClick={() => void targets.refetch()}
                   >
                     Retry
@@ -385,7 +393,7 @@ export function FileImportDialog({
                       <label className="file-hint">
                         Title
                         <input
-                          className={controlClass}
+                          className={fieldClass}
                           maxLength={250}
                           value={drafts[entry.id]?.title ?? entry.title}
                           onChange={(e) => updateDraft(entry, { title: e.target.value })}
@@ -395,7 +403,7 @@ export function FileImportDialog({
                         <label className="file-hint">
                           Order
                           <input
-                            className={controlClass}
+                            className={fieldClass}
                             type="number"
                             min={0}
                             max={1000000}
@@ -409,7 +417,7 @@ export function FileImportDialog({
                           <label className="file-hint">
                             Target book
                             <select
-                              className={controlClass}
+                              className={fieldClass}
                               aria-label={`Target book for ${entry.originalFileName}`}
                               value={drafts[entry.id]?.bookId ?? entry.bookId ?? ''}
                               onChange={(e) => updateDraft(entry, { bookId: e.target.value })}
@@ -438,7 +446,10 @@ export function FileImportDialog({
             })}
           </div>
           {job.entries.length > visible && (
-            <button className={buttonVariants.secondary} onClick={() => setVisible((v) => v + 50)}>
+            <button
+              className={buttonStyles({ size: 'sm' })}
+              onClick={() => setVisible((v) => v + 50)}
+            >
               Show more files ({job.entries.length - visible} remaining)
             </button>
           )}
@@ -451,7 +462,7 @@ export function FileImportDialog({
       )}
       {job && ['Failed', 'Cancelled'].includes(job.status) && (
         <button
-          className={buttonVariants.secondary}
+          className={buttonStyles({ size: 'sm' })}
           onClick={() => {
             previewId.current = null
             setInitial(null)

@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { bookFilesApi, formatFileSize, startFileDownload } from '@/api/bookFiles'
-import { buttonVariants } from '@/components/app/designTokens'
 import { FileJobProgress, FileModal } from './FileDialogs'
 import { fileError, isJobWorking, useFileJob } from './fileJobs'
+import { buttonStyles } from '@/components/ui/buttonStyles'
 
 export function FileExportDialog({
   query,
@@ -106,12 +106,16 @@ export function FileExportDialog({
       onClose={() => void close()}
       footer={
         <>
-          <button className={buttonVariants.secondary} type="button" onClick={() => void close()}>
+          <button
+            className={buttonStyles({ size: 'sm' })}
+            type="button"
+            onClick={() => void close()}
+          >
             {isJobWorking(job.data) ? 'Cancel export' : 'Close'}
           </button>
           {!jobId && (
             <button
-              className={buttonVariants.primary}
+              className={buttonStyles({ variant: 'primary', size: 'sm' })}
               type="button"
               disabled={
                 busy ||
@@ -141,7 +145,7 @@ export function FileExportDialog({
       {job.isError && (
         <p role="alert" className="file-error">
           {fileError(job.error)}{' '}
-          <button className={buttonVariants.secondary} onClick={() => void job.refetch()}>
+          <button className={buttonStyles({ size: 'sm' })} onClick={() => void job.refetch()}>
             Retry status
           </button>
         </p>
@@ -155,7 +159,7 @@ export function FileExportDialog({
           )}
           {job.data?.status === 'Ready' && (
             <button
-              className={buttonVariants.primary}
+              className={buttonStyles({ variant: 'primary', size: 'sm' })}
               disabled={busy}
               onClick={() => void download()}
             >
@@ -164,7 +168,7 @@ export function FileExportDialog({
           )}
           {job.data?.status === 'Ready' && (
             <button
-              className={buttonVariants.secondary}
+              className={buttonStyles({ size: 'sm' })}
               disabled={busy}
               onClick={() => {
                 setBusy(true)
@@ -189,7 +193,7 @@ export function FileExportDialog({
           )}
           {job.data?.status === 'Failed' && (
             <button
-              className={buttonVariants.secondary}
+              className={buttonStyles({ size: 'sm' })}
               onClick={() => {
                 setJobId(undefined)
                 setError('')
@@ -202,7 +206,7 @@ export function FileExportDialog({
       ) : (
         <>
           {resumable && (
-            <button className={buttonVariants.secondary} onClick={() => setJobId(resumable.id)}>
+            <button className={buttonStyles({ size: 'sm' })} onClick={() => setJobId(resumable.id)}>
               Resume previous EPUB export
             </button>
           )}
@@ -242,7 +246,7 @@ export function FileExportDialog({
             <p role="alert" className="file-error">
               Could not load EPUBs.{' '}
               <button
-                className={buttonVariants.secondary}
+                className={buttonStyles({ size: 'sm' })}
                 onClick={() => void candidates.refetch()}
               >
                 Retry
@@ -255,12 +259,15 @@ export function FileExportDialog({
                   {booksCount} books · {chosen.length} EPUBs · {formatFileSize(bytes)}
                 </strong>
                 <button
-                  className={buttonVariants.secondary}
+                  className={buttonStyles({ size: 'sm' })}
                   onClick={() => setSelected(new Set(files.map((f) => f.id)))}
                 >
                   Select all files
                 </button>
-                <button className={buttonVariants.ghost} onClick={() => setSelected(new Set())}>
+                <button
+                  className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+                  onClick={() => setSelected(new Set())}
+                >
                   Clear selection
                 </button>
               </div>
@@ -274,7 +281,7 @@ export function FileExportDialog({
                 <p className="file-error" role="alert">
                   Could not load export limits.{' '}
                   <button
-                    className={buttonVariants.secondary}
+                    className={buttonStyles({ size: 'sm' })}
                     onClick={() => void limits.refetch()}
                   >
                     Retry
@@ -312,7 +319,7 @@ export function FileExportDialog({
                           </span>
                         </label>
                         <button
-                          className={buttonVariants.secondary}
+                          className={buttonStyles({ size: 'sm' })}
                           aria-expanded={expanded.has(book.bookId)}
                           onClick={() =>
                             setExpanded((current) => {
@@ -346,7 +353,7 @@ export function FileExportDialog({
                           ))}
                           {book.files.length > countVisible && (
                             <button
-                              className={buttonVariants.secondary}
+                              className={buttonStyles({ size: 'sm' })}
                               onClick={() =>
                                 setVisibleFiles((current) => ({
                                   ...current,
@@ -365,7 +372,7 @@ export function FileExportDialog({
               </div>
               {candidates.data.length > visibleBooks && (
                 <button
-                  className={buttonVariants.secondary}
+                  className={buttonStyles({ size: 'sm' })}
                   onClick={() => setVisibleBooks((v) => v + 20)}
                 >
                   Show more books

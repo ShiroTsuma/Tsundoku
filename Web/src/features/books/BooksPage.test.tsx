@@ -1222,8 +1222,8 @@ describe('BooksPage', () => {
 
     const backToTopButton = await screen.findByRole('button', { name: /back to top/i })
     const goToBottomButton = screen.getByRole('button', { name: /go to bottom/i })
-    expect(backToTopButton).toHaveClass('ui-icon-button--round')
-    expect(goToBottomButton).toHaveClass('ui-icon-button--round')
+    expect(backToTopButton).toHaveClass('rounded-full')
+    expect(goToBottomButton).toHaveClass('rounded-full')
     await user.click(backToTopButton)
     await user.click(goToBottomButton)
 

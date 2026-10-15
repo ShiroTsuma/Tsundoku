@@ -2,10 +2,9 @@ import './files.css'
 import { X } from 'lucide-react'
 import { useEffect, useEffectEvent, useId, useRef, type ReactNode } from 'react'
 import type { FileJob } from '@/api/bookFiles'
-import { buttonVariants } from '@/components/app/designTokens'
-import { DialogPanel } from '@/components/app/DesignSystem'
 import { useBodyScrollLock } from '@/components/app/useBodyScrollLock'
 import { isJobWorking } from './fileJobs'
+import { buttonStyles } from '@/components/ui/buttonStyles'
 
 export function FileModal({
   title,
@@ -67,8 +66,8 @@ export function FileModal({
   }, [])
   return (
     <div className="file-modal-backdrop">
-      <DialogPanel
-        className="file-modal"
+      <section
+        className="file-modal rounded-dialog border border-line-strong bg-surface text-ink shadow-overlay outline-none"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -76,12 +75,12 @@ export function FileModal({
         ref={panel}
       >
         <div className="file-modal__header">
-          <h2 id={titleId} className="text-lg font-semibold">
+          <h2 id={titleId} className="m-0 font-display text-2xl font-bold">
             {title}
           </h2>
           <button
             type="button"
-            className={buttonVariants.ghost}
+            className={buttonStyles({ variant: 'ghost', size: 'iconSm' })}
             aria-label="Close file dialog"
             onClick={onClose}
           >
@@ -89,8 +88,8 @@ export function FileModal({
           </button>
         </div>
         <div className="file-modal__body">{children}</div>
-        {footer && <div className="file-modal__footer">{footer}</div>}
-      </DialogPanel>
+        {footer && <div className="file-modal__footer bg-sunk">{footer}</div>}
+      </section>
     </div>
   )
 }
