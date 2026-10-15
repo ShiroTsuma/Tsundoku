@@ -116,37 +116,48 @@ const managedAuthors = [
   },
 ]
 
+const statusError = 'Status is required and must exist. Allowed values: Reading, Completed.'
+const duplicateError = 'A book with this title and content type already exists in your library.'
+
 export const invalidImportSession = {
   sessionId: 'layout-session',
-  fileName: 'invalid-books.csv',
+  fileName: 'library-2026-10.csv',
   totalRows: 80,
-  validRows: 0,
-  invalidRows: 80,
+  validRows: 77,
+  invalidRows: 3,
   canFinalize: false,
   availableContentTypes: ['Novel', 'Manga'],
   availableStatuses: ['Reading', 'Completed'],
-  rows: Array.from({ length: 80 }, (_unused, index) => ({
-    rowId: `layout-row-${index + 1}`,
-    lineNumber: index + 2,
-    isValid: false,
-    primaryTitle: `Broken imported title ${index + 1}`,
-    authorName: null,
-    contentType: 'Wrong',
-    status: 'Reading',
-    tags: null,
-    totalChapters: null,
-    currentChapterNumber: null,
-    currentChapterLabel: null,
-    rating: null,
-    priority: null,
-    description: null,
-    notes: null,
-    rawImportedLine: null,
-    errors: ['Content type is required and must exist.'],
-    fieldErrors: {
-      contentType: ['Content type is required and must exist.'],
-    },
-  })),
+  rows: Array.from({ length: 80 }, (_unused, index) => {
+    const misspelt = index < 2
+    const duplicate = index === 2
+    const errors = misspelt ? [statusError] : duplicate ? [duplicateError] : []
+    return {
+      rowId: `layout-row-${index + 1}`,
+      lineNumber: index + 2,
+      isValid: errors.length === 0,
+      primaryTitle: duplicate ? 'Lord of Mysteries' : `Imported title ${index + 1}`,
+      authorName: 'Some Author',
+      contentType: 'Novel',
+      status: misspelt ? 'Readin' : 'Reading',
+      genres: 'Fantasy; Comedy',
+      tags: null,
+      totalChapters: null,
+      currentChapterNumber: String(100 + index),
+      currentChapterLabel: null,
+      rating: null,
+      priority: null,
+      description: null,
+      notes: null,
+      rawImportedLine: null,
+      errors,
+      fieldErrors: misspelt
+        ? { status: [statusError] }
+        : duplicate
+          ? { primaryTitle: [duplicateError] }
+          : {},
+    }
+  }),
 }
 
 const analytics = {
@@ -338,6 +349,25 @@ export async function installLayoutApiMocks(page: Page) {
 
     if (path === 'book/import/sessions') {
       await route.fulfill({ json: invalidImportSession })
+      return
+    }
+
+    if (path === 'book/import/sessions/layout-session/finalize') {
+      await route.fulfill({
+        json: {
+          importedCount: 77,
+          skippedCount: 1,
+          errors: ["Line 4: title 'Lord of Mysteries' already exists for content type 'Novel'."],
+          importedBooks: invalidImportSession.rows.slice(3, 12).map((row) => ({
+            primaryTitle: row.primaryTitle,
+            contentType: 'Novel',
+            status: 'Reading',
+            currentChapterNumber: Number(row.currentChapterNumber),
+            currentChapterLabel: null,
+            totalChapters: null,
+          })),
+        },
+      })
       return
     }
 
