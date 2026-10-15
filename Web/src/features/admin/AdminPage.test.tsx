@@ -37,6 +37,20 @@ describe('AdminPage', () => {
     vi.mocked(api.getAdminUsers).mockResolvedValue({ skip: 0, take: 100, total: 0, data: [] })
   })
 
+  it('keeps the section in the URL and shows one section at a time', async () => {
+    vi.mocked(api.getAdminBooks).mockResolvedValue(paginated([]))
+    const user = userEvent.setup()
+    renderWithProviders(<AdminPage />, { route: '/admin?tab=accounts' })
+
+    expect(screen.getByRole('tab', { name: 'Accounts' })).toHaveAttribute('aria-selected', 'true')
+    expect(await screen.findByPlaceholderText('Search by username or email…')).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Dictionary' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: 'Dictionaries' }))
+    expect(screen.getByRole('group', { name: 'Dictionary' })).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Search by username or email…')).not.toBeInTheDocument()
+  })
+
   it('filters admin books using the normalized query string', async () => {
     vi.mocked(api.getAdminBooks).mockResolvedValue(
       paginated([
@@ -74,7 +88,7 @@ describe('AdminPage', () => {
       route: '/admin?query=title%3AMissing&sortBy=title&sortDirection=asc',
     })
 
-    expect(await screen.findByText('No results.')).toBeInTheDocument()
+    expect(await screen.findByText('No books match the search.')).toBeInTheDocument()
     await waitFor(() =>
       expect(api.getAdminBooks).toHaveBeenCalledWith({
         skip: 0,
@@ -179,7 +193,7 @@ describe('AdminPage', () => {
       ),
     )
     expect(screen.getByText('Reading Title')).toBeInTheDocument()
-    expect(screen.getByText('Searching...')).toBeInTheDocument()
+    expect(screen.getByText('Searching…')).toBeInTheDocument()
 
     pendingSearch.resolve(
       paginated([
@@ -192,7 +206,7 @@ describe('AdminPage', () => {
     )
 
     expect(await screen.findByText('Completed Title')).toBeInTheDocument()
-    await waitFor(() => expect(screen.queryByText('Searching...')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('Searching…')).not.toBeInTheDocument())
   })
 
   it('uses the shared numbered pagination controls', async () => {

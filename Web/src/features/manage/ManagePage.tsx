@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
-import { EyeOff, Globe2, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
+import { EyeOff, Globe2, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -15,6 +15,7 @@ import type {
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { fieldClass, textareaClass } from '@/components/ui/fieldStyles'
+import { listRowClass, ListBox, Pill, SearchField, StateBox } from '@/components/ui/ListParts'
 import { CoverThumb } from '@/features/books/BookListCells'
 import { cn } from '@/lib/utils'
 
@@ -149,21 +150,12 @@ export function ManagePage() {
 
       <section className="flex min-w-0 flex-col gap-3" id="manage-panel" role="tabpanel">
         <div className="flex flex-wrap items-center gap-3">
-          <label className="relative min-w-0 flex-[1_1_320px]">
-            <Search
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-3"
-            />
-            <span className="sr-only">Search {section}</span>
-            <input
-              autoComplete="off"
-              className={cn(fieldClass, 'pl-9 text-sm')}
-              placeholder={searchPlaceholders[section]}
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </label>
+          <SearchField
+            label={`Search ${section}`}
+            placeholder={searchPlaceholders[section]}
+            value={search}
+            onChange={setSearch}
+          />
           <span className="text-[13px] text-ink-3 tabular-nums" role="status">
             {fetching
               ? 'Searching…'
@@ -250,65 +242,6 @@ export function ManagePage() {
   )
 }
 
-function StateBox({ children, tone }: { children: ReactNode; tone?: 'error' }) {
-  return (
-    <div
-      className={cn(
-        'flex flex-col items-center gap-1 rounded-xl border px-6 py-10 text-center',
-        tone === 'error'
-          ? 'border-danger-line bg-danger-soft text-danger-ink'
-          : 'border-dashed border-line text-ink-2',
-      )}
-      role={tone === 'error' ? 'alert' : undefined}
-    >
-      {children}
-    </div>
-  )
-}
-
-function Pill({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'neutral' | 'good' }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex h-6 shrink-0 items-center rounded-pill border px-2 text-xs font-medium',
-        tone === 'good'
-          ? 'border-transparent bg-status-finished-soft text-status-finished-ink'
-          : 'border-line bg-raised text-ink-2',
-      )}
-    >
-      {children}
-    </span>
-  )
-}
-
-function ListBox({
-  children,
-  label,
-  onScroll,
-  busy,
-}: {
-  children: ReactNode
-  label: string
-  onScroll?: (event: React.UIEvent<HTMLDivElement>) => void
-  busy?: boolean
-}) {
-  return (
-    <div
-      aria-busy={busy}
-      aria-label={label}
-      className="max-h-[min(70vh,48rem)] overflow-y-auto rounded-xl border border-line bg-sunk"
-      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scrollable list must stay keyboard-focusable so it can be scrolled without a mouse (axe scrollable-region-focusable)
-      tabIndex={0}
-      onScroll={onScroll}
-    >
-      {children}
-    </div>
-  )
-}
-
-const rowClass =
-  'flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-soft px-4 py-3 last:border-b-0'
-
 function ManagedBooks({
   items,
   actionId,
@@ -372,7 +305,7 @@ function ManagedBooks({
           ? undefined
           : `Required before ${listing ? 'refreshing' : 'listing'}: ${missing.join(', ')}`
         return (
-          <div className={rowClass} key={book.id}>
+          <div className={listRowClass} key={book.id}>
             <CoverThumb book={book} />
             <div className="min-w-0 flex-[1_1_16rem]">
               <Link
@@ -541,7 +474,7 @@ function ManageRow({
 }) {
   // Double-click is a pointer shortcut; keyboard users edit through the row's Edit button.
   return (
-    <div className={rowClass} role="group" onDoubleClick={editable ? onEdit : undefined}>
+    <div className={listRowClass} role="group" onDoubleClick={editable ? onEdit : undefined}>
       {children}
       {editable ? (
         <Button aria-label={label} size="row" variant="ghost" onClick={onEdit}>

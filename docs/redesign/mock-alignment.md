@@ -168,3 +168,15 @@ No mock board; built from the system.
 | Fields | Visible labels (they were placeholders only), the form field style, `autocomplete` values so password managers fill them, a show/hide toggle on passwords |
 | Errors | Under the field and linked to it (`aria-describedby`); the password checklist uses check icons and stays visible while the password is invalid |
 | Button | Full-width primary, "Logging in…" / "Creating account…" while busy |
+
+## Admin
+
+No mock board; built from the Library and Manage system.
+
+| Element | Decision |
+| --- | --- |
+| Header | Serif "Admin" with one line under it |
+| Layout | Three tabs, kept in the URL (`?tab=`): Books (default), Accounts, Dictionaries; the three stacked panels are gone |
+| Books | The Library toolbar and table box: search, count, column settings, the shared table, pagination |
+| Accounts and Dictionaries | The Manage toolbar and list box; Dictionaries switch between Statuses, Types, Genres and Global tags with a segmented control |
+| Dialogs | The shared Dialog; account deletion keeps its explanation and a danger button |

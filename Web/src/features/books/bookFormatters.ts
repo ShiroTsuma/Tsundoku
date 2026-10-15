@@ -23,3 +23,7 @@ export function formatDate(value?: string | null) {
     new Date(value),
   )
 }
+
+export function formatShortDate(value: string) {
+  return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(value))
+}

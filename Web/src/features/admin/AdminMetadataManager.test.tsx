@@ -75,7 +75,7 @@ describe('AdminMetadataManager', () => {
   it('edits and deletes a global tag', async () => {
     const user = userEvent.setup()
     renderWithProviders(<AdminMetadataManager />)
-    await user.click(screen.getByRole('tab', { name: 'Global tags' }))
+    await user.click(screen.getByRole('button', { name: 'Global tags' }))
 
     fireEvent.doubleClick(await screen.findByText('official'))
     await user.clear(screen.getByLabelText('Description'))

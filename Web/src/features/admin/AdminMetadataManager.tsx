@@ -1,14 +1,15 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { BookType, CircleDot, LibraryBig, Plus, Search, Tags, Trash2, X } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { api } from '@/api/client'
 import { HttpError } from '@/api/http'
 import type { DictionaryMutationRequest, TagDto } from '@/api/types'
-import { buttonVariants, controlClass } from '@/components/app/designTokens'
-import { Badge, DialogPanel, Surface } from '@/components/app/DesignSystem'
-import { useBodyScrollLock } from '@/components/app/useBodyScrollLock'
-import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/Button'
+import { Dialog } from '@/components/ui/Dialog'
+import { fieldClass, textareaClass } from '@/components/ui/fieldStyles'
+import { listRowClass, ListBox, SearchField, StateBox } from '@/components/ui/ListParts'
+import { SegmentButton } from '@/features/books/BookListControls'
 
 type MetadataKind = 'statuses' | 'types' | 'genres' | 'tags'
 type MetadataItem = { id: string; name: string; description?: string | null | undefined }
@@ -17,22 +18,19 @@ type MetadataSection = {
   kind: MetadataKind
   label: string
   singular: string
-  icon: typeof CircleDot
-}
-
-const sectionsByKind: Record<MetadataKind, MetadataSection> = {
-  statuses: { kind: 'statuses', label: 'Statuses', singular: 'status', icon: CircleDot },
-  types: { kind: 'types', label: 'Types', singular: 'type', icon: BookType },
-  genres: { kind: 'genres', label: 'Genres', singular: 'genre', icon: LibraryBig },
-  tags: { kind: 'tags', label: 'Global tags', singular: 'global tag', icon: Tags },
 }
 
 const sections: MetadataSection[] = [
-  sectionsByKind.statuses,
-  sectionsByKind.types,
-  sectionsByKind.genres,
-  sectionsByKind.tags,
+  { kind: 'statuses', label: 'Statuses', singular: 'status' },
+  { kind: 'types', label: 'Types', singular: 'type' },
+  { kind: 'genres', label: 'Genres', singular: 'genre' },
+  { kind: 'tags', label: 'Global tags', singular: 'global tag' },
 ]
+
+const sectionsByKind = Object.fromEntries(sections.map((item) => [item.kind, item])) as Record<
+  MetadataKind,
+  MetadataSection
+>
 
 export function AdminMetadataManager() {
   const [kind, setKind] = useState<MetadataKind>('statuses')
@@ -52,90 +50,77 @@ export function AdminMetadataManager() {
   )
 
   return (
-    <Surface className="manage-workspace">
-      <div className="manage-rail" role="tablist" aria-label="Administrative metadata type">
-        {sections.map(({ kind: sectionKind, label, icon: Icon }) => (
-          <button
-            key={sectionKind}
-            aria-selected={kind === sectionKind}
-            className={cn('manage-tab', kind === sectionKind && 'manage-tab--active')}
-            role="tab"
-            type="button"
+    <div className="flex min-w-0 flex-col gap-3">
+      <div
+        aria-label="Dictionary"
+        className="flex w-fit flex-wrap gap-0.5 rounded-field border border-line bg-surface p-[3px]"
+        role="group"
+      >
+        {sections.map((item) => (
+          <SegmentButton
+            key={item.kind}
+            pressed={kind === item.kind}
             onClick={() => {
-              setKind(sectionKind)
+              setKind(item.kind)
               setSearch('')
             }}
           >
-            <Icon className="h-4 w-4" />
-            <span>{label}</span>
-          </button>
+            {item.label}
+          </SegmentButton>
         ))}
       </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchField
+          label={`Search ${section.label}`}
+          placeholder={`Search ${section.label.toLocaleLowerCase()}…`}
+          value={search}
+          onChange={setSearch}
+        />
+        <span className="text-[13px] text-ink-3 tabular-nums" role="status">
+          {items.length.toLocaleString()} shown
+        </span>
+        <Button variant="primary" onClick={() => setEditor('create')}>
+          <Plus aria-hidden="true" className="size-4" />
+          Add {section.singular}
+        </Button>
+      </div>
+      <p className="m-0 text-[13px] text-ink-3">
+        Shared by every account. Double-click a row to edit it, or use Edit.
+      </p>
 
-      <section className="manage-content" role="tabpanel">
-        <div className="manage-toolbar">
-          <div>
-            <div className="ui-eyebrow">Global library metadata</div>
-            <h2 className="manage-title">{section.label}</h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge>{items.length} shown</Badge>
-            <button
-              className={buttonVariants.primary}
-              type="button"
-              onClick={() => setEditor('create')}
+      {query.isPending ? (
+        <StateBox>Loading {section.label.toLocaleLowerCase()}…</StateBox>
+      ) : query.isError ? (
+        <StateBox tone="error">Could not load metadata.</StateBox>
+      ) : items.length === 0 ? (
+        <StateBox>No matching items.</StateBox>
+      ) : (
+        <ListBox label={section.label}>
+          {items.map((item) => (
+            <div
+              className={listRowClass}
+              key={item.id}
+              role="group"
+              onDoubleClick={() => setEditor(item)}
             >
-              <Plus className="h-4 w-4" /> Add {section.singular}
-            </button>
-          </div>
-        </div>
-
-        <label className="manage-search">
-          <Search aria-hidden="true" className="h-4 w-4" />
-          <span className="sr-only">Search {section.label}</span>
-          <input
-            placeholder={`Search ${section.label.toLocaleLowerCase()}…`}
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </label>
-        <p className="manage-hint">Double-click a row to edit it, or use the Edit button.</p>
-
-        {query.isPending ? (
-          <div className="manage-state">Loading {section.label.toLocaleLowerCase()}…</div>
-        ) : query.isError ? (
-          <div className="manage-state manage-state--error">Could not load metadata.</div>
-        ) : items.length === 0 ? (
-          <div className="manage-state">No matching items.</div>
-        ) : (
-          <div className="manage-list" aria-label={section.label}>
-            {items.map((item) => (
-              <div
-                key={item.id}
-                className="manage-item"
-                role="group"
-                onDoubleClick={() => setEditor(item)}
-              >
-                <span className="manage-item__icon">
-                  <section.icon className="h-4 w-4" />
-                </span>
-                <span className="manage-item__body">
-                  <strong>{item.name}</strong>
-                  <small>{item.description?.length ? item.description : 'No description'}</small>
-                </span>
-                <button
-                  aria-label={`Edit ${section.singular} ${item.name}`}
-                  className={buttonVariants.ghost}
-                  type="button"
-                  onClick={() => setEditor(item)}
-                >
-                  Edit
-                </button>
+              <div className="min-w-0 flex-[1_1_16rem]">
+                <div className="truncate font-semibold">{item.name}</div>
+                <div className="line-clamp-2 text-[13px] text-ink-3">
+                  {item.description?.length ? item.description : 'No description'}
+                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+              <Button
+                aria-label={`Edit ${section.singular} ${item.name}`}
+                size="row"
+                variant="ghost"
+                onClick={() => setEditor(item)}
+              >
+                Edit
+              </Button>
+            </div>
+          ))}
+        </ListBox>
+      )}
       {editor ? (
         <MetadataDialog
           key={editor === 'create' ? 'create' : editor.id}
@@ -145,7 +130,7 @@ export function AdminMetadataManager() {
           onClose={() => setEditor(null)}
         />
       ) : null}
-    </Surface>
+    </div>
   )
 }
 
@@ -161,14 +146,13 @@ function MetadataDialog({
   onClose: () => void
 }) {
   const queryClient = useQueryClient()
-  const titleId = useId()
+  const formId = useId()
   const nameRef = useRef<HTMLInputElement>(null)
   // The dialog is mounted per edited item (keyed by the parent), so initial state comes from props.
   const [name, setName] = useState(item === 'create' ? '' : item.name)
   const [description, setDescription] = useState(item === 'create' ? '' : (item.description ?? ''))
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  useBodyScrollLock(true)
 
   useEffect(() => {
     window.setTimeout(() => nameRef.current?.focus(), 0)
@@ -218,83 +202,68 @@ function MetadataDialog({
   }
 
   return (
-    <div className="manage-dialog" role="presentation" onMouseDown={onClose}>
-      <DialogPanel
-        aria-labelledby={titleId}
-        aria-modal="true"
-        className="manage-dialog__panel"
-        role="dialog"
-        onMouseDown={(event) => event.stopPropagation()}
+    <Dialog
+      open
+      description={isCreate ? undefined : `Edit ${singular}`}
+      dismissible={!saving}
+      footer={
+        <>
+          {!isCreate ? (
+            <Button disabled={saving} variant="danger" onClick={() => void remove()}>
+              <Trash2 aria-hidden="true" className="size-4" />
+              {confirmDelete ? 'Confirm delete' : `Delete ${singular}`}
+            </Button>
+          ) : null}
+          <span className="flex-1" />
+          <Button disabled={saving} variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button disabled={saving || !name.trim()} form={formId} type="submit" variant="primary">
+            {saving ? 'Saving…' : isCreate ? `Create ${singular}` : 'Save changes'}
+          </Button>
+        </>
+      }
+      title={item === 'create' ? `New ${singular}` : item.name}
+      widthClassName="max-w-[560px]"
+      onClose={onClose}
+    >
+      <form
+        className="flex flex-col gap-4 px-6 pt-4 pb-6"
+        id={formId}
+        onSubmit={(event) => void save(event)}
       >
-        <div className="manage-dialog__header">
-          <div>
-            <div className="ui-eyebrow">
-              {isCreate ? 'Create' : 'Edit'} {singular}
-            </div>
-            <h2 id={titleId}>{item === 'create' ? `New ${singular}` : item.name}</h2>
-          </div>
-          <button
-            aria-label="Close dialog"
-            className={`${buttonVariants.ghost} ui-icon-button`}
-            type="button"
-            onClick={onClose}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <form className="manage-dialog__form" onSubmit={(event) => void save(event)}>
-          <label>
-            <span>Name</span>
-            <input
-              ref={nameRef}
-              aria-label="Name"
-              className={controlClass}
-              required
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </label>
-          <label>
-            <span>Description</span>
-            <textarea
-              aria-label="Description"
-              className={controlClass}
-              maxLength={500}
-              rows={6}
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-            />
-          </label>
-          <div className="manage-dialog__actions">
-            {!isCreate ? (
-              <button
-                className={cn(
-                  buttonVariants.destructive,
-                  confirmDelete && 'manage-delete--confirm',
-                )}
-                disabled={saving}
-                type="button"
-                onClick={() => void remove()}
-              >
-                <Trash2 className="h-4 w-4" />
-                {confirmDelete ? 'Confirm delete' : `Delete ${singular}`}
-              </button>
-            ) : null}
-            <span className="manage-dialog__action-spacer" />
-            <button className={buttonVariants.secondary} type="button" onClick={onClose}>
-              Cancel
-            </button>
-            <button
-              className={buttonVariants.primary}
-              disabled={saving || !name.trim()}
-              type="submit"
-            >
-              {saving ? 'Saving…' : isCreate ? `Create ${singular}` : 'Save changes'}
-            </button>
-          </div>
-        </form>
-      </DialogPanel>
-    </div>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-ink-2">Name</span>
+          <input
+            ref={nameRef}
+            aria-label="Name"
+            className={fieldClass}
+            required
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-ink-2">Description</span>
+          <textarea
+            aria-label="Description"
+            className={textareaClass}
+            maxLength={500}
+            rows={6}
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+          />
+          <small className="text-xs text-ink-3 tabular-nums">
+            {description.length}/500 characters
+          </small>
+        </label>
+        {confirmDelete ? (
+          <p className="m-0 text-[13px] text-danger-ink" role="alert">
+            This cannot be undone. Items still used by books cannot be deleted.
+          </p>
+        ) : null}
+      </form>
+    </Dialog>
   )
 }
 

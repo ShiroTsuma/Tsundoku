@@ -202,3 +202,18 @@ Known follow-ups: the summary panel and the export and import menus still use th
 - [x] API validation errors mapped to fields (username, email, password), form-level message otherwise, toast with the detail
 - [x] Success toast "Account created. You can log in now." and redirect to `/login`
 - [~] New: visible labels, autocomplete for password managers, show/hide password, errors linked to their fields, busy button text
+
+## Admin (`/admin`, admins only) — restyled
+
+### Dictionaries
+- [x] Statuses, Types, Genres, Global tags as sections (`[~]` a segmented control under the Dictionaries tab); search filters by name or description
+- [x] Add, edit (button or double-click), delete with confirmation; name required, description up to 500 characters; toasts
+### Accounts
+- [x] Search by username or email (debounced), "Searching…", account count
+- [x] Row: username (or "Unnamed user"), email (or id), books and tags counts; the current admin is marked and cannot be deleted
+- [x] Delete account dialog explaining what goes with it (books, private tags, sessions, unused authors); result toast with counts; books list refreshes
+### Books of all users
+- [x] Search with the book syntax (URL-backed), sortable columns, column settings (id, title, owner id, username, email, author, status, type, progress, total chapters, rating, priority, created, updated, genres, tags, links, notes, description), stored per browser
+- [x] Edit opens `/admin/books/:id/edit`
+- [x] Pagination with page size, "Searching…", back-to-top / go-down shortcuts
+- [~] The three panels became tabs kept in the URL (Books by default); book status, progress and rating use the Library cells; the current admin is marked "You"

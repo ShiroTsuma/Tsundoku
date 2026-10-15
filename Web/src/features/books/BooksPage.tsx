@@ -19,7 +19,6 @@ import { Menu } from '@/components/ui/Menu'
 import { cn } from '@/lib/utils'
 import { BookDataTable } from './BookDataTable'
 import { isLowRating } from './bookRating'
-import { BookSearchInput } from './BookSearchInput'
 import { CardCover, CoverThumb, ProgressCell, RatingCell, StatusCell } from './BookListCells'
 import { ProgressDialog } from './ProgressDialog'
 import { getStatusTone, statusToneClasses } from './bookStatus'
@@ -63,6 +62,7 @@ import {
   formatBookCount,
   formatChapterCount,
   formatDate,
+  formatShortDate,
 } from './bookFormatters'
 import { ImportBooksDialog } from './ImportBooksDialog'
 import { FileImportDialog } from './files/FileImportDialog'
@@ -940,23 +940,6 @@ export function ViewModeToggle({
   )
 }
 
-export function BookAdvancedSearch({
-  value,
-  onChange,
-}: {
-  value: string
-  onChange: (value: string) => void
-}) {
-  return (
-    <BookSearchInput
-      placeholder={'Search: returnee author:Toika genre:fantasy rating:>=8 -tag:dropped -rating:8'}
-      remoteSuggestionsEnabled={false}
-      value={value}
-      onChange={onChange}
-    />
-  )
-}
-
 function BookCardGrid({
   books,
   cardScale: cardsPerRow,
@@ -1312,10 +1295,6 @@ function TruncatedCellText({ value }: { value?: string | null | undefined }) {
       {text}
     </span>
   )
-}
-
-function formatShortDate(value: string) {
-  return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(value))
 }
 
 function buildAnalyticsHref(query: string) {

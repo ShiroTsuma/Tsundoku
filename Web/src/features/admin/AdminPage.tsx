@@ -1,10 +1,11 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { Edit } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '@/api/client'
 import type { AdminBookListItemDto } from '@/api/types'
-import { PageHeader, Surface } from '@/components/app/DesignSystem'
-import { secondaryButtonClass } from '@/components/app/designTokens'
+import { buttonStyles } from '@/components/ui/buttonStyles'
+import { ProgressCell, RatingCell, StatusCell } from '@/features/books/BookListCells'
+import { cn } from '@/lib/utils'
 import { AdminMetadataManager } from './AdminMetadataManager'
 import { AdminAccountsManager } from './AdminAccountsManager'
 import { BookDataTable } from '@/features/books/BookDataTable'
@@ -15,9 +16,8 @@ import {
   useColumnPreferences,
   type ColumnDefinition,
 } from '@/features/books/columnPreferences'
-import { formatDate } from '@/features/books/bookFormatters'
-import { formatProgress } from '@/features/books/bookProgress'
-import { BookAdvancedSearch } from '@/features/books/BooksPage'
+import { formatDate, formatShortDate } from '@/features/books/bookFormatters'
+import { BookSearchInput } from '@/features/books/BookSearchInput'
 import { BookListFooter, ScrollShortcutButtons } from '@/features/books/BookListShared'
 import {
   getNextSortDirection,
@@ -47,14 +47,14 @@ const adminBookColumns: ColumnDefinition<AdminBookListItemDto>[] = [
     sortBy: 'title',
     widthClass: 'w-[24%]',
     render: (book) => (
-      <span className="block truncate font-medium text-slate-950" title={book.primaryTitle}>
+      <span className="block truncate font-semibold" title={book.primaryTitle}>
         {book.primaryTitle}
       </span>
     ),
   },
   {
     id: 'ownerId',
-    label: 'OwnerId',
+    label: 'Owner id',
     defaultVisible: true,
     sortBy: 'owner',
     widthClass: 'w-[15%]',
@@ -91,8 +91,8 @@ const adminBookColumns: ColumnDefinition<AdminBookListItemDto>[] = [
     label: 'Status',
     defaultVisible: true,
     sortBy: 'status',
-    widthClass: 'w-20',
-    render: (book) => book.status,
+    widthClass: 'w-[8.5rem]',
+    render: (book) => <StatusCell status={book.status} />,
   },
   {
     id: 'type',
@@ -107,8 +107,8 @@ const adminBookColumns: ColumnDefinition<AdminBookListItemDto>[] = [
     label: 'Progress',
     defaultVisible: true,
     sortBy: 'progress',
-    widthClass: 'w-24',
-    render: formatProgress,
+    widthClass: 'w-[14.5rem]',
+    render: (book) => <ProgressCell book={book} />,
   },
   {
     id: 'totalChapters',
@@ -123,8 +123,8 @@ const adminBookColumns: ColumnDefinition<AdminBookListItemDto>[] = [
     label: 'Rating',
     defaultVisible: true,
     sortBy: 'rating',
-    widthClass: 'w-16',
-    render: (book) => book.rating ?? '-',
+    widthClass: 'w-[4.5rem]',
+    render: (book) => <RatingCell rating={book.rating} />,
   },
   {
     id: 'priority',
@@ -147,8 +147,8 @@ const adminBookColumns: ColumnDefinition<AdminBookListItemDto>[] = [
     label: 'Updated',
     defaultVisible: true,
     sortBy: 'lastModified',
-    widthClass: 'w-32',
-    render: (book) => formatDate(book.lastModified || book.created),
+    widthClass: 'w-[7.75rem]',
+    render: (book) => formatShortDate(book.lastModified || book.created),
   },
   {
     id: 'genres',
@@ -238,73 +238,133 @@ export function AdminPage() {
     setSortParams(nextSortBy, getNextSortDirection(nextSortBy, sortBy, sortDirection))
   }
 
+  const tab = normalizeTab(searchParams.get('tab'))
+  function changeTab(next: AdminTab) {
+    const params = new URLSearchParams(searchParams)
+    if (next === 'books') params.delete('tab')
+    else params.set('tab', next)
+    setSearchParams(params)
+  }
+
   return (
-    <div className="grid gap-5">
-      <PageHeader
-        description="Global dictionaries and books from all users."
-        eyebrow="System workspace"
-        title="Admin panel"
-      />
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
+      <div>
+        <h1 className="m-0 font-display text-[40px] leading-tight font-bold tracking-tight">
+          Admin
+        </h1>
+        <p className="m-0 mt-2 max-w-prose text-[15px] text-ink-2">
+          Books from every account, user accounts, and the shared dictionaries.
+        </p>
+      </div>
 
-      <AdminMetadataManager />
-      <AdminAccountsManager />
+      <div aria-label="Admin section" className="flex gap-0.5 border-b border-line" role="tablist">
+        {adminTabs.map((item) => {
+          const active = tab === item.id
+          return (
+            <button
+              aria-controls="admin-panel"
+              aria-selected={active}
+              className={cn(
+                '-mb-px h-11 border-0 border-b-2 bg-transparent px-3.5 text-sm',
+                active
+                  ? 'border-accent font-semibold text-ink'
+                  : 'border-transparent font-medium text-ink-2 hover:text-ink',
+              )}
+              key={item.id}
+              role="tab"
+              type="button"
+              onClick={() => changeTab(item.id)}
+            >
+              {item.label}
+            </button>
+          )
+        })}
+      </div>
 
-      <BookAdvancedSearch value={query} onChange={updateQuery} />
-
-      <Surface className="overflow-hidden" id="admin-book-list-results">
-        <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-200 px-4 py-3">
-          {adminBooksQuery.isFetching && !adminBooksQuery.isLoading ? (
-            <span className="mr-auto text-xs font-medium text-slate-500">Searching...</span>
-          ) : null}
-          <ColumnSettingsPopup
-            columns={adminBookColumns}
-            preferences={columnPreferences}
-            onChange={setColumnPreferences}
-          />
-        </div>
-        <BookDataTable
-          columns={visibleColumns}
-          emptyMessage="No results."
-          isLoading={adminBooksQuery.isLoading}
-          items={adminBooksQuery.data?.data ?? []}
-          renderActions={(book) => (
-            <div className="flex justify-end">
-              <Link
-                aria-label={`Edit ${book.primaryTitle}`}
-                className={`${secondaryButtonClass} ui-icon-button`}
-                to={`/admin/books/${book.id}/edit`}
-              >
-                <Edit className="h-4 w-4" />
-              </Link>
+      <section className="flex min-w-0 flex-col gap-4" id="admin-panel" role="tabpanel">
+        {tab === 'accounts' ? <AdminAccountsManager /> : null}
+        {tab === 'dictionaries' ? <AdminMetadataManager /> : null}
+        {tab === 'books' ? (
+          <>
+            <BookSearchInput
+              appearance="compact"
+              ariaLabel="Search books in all accounts"
+              placeholder="Search: author:Toika genre:fantasy rating:>=8 -tag:dropped"
+              remoteSuggestionsEnabled={false}
+              showHelp={false}
+              value={query}
+              onChange={updateQuery}
+            />
+            <div className="flex flex-wrap items-center gap-3" id="admin-book-list-results">
+              <span className="mr-auto text-[13px] text-ink-3 tabular-nums" role="status">
+                {adminBooksQuery.isFetching && !adminBooksQuery.isLoading
+                  ? 'Searching…'
+                  : `${total.toLocaleString()} ${total === 1 ? 'book' : 'books'} in all accounts`}
+              </span>
+              <ColumnSettingsPopup
+                columns={adminBookColumns}
+                preferences={columnPreferences}
+                onChange={setColumnPreferences}
+              />
             </div>
-          )}
-          sortBy={sortBy}
-          sortDirection={sortDirection}
-          onSort={setSort}
-        />
-        <BookListFooter
-          activePageGapId={pagination.activePageGapId}
-          canGoBack={pagination.canGoBack}
-          canGoForward={pagination.canGoForward}
-          currentPage={pagination.currentPage}
-          pageSize={pageSize}
-          setActivePageGapId={pagination.setActivePageGapId}
-          setPageSize={setPageSize}
-          skip={skip}
-          total={total}
-          totalPages={pagination.totalPages}
-          visiblePages={pagination.visiblePages}
-          onGoToPage={pagination.onGoToPage}
-        />
-      </Surface>
-      <ScrollShortcutButtons
-        showBackToTop={scrollShortcuts.showBackToTop}
-        showGoDown={scrollShortcuts.showGoDown}
-        onBackToTop={scrollShortcuts.scrollBackToTop}
-        onGoDown={scrollShortcuts.scrollToPageBottom}
-      />
+            <div className="overflow-hidden rounded-xl border border-line bg-sunk">
+              <BookDataTable
+                actionsWidthRem={4.5}
+                columns={visibleColumns}
+                emptyMessage="No books match the search."
+                isLoading={adminBooksQuery.isLoading}
+                items={adminBooksQuery.data?.data ?? []}
+                renderActions={(book) => (
+                  <Link
+                    aria-label={`Edit ${book.primaryTitle}`}
+                    className={buttonStyles({ size: 'iconRow' })}
+                    to={`/admin/books/${book.id}/edit`}
+                  >
+                    <Pencil aria-hidden="true" className="size-4" />
+                  </Link>
+                )}
+                sortBy={sortBy}
+                sortDirection={sortDirection}
+                onSort={setSort}
+              />
+            </div>
+            <BookListFooter
+              activePageGapId={pagination.activePageGapId}
+              bare
+              canGoBack={pagination.canGoBack}
+              canGoForward={pagination.canGoForward}
+              currentPage={pagination.currentPage}
+              pageSize={pageSize}
+              setActivePageGapId={pagination.setActivePageGapId}
+              setPageSize={setPageSize}
+              skip={skip}
+              total={total}
+              totalPages={pagination.totalPages}
+              visiblePages={pagination.visiblePages}
+              onGoToPage={pagination.onGoToPage}
+            />
+            <ScrollShortcutButtons
+              showBackToTop={scrollShortcuts.showBackToTop}
+              showGoDown={scrollShortcuts.showGoDown}
+              onBackToTop={scrollShortcuts.scrollBackToTop}
+              onGoDown={scrollShortcuts.scrollToPageBottom}
+            />
+          </>
+        ) : null}
+      </section>
     </div>
   )
+}
+
+type AdminTab = 'books' | 'accounts' | 'dictionaries'
+const adminTabs: { id: AdminTab; label: string }[] = [
+  { id: 'books', label: 'Books' },
+  { id: 'accounts', label: 'Accounts' },
+  { id: 'dictionaries', label: 'Dictionaries' },
+]
+
+function normalizeTab(value: string | null): AdminTab {
+  return value === 'accounts' || value === 'dictionaries' ? value : 'books'
 }
 
 function TruncatedCellText({ value }: { value?: string | null | undefined }) {
