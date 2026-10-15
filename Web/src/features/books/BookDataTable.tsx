@@ -65,7 +65,7 @@ export function BookDataTable<T extends { id: string }>({
                 onSort={onSort}
               />
             ))}
-            <th className="sticky right-0 z-10 shadow-[-12px_0_12px_-12px_rgb(0_0_0/0.7)] border-b border-line bg-sunk px-3 py-3 text-right">
+            <th className="sticky right-0 z-10 shadow-[-12px_0_12px_-12px_rgb(0_0_0/0.7)] border-b border-line bg-sunk py-3 pr-3 pl-5 text-right">
               <span className="sr-only">{actionHeader}</span>
             </th>
           </tr>
@@ -104,7 +104,7 @@ export function BookDataTable<T extends { id: string }>({
                 )
               })}
               <td
-                className="book-table-actions-cell sticky right-0 z-10 shadow-[-12px_0_12px_-12px_rgb(0_0_0/0.7)] bg-sunk px-3 py-2.5 group-hover:bg-hover"
+                className="book-table-actions-cell sticky right-0 z-10 shadow-[-12px_0_12px_-12px_rgb(0_0_0/0.7)] bg-sunk py-2.5 pr-3 pl-5 group-hover:bg-hover"
                 data-testid={`book-table-actions-cell-${item.id}`}
               >
                 <div className="flex justify-end gap-1.5 whitespace-nowrap">

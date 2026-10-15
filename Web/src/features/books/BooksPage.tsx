@@ -83,7 +83,7 @@ const bookColumns: ColumnDefinition<BookListItemDto>[] = [
     label: 'Title',
     defaultVisible: true,
     sortBy: 'title',
-    widthClass: 'w-64',
+    widthClass: 'w-60',
     grow: true,
     render: (book) => <TitleCell book={book} />,
   },
@@ -630,7 +630,7 @@ export function BooksPage() {
               <BookCompactList books={books} isLoading={booksQuery.isLoading} />
             ) : (
               <BookDataTable
-                actionsWidthRem={8.75}
+                actionsWidthRem={10}
                 columns={visibleColumns}
                 emptyMessage="No books match the current filters."
                 isCyclicSort={isCyclicSort}

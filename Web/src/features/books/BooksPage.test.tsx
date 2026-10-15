@@ -134,7 +134,7 @@ describe('BooksPage', () => {
     const scroller = table?.parentElement
     const box = table?.closest('.rounded-xl')
 
-    expect(table).toHaveStyle({ minWidth: '154.25rem' })
+    expect(table).toHaveStyle({ minWidth: '154.5rem' })
     expect(container.querySelectorAll('col')).toHaveLength(16)
     expect(scroller).toHaveClass('max-w-full', 'overflow-x-auto')
     expect(box).toHaveClass('min-w-0', 'overflow-hidden')
