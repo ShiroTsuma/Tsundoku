@@ -139,3 +139,31 @@ Known follow-ups: the summary panel and the export and import menus still use th
 - [x] Imported and skipped counts; partial import messages
 - [x] Table of imported books (title, type, progress)
 - [x] Close; the library refreshes after an import. `[~]` "Go to library" closes, "Import another file" goes back to the upload step
+
+## Stats (`/analytics`) — restyled
+
+### Filters
+- [x] Query with the book search syntax and suggestions; `created:`/`updated:` tokens in a pasted query become the date range
+- [x] Date range: presets (Beginning, last 2 years … last month; presets before the account was created are disabled), a two-month calendar for a custom range, Today badge; default last 3 months (or since the account started)
+- [x] Bucket: day / week / month. `[~]` a Day / Week / Month segmented control instead of a native select
+- [x] Apply filters writes query, from, to, bucket to the URL (shareable, back button works)
+- [x] "Refreshing…" while new data loads, previous data kept on screen. `[~]` page title is "Stats" (the nav name)
+
+### Overview
+- [x] Tiles: total books, rated, unrated, average rating, current chapters (skeletons on first load)
+- [x] Error state with Retry; empty-library and no-match messages
+
+### Cards (each: title, description, loading skeleton, error with Retry, empty message; most with View data / Hide data table)
+- [x] Status by type: stacked 100% bars per type, tooltip with share and count; click a type or a segment to open those books. `[~]` status legend added, bar height follows the number of types
+- [x] Top genres and Top tags: share bars, "Other", Show N more / Show top N, each name opens the filtered list
+- [x] Priority by status: grid of counts and shares, each cell opens the filtered list
+- [x] Link sources: links and book coverage per source, opens `link:` filter
+- [x] Cover availability: cover statuses and top providers with counts
+- [x] Rating distribution: rated share, average, Unrated link, bars per rating that open `rating:N`. `[~]` the ring (always drawn full) is now a number with a thin bar
+- [x] Chapter volume by type: book count and current chapters per type
+- [x] Estimated reading time: total in hours/days/months/years, per type; Edit estimates saves minutes per chapter per type to the account
+- [x] Reading activity: daily chapters and the cumulative total over the range, with bucket summaries. `[~]` two small charts on the same dates instead of one chart with two y-axes
+- [x] Library growth: books added and the cumulative count, per-type breakdown with links. `[~]` two small charts, as above
+- [x] Metadata completeness: coverage per field with "Missing: N books" links
+- [x] Every drilldown keeps the Stats query and date range (`created:>=` / `created:<`)
+- [x] Screen-reader links for chart drilldowns

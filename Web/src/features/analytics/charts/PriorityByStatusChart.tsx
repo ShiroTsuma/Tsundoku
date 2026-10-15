@@ -14,7 +14,7 @@ export function PriorityByStatusChart({ data }: PriorityByStatusChartProps) {
 
   if (!rows.length) {
     return (
-      <div className="grid min-h-56 place-items-center text-sm text-slate-500">
+      <div className="grid min-h-56 place-items-center text-sm text-ink-3">
         No priority data for this analytics scope.
       </div>
     )

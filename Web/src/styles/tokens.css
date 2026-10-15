@@ -65,6 +65,22 @@
   --color-status-unknown-soft: #1f1f21;
   --color-status-unknown-ink: #a3a19b;
 
+  /* Charts. Categorical order and steps checked with the dataviz palette validator
+     against the chart surface (#1b1c1d): every adjacent pair clears the CVD and
+     normal-vision floors. Single-series charts use chart-1. */
+  --color-chart-1: #3987e5;
+  --color-chart-2: #d95926;
+  --color-chart-3: #199e70;
+  --color-chart-4: #c98500;
+  --color-chart-5: #d55181;
+  --color-chart-6: #008300;
+  --color-chart-7: #9085e9;
+  --color-chart-8: #e66767;
+  /* Sequential blue for magnitude (dark surface: low is darkest). Ink stays readable on all three. */
+  --color-chart-seq-low: #0d366b;
+  --color-chart-seq-mid: #184f95;
+  --color-chart-seq-high: #2362b3;
+
   /* Book type: missing-cover placeholders */
   --color-type-novel: #1e2a36;
   --color-type-novel-ink: #c4d6e6;

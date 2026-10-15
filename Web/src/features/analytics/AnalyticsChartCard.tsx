@@ -1,6 +1,5 @@
 import { useId, useState, type ReactNode } from 'react'
-import { buttonVariants } from '@/components/app/designTokens'
-import { Surface } from '@/components/app/DesignSystem'
+import { Button } from '@/components/ui/Button'
 
 type AnalyticsChartCardProps = {
   title: string
@@ -36,103 +35,90 @@ export function AnalyticsChartCard({
   const tableId = `${reactId}-data-table`
 
   return (
-    <Surface
+    <section
       aria-describedby={descriptionId}
       aria-labelledby={titleId}
-      className="grid min-w-0 gap-4 p-4"
+      className="flex min-w-0 flex-col gap-4 rounded-panel border border-line bg-surface p-5"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="ui-panel-title" id={titleId}>
+          <h2 className="m-0 text-base font-semibold" id={titleId}>
             {title}
           </h2>
-          <p className="ui-panel-description mt-1" id={descriptionId}>
+          <p className="m-0 mt-1 text-[13px] text-ink-2" id={descriptionId}>
             {description}
           </p>
         </div>
         {dataTableEnabled ? (
-          <button
+          <Button
             aria-controls={tableId}
             aria-expanded={showData}
             aria-label={`${showData ? 'Hide' : 'View'} data for ${title}`}
-            className={buttonVariants.ghost}
-            type="button"
+            size="sm"
+            variant="ghost"
             onClick={() => setShowData((current) => !current)}
           >
             {showData ? 'Hide data' : 'View data'}
-          </button>
+          </Button>
         ) : null}
       </div>
 
       {isLoading ? (
-        <Surface
+        <div
           aria-label={`${title} loading`}
-          as="div"
-          className="grid h-64 animate-pulse gap-3 p-4"
+          className="flex h-64 animate-pulse flex-col gap-3 motion-reduce:animate-none"
           data-testid="analytics-card-skeleton"
           role="status"
-          tone="muted"
         >
-          <div className="h-4 w-1/3 rounded bg-slate-200" />
-          <div className="mt-auto grid gap-2">
-            <div className="h-8 rounded bg-slate-200" />
-            <div className="h-12 rounded bg-slate-200" />
-            <div className="h-20 rounded bg-slate-200" />
+          <div className="h-4 w-1/3 rounded bg-raised" />
+          <div className="mt-auto flex flex-col gap-2">
+            <div className="h-8 rounded bg-raised" />
+            <div className="h-12 rounded bg-raised" />
+            <div className="h-20 rounded bg-raised" />
           </div>
-        </Surface>
+        </div>
       ) : isError ? (
-        <Surface
-          as="div"
-          className="grid min-h-64 place-items-center p-4 text-center"
+        <div
+          className="grid min-h-64 place-items-center rounded-field border border-danger-line bg-danger-soft p-4 text-center text-danger-ink"
           role="alert"
-          tone="danger"
         >
           <div>
-            <p className="text-sm font-semibold text-inherit">
-              Could not load this analytics card.
-            </p>
+            <p className="m-0 text-sm font-semibold">Could not load this chart.</p>
             {onRetry ? (
-              <button
-                className={`${buttonVariants.destructive} mt-3`}
-                type="button"
-                onClick={onRetry}
-              >
+              <Button className="mt-3" size="sm" variant="danger" onClick={onRetry}>
                 Retry
-              </button>
+              </Button>
             ) : null}
           </div>
-        </Surface>
+        </div>
       ) : isEmpty ? (
-        <Surface
-          as="div"
-          className="grid min-h-64 place-items-center p-4 text-center text-sm text-slate-500"
-          tone="muted"
-        >
+        <div className="grid min-h-64 place-items-center rounded-field border border-dashed border-line p-4 text-center text-sm text-ink-3">
           {emptyMessage}
-        </Surface>
+        </div>
       ) : (
-        <Surface as="div" className="analytics-chart-surface min-h-64 min-w-0 p-4" tone="muted">
-          {children}
-        </Surface>
+        <div className="analytics-chart-surface min-w-0">{children}</div>
       )}
 
       {dataTableEnabled && showData ? (
-        <Surface as="div" className="max-h-80 overflow-auto" id={tableId} tone="elevated">
-          <table className="min-w-full divide-y divide-slate-800 text-sm">
+        <div className="max-h-80 overflow-auto rounded-xl border border-line bg-sunk" id={tableId}>
+          <table className="min-w-full border-collapse text-left text-sm tabular-nums">
             <caption className="sr-only">{title} data table</caption>
-            <thead className="bg-slate-900 text-left text-xs font-semibold uppercase tracking-wide text-slate-300">
+            <thead className="sticky top-0 bg-sunk text-xs font-semibold tracking-[0.04em] text-ink-3 uppercase">
               <tr>
                 {columns.map((column) => (
-                  <th className="px-3 py-2" key={column} scope="col">
+                  <th className="border-b border-line px-3 py-2.5" key={column} scope="col">
                     {column}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800 bg-slate-950 text-slate-200">
+            <tbody>
               {rows.length ? (
                 rows.map((row, rowIndex) => (
-                  <tr className="hover:bg-slate-900/70" key={rowIndex}>
+                  <tr
+                    className="border-b border-line-soft last:border-b-0 hover:bg-hover"
+                    key={rowIndex}
+                  >
                     {row.map((cell, cellIndex) => (
                       <td className="px-3 py-2" key={cellIndex}>
                         {cell}
@@ -142,15 +128,15 @@ export function AnalyticsChartCard({
                 ))
               ) : (
                 <tr>
-                  <td className="px-3 py-4 text-center text-slate-400" colSpan={columns.length}>
+                  <td className="px-3 py-4 text-center text-ink-3" colSpan={columns.length}>
                     No rows.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
-        </Surface>
+        </div>
       ) : null}
-    </Surface>
+    </section>
   )
 }

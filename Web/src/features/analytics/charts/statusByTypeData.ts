@@ -62,7 +62,7 @@ export function statusByTypeTooltipRows(payload: readonly StatusByTypeTooltipEnt
       const percentValue = entry.payload?.[`${status}Percent`] ?? entry.value
 
       return {
-        color: entry.color ?? '#9aa5b4',
+        color: entry.color ?? 'var(--color-status-unknown)',
         count,
         percent: finiteNumber(percentValue),
         status,

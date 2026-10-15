@@ -23,7 +23,7 @@ export function TopRelationsChart({ field, items, title }: TopRelationsChartProp
 
   if (!items.length) {
     return (
-      <div className="grid min-h-56 place-items-center text-sm text-slate-500">
+      <div className="grid min-h-56 place-items-center text-sm text-ink-3">
         No {title.toLowerCase()} data for this analytics scope.
       </div>
     )
@@ -31,7 +31,7 @@ export function TopRelationsChart({ field, items, title }: TopRelationsChartProp
 
   return (
     <div className="grid gap-3">
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-ink-3">
         Multi-value books can count in more than one {title.toLowerCase()} bucket; shares are
         measured against matching books.
       </p>
@@ -39,11 +39,11 @@ export function TopRelationsChart({ field, items, title }: TopRelationsChartProp
         <div className="grid gap-1" key={item.name}>
           <div className="flex items-center justify-between gap-3 text-sm">
             {item.isOther ? (
-              <span className="font-semibold text-slate-950">Other</span>
+              <span className="font-semibold text-ink">Other</span>
             ) : (
               <DrilldownLink query={fieldQuery(field, item.name)}>{item.name}</DrilldownLink>
             )}
-            <span className="text-slate-500">
+            <span className="text-ink-3">
               {formatCount(item.bookCount)} books · {formatPercent(item.shareOfBooks)}
             </span>
           </div>

@@ -11,7 +11,7 @@ export function LinkSourcesChart({ data }: LinkSourcesChartProps) {
 
   if (!items.length) {
     return (
-      <div className="grid min-h-56 place-items-center text-sm text-slate-600">
+      <div className="grid min-h-56 place-items-center text-sm text-ink-2">
         0 link sources found for this scope.
       </div>
     )
@@ -19,7 +19,7 @@ export function LinkSourcesChart({ data }: LinkSourcesChartProps) {
 
   return (
     <div className="grid gap-3">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-ink-2">
         Link count and book coverage are separate: one book can contain multiple links from the same
         source.
       </p>
@@ -29,7 +29,7 @@ export function LinkSourcesChart({ data }: LinkSourcesChartProps) {
             <DrilldownLink query={fieldQuery('link', item.source)}>
               {item.source || 'Unknown source'}
             </DrilldownLink>
-            <span className="text-slate-700">
+            <span className="text-ink-2">
               {formatCount(item.linkCount)} links · {formatCount(item.bookCount)} books ·{' '}
               {formatPercent(item.shareOfBooks)}
             </span>

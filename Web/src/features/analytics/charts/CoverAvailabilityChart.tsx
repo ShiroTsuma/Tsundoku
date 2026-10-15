@@ -1,5 +1,4 @@
 import type { BookAnalyticsDto } from '@/api/types'
-import { Surface } from '@/components/app/DesignSystem'
 import { formatCount, formatPercent } from './chartUtils'
 
 type CoverAvailabilityChartProps = {
@@ -12,7 +11,7 @@ export function CoverAvailabilityChart({ data }: CoverAvailabilityChartProps) {
 
   if (!statuses.length && !sources.length) {
     return (
-      <div className="grid min-h-56 place-items-center text-sm text-slate-600">
+      <div className="grid min-h-56 place-items-center text-sm text-ink-2">
         0 cover records reported for this scope.
       </div>
     )
@@ -20,46 +19,43 @@ export function CoverAvailabilityChart({ data }: CoverAvailabilityChartProps) {
 
   return (
     <div className="grid gap-4">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-ink-2">
         Usable covers are counted only when the backend has a Found or Uploaded cover with an image
         or thumbnail.
       </p>
       <div className="grid gap-2">
-        <h3 className="text-sm font-semibold text-slate-950">Cover status actions</h3>
+        <h3 className="text-sm font-semibold text-ink">Cover status actions</h3>
         {statuses.map((item) => (
-          <Surface as="div" className="px-3 py-2 text-sm" key={item.status}>
+          <div
+            className="rounded-field border border-line-soft px-3 py-2 text-sm"
+            key={item.status}
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="font-semibold text-slate-950">
-                {item.status || 'Unknown status'}
-              </span>
-              <span className="text-slate-700">
+              <span className="font-semibold text-ink">{item.status || 'Unknown status'}</span>
+              <span className="text-ink-2">
                 {formatCount(item.bookCount)} books · {formatPercent(item.shareOfBooks)}
               </span>
             </div>
-            <div className="mt-1 text-slate-600">
-              {coverStatusAction(item.status, item.bookCount)}
-            </div>
-          </Surface>
+            <div className="mt-1 text-ink-2">{coverStatusAction(item.status, item.bookCount)}</div>
+          </div>
         ))}
       </div>
       <div className="grid gap-2">
-        <h3 className="text-sm font-semibold text-slate-950">Top cover providers</h3>
+        <h3 className="text-sm font-semibold text-ink">Top cover providers</h3>
         {sources.length ? (
           sources.map((item) => (
             <div
               className="flex flex-wrap items-center justify-between gap-3 text-sm"
               key={item.source}
             >
-              <span className="font-semibold text-slate-950">
-                {item.source || 'Unknown provider'}
-              </span>
-              <span className="text-slate-700">
+              <span className="font-semibold text-ink">{item.source || 'Unknown provider'}</span>
+              <span className="text-ink-2">
                 {formatCount(item.bookCount)} books · {formatPercent(item.shareOfBooks)}
               </span>
             </div>
           ))
         ) : (
-          <div className="text-sm text-slate-600">No cover providers reported.</div>
+          <div className="text-sm text-ink-2">No cover providers reported.</div>
         )}
       </div>
     </div>

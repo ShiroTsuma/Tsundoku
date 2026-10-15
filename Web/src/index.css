@@ -647,7 +647,7 @@ select.ui-control {
 
 .ui-progress-track {
   overflow: hidden;
-  height: 0.75rem;
+  height: 0.375rem;
   border-radius: 999px;
   background: var(--qs-border);
 }
@@ -655,7 +655,7 @@ select.ui-control {
 .ui-progress-fill {
   height: 100%;
   border-radius: inherit;
-  background: var(--qs-accent);
+  background: var(--color-chart-1);
 }
 
 .ui-chart-tooltip {
@@ -1703,6 +1703,16 @@ select.ui-control {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Chart chrome: hairline axes, muted ticks. */
+.analytics-chart-surface .recharts-cartesian-axis-line {
+  stroke: var(--color-line);
+}
+
+.analytics-chart-surface .recharts-cartesian-axis-tick-value {
+  fill: var(--color-ink-3);
+  font-size: 12px;
+}
+
 .analytics-chart-surface .analytics-drilldown-chart,
 .analytics-chart-surface
   .analytics-drilldown-chart
@@ -1773,20 +1783,21 @@ select.ui-control {
 }
 
 .analytics-heat--high {
-  border-color: var(--color-line-focus);
-  color: var(--color-ink-inverse);
-  background: var(--qs-accent);
+  border-color: transparent;
+  color: var(--color-ink);
+  background: var(--color-chart-seq-high);
 }
 
 .analytics-heat--medium {
-  border-color: var(--color-line-focus);
+  border-color: transparent;
   color: var(--color-ink);
-  background: var(--color-line-focus);
+  background: var(--color-chart-seq-mid);
 }
 
 .analytics-heat--low {
-  color: var(--qs-text);
-  background: var(--qs-surface-raised);
+  border-color: transparent;
+  color: var(--color-ink);
+  background: var(--color-chart-seq-low);
 }
 
 .analytics-heat--empty {

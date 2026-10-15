@@ -6,8 +6,10 @@ import { useSearchParams } from 'react-router-dom'
 import { api } from '@/api/client'
 import { getStoredSession } from '@/api/http'
 import type { BookAnalyticsDto } from '@/api/types'
-import { buttonVariants, controlClass } from '@/components/app/designTokens'
-import { Badge, PageHeader, Surface } from '@/components/app/DesignSystem'
+import { Button } from '@/components/ui/Button'
+import { fieldClass } from '@/components/ui/fieldStyles'
+import { SegmentButton } from '@/features/books/BookListControls'
+import { cn } from '@/lib/utils'
 import { formatAverageRating, formatChapterCount } from '@/features/books/bookFormatters'
 import { BookSearchInput } from '@/features/books/BookSearchInput'
 import { AnalyticsChartCard } from './AnalyticsChartCard'
@@ -39,6 +41,7 @@ import { extractAnalyticsDateFilters } from './dateQueryFilters'
 type AnalyticsBucket = 'day' | 'week' | 'month'
 
 const analyticsBuckets: AnalyticsBucket[] = ['day', 'week', 'month']
+const bucketLabels: Record<AnalyticsBucket, string> = { day: 'Day', week: 'Week', month: 'Month' }
 const analyticsRangePresets = [
   { label: 'Beginning', getFrom: (_today: Date) => null },
   { label: 'Last 2 years', getFrom: (today: Date) => subYears(today, 2) },
@@ -102,84 +105,81 @@ export function AnalyticsPage() {
   }
 
   return (
-    <div className="grid min-w-0 gap-5 overflow-x-hidden">
-      <PageHeader
-        actions={
-          analyticsQuery.isFetching && data ? <Badge tone="accent">Refreshing...</Badge> : undefined
-        }
-        description="Library metrics scoped by book search and created-date range."
-        eyebrow="Library intelligence"
-        title="Analytics"
-      />
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="m-0 font-display text-[40px] leading-tight font-bold tracking-tight">
+            Stats
+          </h1>
+          <p className="m-0 mt-2 text-[15px] text-ink-2">
+            Library metrics for the books that match the query, added in the date range.
+          </p>
+        </div>
+        {analyticsQuery.isFetching && data ? (
+          <span className="text-[13px] text-ink-3" role="status">
+            Refreshing…
+          </span>
+        ) : null}
+      </div>
 
-      <Surface className="grid gap-3 p-4">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_18rem_9rem_auto]">
-          <div className="ui-form-field min-w-0">
-            <span className="ui-field-label">Query</span>
-            <BookSearchInput
-              appearance="compact"
-              ariaLabel="Query"
-              placeholder="author:Toika rating:>=8 -genre:romance"
-              value={draftFilters.query}
-              showHelp={false}
-              onChange={(query) => setDraftFilters((current) => ({ ...current, query }))}
-            />
-          </div>
-          <DateRangeChooser filters={draftFilters} onChange={setDraftFilters} />
-          <label className="ui-form-field">
-            <span className="ui-field-label">Bucket</span>
-            <select
-              className={controlClass}
-              value={draftFilters.bucket}
-              onChange={(event) =>
-                setDraftFilters((current) => ({
-                  ...current,
-                  bucket: normalizeBucket(event.target.value),
-                }))
-              }
-            >
-              {analyticsBuckets.map((bucket) => (
-                <option key={bucket} value={bucket}>
-                  {bucket}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="flex items-end">
-            <button
-              className={`${buttonVariants.secondary} w-full`}
-              type="button"
-              onClick={applyFilters}
-            >
-              Apply filters
-            </button>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-ink-2">Query</span>
+          <BookSearchInput
+            appearance="compact"
+            ariaLabel="Query"
+            placeholder="author:Toika rating:>=8 -genre:romance"
+            value={draftFilters.query}
+            showHelp={false}
+            onChange={(query) => setDraftFilters((current) => ({ ...current, query }))}
+          />
+        </div>
+        <DateRangeChooser filters={draftFilters} onChange={setDraftFilters} />
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-ink-2" id="analytics-bucket-label">
+            Bucket
+          </span>
+          <div
+            aria-labelledby="analytics-bucket-label"
+            className="flex h-11 items-center gap-0.5 rounded-field border border-line bg-surface p-[3px]"
+            role="group"
+          >
+            {analyticsBuckets.map((bucket) => (
+              <SegmentButton
+                key={bucket}
+                pressed={draftFilters.bucket === bucket}
+                onClick={() => setDraftFilters((current) => ({ ...current, bucket }))}
+              >
+                {bucketLabels[bucket]}
+              </SegmentButton>
+            ))}
           </div>
         </div>
-      </Surface>
+        <Button className="h-11" onClick={applyFilters}>
+          Apply filters
+        </Button>
+      </div>
 
       {analyticsQuery.isError && !data ? (
-        <Surface className="p-4" tone="danger">
-          <h2 className="ui-panel-title text-inherit">Could not load analytics.</h2>
-          <p className="mt-1 text-sm text-inherit opacity-85">
-            Check filters and retry the request.
-          </p>
-          <button
-            className={`${buttonVariants.destructive} mt-3`}
-            type="button"
-            onClick={retryAnalytics}
-          >
+        <div
+          className="rounded-panel border border-danger-line bg-danger-soft p-4 text-danger-ink"
+          role="alert"
+        >
+          <h2 className="m-0 text-base font-semibold">Could not load stats.</h2>
+          <p className="m-0 mt-1 text-sm">Check the filters and try again.</p>
+          <Button className="mt-3" size="sm" variant="danger" onClick={retryAnalytics}>
             Retry
-          </button>
-        </Surface>
+          </Button>
+        </div>
       ) : null}
 
       {emptyMessage ? (
-        <Surface className="p-4 text-sm text-slate-600" tone="muted">
+        <div className="rounded-panel border border-dashed border-line p-4 text-sm text-ink-2">
           {emptyMessage}
-        </Surface>
+        </div>
       ) : null}
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         <MetricCard
           label="Total books"
           loading={isInitialLoading}
@@ -512,12 +512,12 @@ function DateRangeChooser({
   }
 
   return (
-    <div className="ui-form-field relative" ref={rootRef}>
-      <span className="ui-field-label">Date range</span>
+    <div className="relative flex w-full flex-col gap-1.5 sm:w-72" ref={rootRef}>
+      <span className="text-[13px] font-medium text-ink-2">Date range</span>
       <button
         aria-expanded={isOpen}
         aria-label={`Date range: ${display.label}. ${display.title}`}
-        className={`${controlClass} flex items-center justify-between gap-3 text-left`}
+        className={cn(fieldClass, 'flex items-center justify-between gap-3 text-left text-sm')}
         title={display.title}
         type="button"
         onClick={() => {
@@ -531,13 +531,13 @@ function DateRangeChooser({
       >
         <span className="truncate">{display.label}</span>
         {display.toLabel ? (
-          <Badge className="shrink-0" tone="accent">
+          <span className="shrink-0 rounded-pill border border-line-strong bg-raised px-2 py-0.5 text-xs font-medium text-ink-2">
             {display.toLabel}
-          </Badge>
+          </span>
         ) : null}
       </button>
       {isOpen ? (
-        <div className="ui-popover absolute right-0 top-full mt-2 w-[min(44rem,calc(100vw-2rem))] p-3">
+        <div className="ui-popover absolute top-full left-0 mt-2 w-[min(44rem,calc(100vw-2rem))] p-3 sm:right-0 sm:left-auto">
           <div className="mb-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
             {analyticsRangePresets.map((preset) => {
               const today = getToday()
@@ -577,16 +577,16 @@ function DateRangeChooser({
 
 function MetricCard({ label, loading, value }: { label: string; loading: boolean; value: string }) {
   return (
-    <Surface as="div" className="px-4 py-3" tone="elevated">
-      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="mt-1 text-2xl font-semibold text-slate-950">
+    <div className="rounded-xl border border-line bg-surface p-4">
+      <div className="text-xs font-semibold tracking-[0.06em] text-ink-3 uppercase">{label}</div>
+      <div className="mt-1 text-[26px] leading-tight font-semibold">
         {loading ? (
-          <span className="inline-block h-8 w-16 animate-pulse rounded bg-slate-200" />
+          <span className="inline-block h-8 w-16 animate-pulse rounded bg-raised motion-reduce:animate-none" />
         ) : (
           value
         )}
       </div>
-    </Surface>
+    </div>
   )
 }
 

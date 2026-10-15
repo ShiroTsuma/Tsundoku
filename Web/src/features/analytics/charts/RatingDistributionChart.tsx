@@ -9,9 +9,9 @@ import {
   type BarShapeProps,
 } from 'recharts'
 import type { BookAnalyticsDto } from '@/api/types'
-import { Surface } from '@/components/app/DesignSystem'
 import {
   analyticsTooltipProps,
+  seriesColor,
   formatCount,
   formatPercent,
   getActiveChartLabel,
@@ -35,7 +35,7 @@ export function RatingDistributionChart({ data }: RatingDistributionChartProps) 
 
   if (!ratings || totalBooks === 0) {
     return (
-      <div className="grid min-h-56 place-items-center text-sm text-slate-500">
+      <div className="grid min-h-56 place-items-center text-sm text-ink-3">
         No rating data for this analytics scope.
       </div>
     )
@@ -44,20 +44,26 @@ export function RatingDistributionChart({ data }: RatingDistributionChartProps) 
   return (
     <div className="grid gap-4">
       <div className="grid gap-3 sm:grid-cols-[9rem_minmax(0,1fr)]">
-        <Surface as="div" className="grid place-items-center p-4 text-center" tone="elevated">
-          <div className="grid h-24 w-24 place-items-center rounded-full border-8 border-[var(--qs-accent)] bg-[var(--qs-surface-muted)]">
-            <div>
-              <div className="text-xl font-semibold text-slate-950">{formatPercent(coverage)}</div>
-              <div className="text-xs text-slate-500">rated</div>
-            </div>
+        <div className="flex flex-col gap-2 rounded-field border border-line-soft p-4">
+          <div className="text-xs font-semibold tracking-[0.06em] text-ink-3 uppercase">Rated</div>
+          <div className="text-[26px] leading-none font-semibold">{formatPercent(coverage)}</div>
+          <div
+            aria-label={`${formatPercent(coverage)} of books rated`}
+            aria-valuemax={100}
+            aria-valuemin={0}
+            aria-valuenow={Math.round(coverage)}
+            className="ui-progress-track"
+            role="progressbar"
+          >
+            <div className="ui-progress-fill" style={{ width: `${String(coverage)}%` }} />
           </div>
-          <div className="mt-3 text-sm text-slate-500">
+          <div className="text-sm text-ink-3">
             Avg {ratings.averageRating == null ? '-' : ratings.averageRating.toFixed(1)}
           </div>
           <DrilldownLink query={noneQuery('rating')}>
             Unrated: {formatCount(ratings.unratedBooks)}
           </DrilldownLink>
-        </Surface>
+        </div>
         <div className="analytics-drilldown-chart h-64 min-w-0">
           <ResponsiveContainer>
             <BarChart
@@ -81,11 +87,15 @@ export function RatingDistributionChart({ data }: RatingDistributionChartProps) 
               />
               <Bar
                 dataKey="bookCount"
+                maxBarSize={32}
                 name="Books"
+                radius={[4, 4, 0, 0]}
                 shape={(props: BarShapeProps) => (
                   <Rectangle
                     {...props}
-                    fill={(counts[props.index]?.bookCount ?? 0) > 0 ? '#8b92d8' : '#273142'}
+                    fill={
+                      (counts[props.index]?.bookCount ?? 0) > 0 ? seriesColor : 'var(--color-line)'
+                    }
                   />
                 )}
               />

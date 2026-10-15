@@ -1,7 +1,6 @@
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { SplitTrendChart } from './SplitTrendChart'
 import type { BookAnalyticsDto } from '@/api/types'
-import { Surface } from '@/components/app/DesignSystem'
-import { analyticsTooltipProps, focusedValueDomain, formatCount } from './chartUtils'
+import { focusedValueDomain, formatCount } from './chartUtils'
 import { compactActivityPoints, readingActivityChartPoints } from './readingActivityData'
 
 type ReadingActivityChartProps = {
@@ -19,7 +18,7 @@ export function ReadingActivityChart({ data }: ReadingActivityChartProps) {
 
   if (!points.length) {
     return (
-      <div className="grid min-h-56 place-items-center text-sm text-slate-600">
+      <div className="grid min-h-56 place-items-center text-sm text-ink-2">
         No reading activity in this time range.
       </div>
     )
@@ -27,69 +26,33 @@ export function ReadingActivityChart({ data }: ReadingActivityChartProps) {
 
   return (
     <div className="grid gap-4">
-      <div className="h-56 min-w-0" aria-label="Reading activity trend">
-        <ResponsiveContainer>
-          <LineChart data={chartPoints}>
-            <XAxis dataKey="date" tickLine={false} />
-            <YAxis allowDecimals={false} tickLine={false} yAxisId="daily" />
-            <YAxis
-              allowDecimals={false}
-              domain={cumulativeDomain}
-              orientation="right"
-              tickLine={false}
-              yAxisId="cumulative"
-            />
-            <Tooltip
-              {...analyticsTooltipProps}
-              formatter={(value, name) => [formatCount(Number(value)), activityLabel(name)]}
-              labelFormatter={(label) => `Bucket ${label}`}
-            />
-            <Line
-              dataKey="dailyChapters"
-              name="dailyChapters"
-              stroke="#75b69c"
-              strokeWidth={2}
-              yAxisId="daily"
-              dot={{ r: 3 }}
-            />
-            <Line
-              dataKey="cumulativeChapters"
-              name="cumulativeChapters"
-              stroke="#8b92d8"
-              strokeWidth={2}
-              yAxisId="cumulative"
-              dot={{ r: 3 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+      <SplitTrendChart
+        ariaLabel="Reading activity trend"
+        cumulative={{ key: 'cumulativeChapters', label: 'Chapters tracked in total' }}
+        cumulativeDomain={cumulativeDomain}
+        data={chartPoints}
+        perBucket={{ key: 'dailyChapters', label: 'Chapters per bucket' }}
+      />
       <div className="grid gap-2">
         {newestDisplayPoints.map((point) => (
-          <Surface as="div" className="px-3 py-2 text-sm" key={point.label}>
+          <div
+            className="rounded-field border border-line-soft px-3 py-2 text-sm"
+            key={point.label}
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="font-semibold text-slate-950">{point.label}</span>
-              <span className="text-slate-700">
+              <span className="font-semibold text-ink">{point.label}</span>
+              <span className="text-ink-2">
                 {formatCount(point.progressEvents)} events · {formatCount(point.booksTouched)} books
                 touched
               </span>
             </div>
-            <div className="mt-1 text-slate-600">
+            <div className="mt-1 text-ink-2">
               Daily: {formatCount(point.dailyChapters)} chapters. Cumulative:{' '}
               {formatCount(point.cumulativeChapters)} chapters.
             </div>
-          </Surface>
+          </div>
         ))}
       </div>
     </div>
   )
-}
-
-function activityLabel(name: unknown) {
-  if (name === 'dailyChapters') {
-    return 'Daily chapters advanced'
-  }
-  if (name === 'cumulativeChapters') {
-    return 'Cumulative tracked chapters'
-  }
-  return String(name)
 }

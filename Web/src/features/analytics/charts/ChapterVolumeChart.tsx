@@ -3,6 +3,7 @@ import type { BookAnalyticsDto } from '@/api/types'
 import { formatChapterCount } from '@/features/books/bookFormatters'
 import {
   analyticsTooltipProps,
+  seriesColor,
   fieldQuery,
   formatCount,
   getActiveChartLabel,
@@ -20,7 +21,7 @@ export function ChapterVolumeChart({ data }: ChapterVolumeChartProps) {
 
   if (!items.length) {
     return (
-      <div className="grid min-h-56 place-items-center text-sm text-slate-500">
+      <div className="grid min-h-56 place-items-center text-sm text-ink-3">
         No chapter volume data for this analytics scope.
       </div>
     )
@@ -29,7 +30,7 @@ export function ChapterVolumeChart({ data }: ChapterVolumeChartProps) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <div>
-        <div className="mb-2 text-sm font-semibold text-slate-950">Book count by type</div>
+        <div className="mb-2 text-sm font-semibold text-ink">Book count by type</div>
         <div className="analytics-drilldown-chart h-56 min-w-0">
           <ResponsiveContainer>
             <BarChart
@@ -47,7 +48,13 @@ export function ChapterVolumeChart({ data }: ChapterVolumeChartProps) {
                 {...analyticsTooltipProps}
                 formatter={(value) => [`${formatCount(Number(value))} books`, 'Books']}
               />
-              <Bar dataKey="bookCount" fill="#8b92d8" name="Books" radius={[6, 6, 0, 0]} />
+              <Bar
+                dataKey="bookCount"
+                fill={seriesColor}
+                maxBarSize={48}
+                name="Books"
+                radius={[4, 4, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
           <div className="sr-only">
@@ -60,7 +67,7 @@ export function ChapterVolumeChart({ data }: ChapterVolumeChartProps) {
         </div>
       </div>
       <div>
-        <div className="mb-2 text-sm font-semibold text-slate-950">Current chapters by type</div>
+        <div className="mb-2 text-sm font-semibold text-ink">Current chapters by type</div>
         <div className="analytics-drilldown-chart h-56 min-w-0">
           <ResponsiveContainer>
             <BarChart
@@ -83,9 +90,10 @@ export function ChapterVolumeChart({ data }: ChapterVolumeChartProps) {
               />
               <Bar
                 dataKey="currentChapters"
-                fill="#75b69c"
+                fill={seriesColor}
+                maxBarSize={48}
                 name="Current chapters"
-                radius={[6, 6, 0, 0]}
+                radius={[4, 4, 0, 0]}
               />
             </BarChart>
           </ResponsiveContainer>

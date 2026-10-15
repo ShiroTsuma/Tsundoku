@@ -2,7 +2,6 @@ import { Check, Pencil } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { BookAnalyticsDto } from '@/api/types'
 import { buttonVariants, inputClass } from '@/components/app/designTokens'
-import { Surface } from '@/components/app/DesignSystem'
 import { formatChapterCount } from '@/features/books/bookFormatters'
 import { formatCount } from './chartUtils'
 import {
@@ -51,7 +50,7 @@ export function EstimatedReadingTimeChart({
 
   if (!items.length) {
     return (
-      <div className="grid min-h-56 place-items-center text-sm text-slate-500">
+      <div className="grid min-h-56 place-items-center text-sm text-ink-3">
         No chapter data to estimate reading time.
       </div>
     )
@@ -59,13 +58,11 @@ export function EstimatedReadingTimeChart({
 
   return (
     <div className="grid gap-4">
-      <Surface as="div" className="p-4" tone="elevated">
+      <div className="rounded-field border border-line bg-raised p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div className="text-sm font-semibold text-slate-950">Estimated total</div>
-            <div className="mt-1 text-3xl font-semibold text-slate-950">
-              {formatHours(totalHours)}
-            </div>
+            <div className="text-sm font-semibold text-ink">Estimated total</div>
+            <div className="mt-1 text-3xl font-semibold text-ink">{formatHours(totalHours)}</div>
           </div>
           <button
             aria-pressed={isEditing}
@@ -78,17 +75,17 @@ export function EstimatedReadingTimeChart({
             {isEditing ? 'Done' : 'Edit estimates'}
           </button>
         </div>
-        <div className="mt-2 text-sm text-slate-500">
+        <div className="mt-2 text-sm text-ink-3">
           {formatDays(totalHours)} · {formatMonths(totalHours)} · {formatYears(totalHours)} based on
           known current chapters.
         </div>
-      </Surface>
+      </div>
       <div className="grid gap-2">
         {estimates.map((item) => (
-          <Surface as="div" className="grid gap-2 p-3" key={item.type}>
+          <div className="rounded-field border border-line-soft grid gap-2 p-3" key={item.type}>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="font-semibold text-slate-950">{item.type}</span>
-              <span className="text-sm text-slate-500">
+              <span className="font-semibold text-ink">{item.type}</span>
+              <span className="text-sm text-ink-3">
                 {formatChapterCount(item.currentChapters)} chapters · {formatHours(item.hours)}
               </span>
             </div>
@@ -106,14 +103,14 @@ export function EstimatedReadingTimeChart({
                     setDraftMinutesPerType((current) => ({ ...current, [item.type]: nextValue }))
                   }}
                 />
-                <span className="text-sm text-slate-600">minutes per chapter</span>
+                <span className="text-sm text-ink-2">minutes per chapter</span>
               </div>
             ) : (
-              <div className="text-sm text-slate-600">
+              <div className="text-sm text-ink-2">
                 {formatCount(item.minutesPerChapter)} minutes per chapter
               </div>
             )}
-          </Surface>
+          </div>
         ))}
       </div>
     </div>

@@ -1,14 +1,14 @@
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { BookAnalyticsDto } from '@/api/types'
-import { Surface } from '@/components/app/DesignSystem'
 import {
   analyticsTooltipProps,
-  chartColors,
   fieldQuery,
   formatCount,
   formatPercent,
   getActiveChartLabel,
   normalizedPercent,
+  statusChartColor,
+  compareStatusChartOrder,
   useBooksDrilldown,
 } from './chartUtils'
 import { DrilldownLink } from './DrilldownLink'
@@ -33,7 +33,7 @@ export function StatusByTypeChart({ data }: StatusByTypeChartProps) {
   const openBooks = useBooksDrilldown()
   const statuses = Array.from(
     new Set(items.flatMap((item) => item.statuses.map((status) => status.status))),
-  )
+  ).sort(compareStatusChartOrder)
   const chartData = items.map((item) => {
     const row: Record<string, number | string> = { type: item.type, totalBooks: item.totalBooks }
     const countsByStatus = Object.fromEntries(
@@ -55,7 +55,7 @@ export function StatusByTypeChart({ data }: StatusByTypeChartProps) {
 
   if (!items.length) {
     return (
-      <div className="grid min-h-56 place-items-center text-sm text-slate-500">
+      <div className="grid min-h-56 place-items-center text-sm text-ink-3">
         No status/type data for this analytics scope.
       </div>
     )
@@ -64,8 +64,9 @@ export function StatusByTypeChart({ data }: StatusByTypeChartProps) {
   return (
     <div className="grid gap-4">
       <div
-        className="analytics-drilldown-chart h-72 w-full min-w-0"
+        className="analytics-drilldown-chart w-full min-w-0"
         data-testid="status-by-type-chart"
+        style={{ height: Math.max(120, items.length * 44 + 40) }}
       >
         <ResponsiveContainer>
           <BarChart
@@ -86,13 +87,16 @@ export function StatusByTypeChart({ data }: StatusByTypeChartProps) {
             />
             <YAxis dataKey="type" tickLine={false} type="category" width={96} />
             <Tooltip {...analyticsTooltipProps} content={<StatusByTypeTooltip />} />
-            {statuses.map((status, index) => (
+            {statuses.map((status) => (
               <Bar
                 className="analytics-drilldown-shape"
                 dataKey={status}
-                fill={chartColors[index % chartColors.length]}
+                barSize={24}
+                fill={statusChartColor(status)}
                 key={status}
                 stackId="books"
+                stroke="var(--color-surface)"
+                strokeWidth={2}
                 onClick={(entry, _index, event) => {
                   event.stopPropagation()
                   const payload = getChartPayload(entry)
@@ -124,18 +128,32 @@ export function StatusByTypeChart({ data }: StatusByTypeChartProps) {
           )}
         </div>
       </div>
-      <div className="grid gap-2">
+      <ul
+        aria-label="Statuses"
+        className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1.5 p-0 text-[13px]"
+      >
+        {statuses.map((status) => (
+          <li className="flex items-center gap-1.5 text-ink-2" key={status}>
+            <span
+              aria-hidden="true"
+              className="size-2.5 rounded-sm"
+              style={{ backgroundColor: statusChartColor(status) }}
+            />
+            {status}
+          </li>
+        ))}
+      </ul>
+      <ul className="m-0 flex list-none flex-col p-0 text-sm">
         {items.map((item) => (
-          <Surface
-            as="div"
-            className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 text-sm"
+          <li
+            className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft py-2 first:border-t-0"
             key={item.type}
           >
-            <span className="font-semibold text-slate-950">{item.type}</span>
-            <span className="text-slate-500">{formatCount(item.totalBooks)} books</span>
-          </Surface>
+            <span className="font-semibold text-ink">{item.type}</span>
+            <span className="text-ink-3 tabular-nums">{formatCount(item.totalBooks)} books</span>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   )
 }
@@ -149,7 +167,7 @@ function StatusByTypeTooltip({ active, label, payload }: StatusByTypeTooltipProp
 
   return (
     <div className="ui-chart-tooltip">
-      <p className="font-bold text-slate-50">{String(label)}</p>
+      <p className="font-bold text-ink">{String(label)}</p>
       <div className="mt-2 grid gap-1.5">
         {rows.map((row) => (
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3" key={row.status}>
@@ -159,11 +177,9 @@ function StatusByTypeTooltip({ active, label, payload }: StatusByTypeTooltipProp
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ backgroundColor: row.color }}
               />
-              <span className="min-w-0 whitespace-normal break-words text-slate-200">
-                {row.status}
-              </span>
+              <span className="min-w-0 whitespace-normal break-words text-ink-2">{row.status}</span>
             </span>
-            <span className="whitespace-nowrap font-semibold text-slate-50">
+            <span className="whitespace-nowrap font-semibold text-ink">
               {formatPercent(row.percent)} ({formatCount(row.count)} books)
             </span>
           </div>

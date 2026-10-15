@@ -78,10 +78,9 @@ describe('AnalyticsPage', () => {
     )
 
     const alert = screen.getByRole('alert')
-    expect(alert).toHaveClass('ui-surface', 'ui-surface--danger')
-    expect(alert).not.toHaveClass('bg-rose-50')
-    expect(screen.getByText('Could not load this analytics card.')).toHaveClass('text-inherit')
-    expect(screen.getByRole('button', { name: 'Retry' })).toHaveClass('ui-button--destructive')
+    expect(alert).toHaveClass('bg-danger-soft', 'text-danger-ink')
+    expect(alert).toHaveTextContent('Could not load this chart.')
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
   })
 
   it('extracts date filters from query into analytics range request', async () => {
@@ -395,7 +394,12 @@ describe('AnalyticsPage', () => {
 
     await screen.findByText('10')
     await user.type(screen.getByLabelText(/query/i), 'status:"Plan to Read"')
-    await user.selectOptions(screen.getByLabelText(/bucket/i), 'day')
+    const bucket = screen.getByRole('group', { name: 'Bucket' })
+    expect(within(bucket).getByRole('button', { name: 'Week' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await user.click(within(bucket).getByRole('button', { name: 'Day' }))
     await user.click(screen.getByRole('button', { name: /apply filters/i }))
 
     await waitFor(() =>
@@ -445,7 +449,7 @@ describe('AnalyticsPage', () => {
     })
 
     expect(await screen.findByText('10')).toBeInTheDocument()
-    await user.selectOptions(screen.getByLabelText(/bucket/i), 'month')
+    await user.click(screen.getByRole('button', { name: 'Month' }))
     await user.click(screen.getByRole('button', { name: /apply filters/i }))
 
     expect(screen.getByText('10')).toBeInTheDocument()
@@ -527,7 +531,9 @@ describe('AnalyticsPage', () => {
     await user.click(screen.getByRole('button', { name: /view data for cover availability/i }))
 
     expect(screen.getByRole('columnheader', { name: 'Kind' })).toBeInTheDocument()
-    expect(document.querySelector('.overflow-x-hidden')).toBeTruthy()
+    expect(
+      screen.getByRole('table', { name: /cover availability data table/i }).parentElement,
+    ).toHaveClass('overflow-auto')
   })
 
   it('rounds status percentages before rendering status row values', () => {

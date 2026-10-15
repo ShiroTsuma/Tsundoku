@@ -112,3 +112,17 @@ If a screen differs from the mock and this file doesn't say why, that's a bug.
 | Footer hint, Cancel import, Drop N invalid rows, Finalize import | do: Finalize stays disabled until every row is ready. The dialog fits the screen and its body scrolls, so the footer is always visible (the mock grows instead). On phones the hint is hidden and the buttons fill the row |
 | Cancel confirmation "Discard draft" | do |
 | Result: Imported / Skipped cards, info note, skipped lines, imported table with "+ N more", Import another file, Go to library | do (covers are queued for lookup after import, so the note is true); the table shows every imported book in a scroll box instead of "+ N more" |
+
+## Stats
+
+No mock board. Built from the system the mocked screens use; where the dataviz guidelines decide something, that is noted.
+
+| Element | Decision |
+| --- | --- |
+| Page header | Serif "Stats" (the nav name) with a one-line summary, like Library; no eyebrow |
+| Filter row | One row above every chart (dataviz rule): query field in the library's search style, date range button with the preset list, Day / Week / Month segmented control instead of a native select, Apply |
+| Tiles | Panels like the details page stats (radius 12, surface, cap label, 26px value); values use proportional figures |
+| Chart cards | One panel per chart (radius 14, surface, border); the chart sits directly in the panel, no box inside a box. "View data" is a ghost button; the table uses the library table style |
+| Chart colours | Validated with the dataviz palette checker on the chart surface (#1b1c1d): single-series charts use one blue; status charts follow the app's status hues in a passing order (Reading blue, Completed green, On hold orange, Plan to read violet, Dropped red, Unknown neutral grey with its label); other categories use the validated categorical order. The old lavender/teal palette is gone |
+| Reading activity, Library growth | Split into two small charts on the same dates (per-bucket values, cumulative total) instead of one chart with two y-axes (dataviz rule: never dual axis) |
+| Axes and grid | Hairline grid in `line`, muted tick labels, tooltip in the popover style |

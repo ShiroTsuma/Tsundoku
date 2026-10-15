@@ -1,32 +1,49 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { addDays, addMonths, addWeeks, format, parseISO } from 'date-fns'
 
-export const chartColors = [
-  '#8b92d8',
-  '#75b69c',
-  '#d1aa6e',
-  '#8e7ea8',
-  '#6f91aa',
-  '#b47f8d',
-  '#879b70',
-  '#657b78',
-]
+/** One colour for single-series charts. */
+export const seriesColor = 'var(--color-chart-1)'
+
+// Reading statuses keep their app hue family, in an order that passes the CVD checks
+// when stacked (Reading, Completed, On hold, Plan to read, Dropped). Unknown is the neutral "other".
+const statusChartColors: Record<string, string> = {
+  reading: 'var(--color-chart-1)',
+  completed: 'var(--color-chart-3)',
+  'on hold': 'var(--color-chart-2)',
+  'plan to read': 'var(--color-chart-7)',
+  dropped: 'var(--color-chart-8)',
+}
+const statusChartOrder = ['reading', 'completed', 'on hold', 'plan to read', 'dropped']
+
+export function statusChartColor(status: string) {
+  return statusChartColors[status.trim().toLowerCase()] ?? 'var(--color-status-unknown)'
+}
+
+/** Sorts statuses into the stacking order the status colours were validated in. */
+export function compareStatusChartOrder(a: string, b: string) {
+  const rank = (status: string) => {
+    const index = statusChartOrder.indexOf(status.trim().toLowerCase())
+    return index === -1 ? statusChartOrder.length : index
+  }
+  return rank(a) - rank(b)
+}
 
 export const analyticsTooltipProps = {
   contentStyle: {
-    backgroundColor: '#121925',
-    border: '1px solid #3a465b',
-    borderRadius: '3px',
-    boxShadow: 'none',
-    color: '#eef2f7',
+    backgroundColor: 'var(--color-raised)',
+    border: '1px solid var(--color-line-strong)',
+    borderRadius: '10px',
+    boxShadow: 'var(--shadow-popover)',
+    color: 'var(--color-ink)',
   },
   itemStyle: {
-    color: '#eef2f7',
+    color: 'var(--color-ink)',
   },
   labelStyle: {
-    color: '#eef2f7',
-    fontWeight: 700,
+    color: 'var(--color-ink)',
+    fontWeight: 600,
   },
+  cursor: { fill: 'var(--color-hover)' },
 }
 
 export function formatCount(value: number) {

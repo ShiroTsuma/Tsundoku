@@ -29,7 +29,7 @@ export function MetadataCompletenessChart({ data }: MetadataCompletenessChartPro
 
   if (!items.length) {
     return (
-      <div className="grid min-h-56 place-items-center text-sm text-slate-600">
+      <div className="grid min-h-56 place-items-center text-sm text-ink-2">
         0 metadata fields reported for this scope.
       </div>
     )
@@ -37,7 +37,7 @@ export function MetadataCompletenessChart({ data }: MetadataCompletenessChartPro
 
   return (
     <div className="grid gap-3">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-ink-2">
         Cleanup queue: fields with lower coverage are good candidates for metadata review.
       </p>
       {items.map((item) => {
@@ -46,8 +46,8 @@ export function MetadataCompletenessChart({ data }: MetadataCompletenessChartPro
         return (
           <div className="grid gap-1" key={item.field}>
             <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-              <span className="font-semibold text-slate-950">{formatFieldName(item.field)}</span>
-              <span className="text-slate-700">
+              <span className="font-semibold text-ink">{formatFieldName(item.field)}</span>
+              <span className="text-ink-2">
                 {formatCount(item.bookCount)} complete · {formatPercent(item.shareOfBooks)}
               </span>
             </div>
@@ -60,7 +60,7 @@ export function MetadataCompletenessChart({ data }: MetadataCompletenessChartPro
                 style={{ width: `${Math.min(100, Math.max(0, item.shareOfBooks))}%` }}
               />
             </div>
-            <div className="text-sm text-slate-600">
+            <div className="text-sm text-ink-2">
               Complete {formatCount(item.bookCount)} of {formatCount(totalBooks)} books. Missing:{' '}
               {query && missingCount > 0 ? (
                 <DrilldownLink query={query}>{formatCount(missingCount)} books</DrilldownLink>
