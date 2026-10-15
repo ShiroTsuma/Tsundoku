@@ -1,263 +1,146 @@
-# Novelki
+<p align="center">
+  <img src="Web/public/favicon.svg" width="72" height="72" alt="Novelki">
+</p>
 
-Novelki to self-hosted aplikacja do prowadzenia prywatnej biblioteki powieści internetowych, mang, manhw i innych
-serii. Repozytorium zawiera API w ASP.NET Core, frontend w React oraz gotowy stack Docker Compose z monitoringiem.
+<h1 align="center">Novelki</h1>
 
-## Funkcje
+<p align="center">
+  <strong>Your reading list, chapter history, and EPUB collection. On your own server.</strong><br>
+  A self-hosted library for web novels, light novels, manga, and manhwa.
+</p>
 
-- prywatna biblioteka z postępem czytania, oceną, priorytetem, statusem i historią zmian;
-- wyszukiwanie PostgreSQL z filtrami pól, wykluczeniami, fuzzy matchingiem, wildcardami i sugestiami;
-- import i eksport CSV oraz pełne archiwum ZIP razem z okładkami;
-- automatyczne pobieranie i przetwarzanie okładek, zapis lokalny albo w magazynie zgodnym z S3;
-- parser HTML metadanych stron NovelUpdates, Royal Road, Scribble Hub, WebNovel, Anime-Planet,
-  Baka-Updates/MangaUpdates,
-  RanobeDB, Wuxiaworld, AniList, J-Novel Club, Seven Seas, Yen Press, Syosetu i Kakuyomu;
-- publiczne snapshoty książek, katalog odkrywania i kopiowanie pozycji do własnej biblioteki;
-- statystyki biblioteki, wykresy aktywności i kontrola kompletności metadanych;
-- panel administracyjny do zarządzania kontami, autorami, tagami i słownikami systemowymi;
-- logowanie JWT z tokenami odświeżającymi, rate limitingiem i ochroną operacji kosztownych.
+<p align="center">
+  <img src="https://img.shields.io/badge/.NET-10-512BD4?style=flat-square" alt=".NET 10">
+  <img src="https://img.shields.io/badge/React-19-149ECA?style=flat-square" alt="React 19">
+  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&amp;logo=postgresql&amp;logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/Status-In_development-D4A373?style=flat-square" alt="In development">
+</p>
 
-## Stos
+<p align="center">
+  <a href="#features">Features</a> &middot;
+  <a href="#quick-start">Quick start</a> &middot;
+  <a href="#documentation">Documentation</a> &middot;
+  <a href="https://github.com/ShiroTsuma/NovelkiBackend/issues">Report an issue</a>
+</p>
 
-| Warstwa    | Technologie                                                                   |
-|------------|-------------------------------------------------------------------------------|
-| API        | .NET 10, ASP.NET Core, MediatR, FluentValidation                              |
-| Dane       | EF Core 10, PostgreSQL, `pg_trgm`, `fuzzystrmatch`, opcjonalny Redis          |
-| Tożsamość  | ASP.NET Core Identity, JWT Bearer                                             |
-| Frontend   | React 19, TypeScript 6, Vite 6, Tailwind CSS 4, TanStack Query                |
-| Testy      | xUnit, SQLite, Testcontainers PostgreSQL, Vitest, Testing Library, Playwright |
-| Monitoring | OpenTelemetry, Grafana, Prometheus, Loki, Tempo                               |
+---
 
-## Szybki start z Docker Compose
+Novelki brings series from different reading sites into one personal catalog. Track the chapter you reached, keep alternate titles and source links together, and attach EPUBs to the books they belong to. Browse your collection as a table or cover grid, with the same library available on desktop, tablet, and phone.
 
-Potrzebujesz Dockera oraz instancji PostgreSQL dostępnej z kontenera `api`. Compose uruchamia aplikację i monitoring,
-ale nie tworzy PostgreSQL ani Redis.
+Run it on your own infrastructure with PostgreSQL and local file storage or an S3-compatible bucket. Each account has a private library; you choose which books and files to share with other users of your instance.
 
-1. Utwórz lokalny plik konfiguracyjny:
+## Features
 
-   ```powershell
-   Copy-Item .env.example .env
-   ```
+| Feature                     | Description                                                                                                                                     |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Reading progress**        | Record chapter numbers, source labels, and comments. Review your reading history, rate books, and set priorities.                               |
+| **A searchable catalog**    | Combine full-text and fuzzy search with field filters, exclusions, wildcards, and suggestions from your library.                                |
+| **Book metadata**           | Keep alternate titles, authors, genres, tags, notes, and source links. Import metadata from saved page HTML and fetch or upload covers.         |
+| **EPUB management**         | Attach EPUBs or import ZIP archives. Review file details, rename and reorder files, and download individual files or a selection.               |
+| **Sharing and discovery**   | Publish book snapshots to your instance's discovery catalog. Copy a published entry into your library and choose which attached EPUBs to share. |
+| **Library insights**        | Review reading activity, collection breakdowns, and missing metadata. Carry library filters into the statistics view.                           |
+| **Import and export**       | Review CSV imports before saving, export book data with covers, and transfer EPUB collections through dedicated archives.                       |
+| **Instance administration** | Manage accounts, authors, tags, and shared dictionaries. Inspect logs, metrics, and traces with the included observability stack.               |
 
-   W systemie Linux lub macOS:
+### Less manual entry
 
-   ```bash
-   cp .env.example .env
-   ```
+Use **Fill from a page** when adding a book: supply the page HTML, review the extracted metadata, and choose the fields to keep. You can edit the result before saving.
 
-2. Uzupełnij w `.env`:
+<details>
+<summary>Supported metadata sources</summary>
 
-    - `DB_CONNECTION_STRING` z hostem osiągalnym z kontenera;
-    - `JWT_KEY`, `JWT_ISSUER` i `JWT_AUDIENCE`;
-    - `ADMIN_EMAIL`, jeżeli aplikacja ma nadać rolę administratora przy starcie.
+- **Web fiction:** NovelUpdates, Royal Road, Scribble Hub, WebNovel, and Wuxiaworld.
+- **Manga and anime catalogs:** Anime-Planet, MangaUpdates / Baka-Updates, and AniList.
+- **Light novel catalogs and publishers:** RanobeDB, J-Novel Club, Seven Seas, and Yen Press.
+- **Japanese fiction:** Syosetu and Kakuyomu.
 
-   Redis jest opcjonalny. Ustaw pusty `REDIS_CONNECTION_STRING`, aby użyć cache in-memory. Jeśli nie korzystasz z S3,
-   wyczyść wartości `BOOK_COVERS__S3__*`; API zapisze wtedy okładki w `storage/covers`.
+These integrations parse supplied HTML. Source availability and page structure affect the fields you can import.
 
-3. Uruchom stack:
+</details>
 
-   ```powershell
-   docker compose up --build -d
-   ```
+### Search beyond titles
 
-   Możesz też użyć `compose-up.ps1`, `compose-up.sh` albo `compose-up.bat`.
+Start with a title or combine filters to find a specific part of your collection:
 
-4. Otwórz aplikację:
+| Query                                      | Results                                                           |
+| ------------------------------------------ | ----------------------------------------------------------------- |
+| `author:"Er Gen"`                          | Books by an author.                                               |
+| `genre:Fantasy rating:>=8 -status:Dropped` | Highly rated fantasy, excluding dropped books.                    |
+| `title:"Lord *"`                           | Titles matching a wildcard.                                       |
+| `cover:none`                               | Entries that need a cover.                                        |
+| `status:Reading updated:<2026-09-01`       | In-progress books without a progress update since the given date. |
 
-   | Usługa | Adres |
-         | --- | --- |
-   | Web HTTPS | `https://localhost:8080` |
-   | Web HTTP | `http://localhost:8081` |
-   | API | `http://localhost:5232` |
-   | Swagger | `http://localhost:5232/swagger` |
-   | Health | `http://localhost:5232/health/ready` |
-   | Grafana | `http://localhost:3000` |
-   | Prometheus | `http://localhost:9090` |
+Use quotes for values with spaces, `-` to exclude a match, and `none` to find missing metadata. The library offers a visual filter builder alongside the query editor.
 
-Domyślna konfiguracja tworzy lokalny certyfikat self-signed. Konfigurację publicznej domeny i ACME opisuje
-następna sekcja.
+### Share on your terms
 
-Compose ustawia `Database:AutoMigrate=true`, więc API stosuje migracje podczas uruchamiania.
+Publish a snapshot of a book to make it discoverable on your instance. Other users can copy its catalog information into their own libraries. EPUBs stay private until you select files to share; downloading shared files requires an account. Copying a book does not copy its attachments.
 
-## Wdrożenie produkcyjne z TLS
+**Development status:** Novelki is under active development. The **Find EPUB** crawler interface currently uses simulated search results and download jobs. Uploading, managing, and downloading your own EPUB files uses the implemented storage API. See the [crawler integration notes](Web/src/features/epubSearch/README.md) for the remaining work.
 
-Konfigurację konkretnej domeny przechowuj wyłącznie w lokalnym pliku `.env`. Przed pierwszym uruchomieniem:
+## Quick start
 
-1. Upewnij się, że rekord DNS domeny wskazuje publiczny adres serwera.
-2. Przekieruj i odblokuj publiczne porty TCP 80 oraz 443 do hosta uruchamiającego Compose.
-3. Ustaw w `.env`:
+**Requirements:** Docker with Compose and a PostgreSQL instance reachable from the API container. The committed Compose stack includes the application and monitoring services; provision PostgreSQL separately. Redis is optional.
 
-   ```dotenv
-   WEB_PORT=443
-   WEB_HTTP_PORT=80
-   WEB_PUBLIC_ORIGIN=https://library.example.com
-   PUBLIC_DOMAIN=library.example.com
-   PUBLIC_HTTPS_AUTHORITY=library.example.com
-   ACME_ENABLED=true
-   ACME_EMAIL=adres-do-powiadomien@example.com
-   ```
-
-4. Zbuduj i uruchom stack:
-
-   ```powershell
-   docker compose up --build -d
-   ```
-
-Przy pierwszym starcie kontener Web wystawia certyfikat Let's Encrypt metodą HTTP-01. Dane ACME są przechowywane
-w wolumenie `letsencrypt-data`. Kontener sprawdza odnowienie co 12 godzin i po udanym odnowieniu automatycznie
-przeładowuje nginx. Nie usuwaj tego wolumenu podczas zwykłych aktualizacji.
-
-Nginx przyjmuje wyłącznie host podany w `PUBLIC_DOMAIN`, przekierowuje HTTP na stały adres
-`PUBLIC_HTTPS_AUTHORITY` i odrzuca pozostałe wartości `Host`. API jest publikowane przez Compose wyłącznie na
-loopback hosta; ruch publiczny powinien przechodzić przez nginx.
-
-Do lokalnego uruchomienia bez ACME ustaw zamiast tego:
-
-```dotenv
-WEB_PORT=8080
-WEB_HTTP_PORT=8081
-PUBLIC_DOMAIN=localhost
-PUBLIC_HTTPS_AUTHORITY=localhost:8080
-ACME_ENABLED=false
+```sh
+git clone https://github.com/ShiroTsuma/NovelkiBackend.git
+cd NovelkiBackend
+cp .env.example .env
 ```
 
-W tym trybie kontener tworzy krótkotrwały certyfikat self-signed przeznaczony wyłącznie do developmentu.
+On PowerShell, use `Copy-Item .env.example .env` for the last command.
 
-## Uruchomienie bez Dockera
+Edit `.env` before starting:
 
-### API
+- Set `DB_CONNECTION_STRING` to your PostgreSQL connection string. Use a hostname reachable from Docker; `localhost` inside the API container refers to that container.
+- Replace `JWT_KEY` with a long random secret and set `JWT_ISSUER` and `JWT_AUDIENCE` for your instance.
+- Clear `REDIS_CONNECTION_STRING` to use the in-memory cache, or point it to your Redis service.
+- Clear the `BOOK_COVERS__S3__*` values to use local storage, or configure your private S3-compatible bucket. Covers and EPUBs use the same storage backend.
+- Set `ADMIN_EMAIL` to the email you will register with, and replace `GRAFANA_ADMIN_PASSWORD`.
 
-Wymagania:
-
-- .NET SDK zgodny z `global.json`;
-- PostgreSQL z uprawnieniami do utworzenia rozszerzeń `pg_trgm` i `fuzzystrmatch`;
-- opcjonalnie Redis.
-
-Repozytorium trzyma w `Api/appsettings.json` placeholdery `IN_SECRETS`. Skonfiguruj sekrety lokalnie:
-
-```powershell
-dotnet user-secrets set "Jwt:Key" "<dlugi-klucz-lokalny>" --project Api
-dotnet user-secrets set "Jwt:Issuer" "Novelki" --project Api
-dotnet user-secrets set "Jwt:Audience" "Novelki" --project Api
-dotnet user-secrets set "ConnectionStrings:DB" "Host=localhost;Port=5432;Database=novelki;Username=postgres;Password=<haslo>" --project Api
-dotnet user-secrets set "Admin:Emails:0" "<email-administratora>" --project Api
+```sh
+docker compose up --build -d
 ```
 
-Przygotuj narzędzia, bazę i uruchom API:
+Open **[https://localhost:8080](https://localhost:8080)** and create an account. The local setup uses a self-signed certificate, so your browser will show a certificate prompt. Compose applies database migrations on startup.
 
-```powershell
-dotnet tool restore
-dotnet restore
-dotnet ef database update --project Infrastructure --startup-project Api
-dotnet run --project Api --launch-profile https
-```
+To grant administrator access, register with the configured email, then run `docker compose restart api`. The startup seeder assigns the role to an existing account.
 
-Profile deweloperskie wystawiają API pod `https://localhost:7121` i `http://localhost:5232`. Swagger działa w
-środowisku `Development` pod `/swagger`.
+For a public domain, trusted TLS certificates, storage configuration, and service addresses, follow the **[self-hosting guide](docs/self-hosting.md)**.
 
-### Web
+## Data and backups
 
-```powershell
-Set-Location Web
-npm ci
-npm run dev
-```
+Choose the export that matches what you need to move:
 
-Vite uruchamia frontend pod `http://localhost:5173` i przekazuje `/api` do `https://localhost:7121`. Inny adres API
-ustawisz przez `VITE_API_PROXY_TARGET`.
+| Export              | Contents                                                                            |
+| ------------------- | ----------------------------------------------------------------------------------- |
+| **CSV**             | Book catalog data for review or transfer.                                           |
+| **Full backup ZIP** | CSV book data and cover images. EPUBs are excluded.                                 |
+| **EPUB archive**    | Selected EPUB files and a manifest with book references, file order, and checksums. |
 
-## Konfiguracja
+For an instance backup, preserve the PostgreSQL database and file storage together. Keep EPUB staging storage across container restarts so active jobs can continue. The [EPUB storage guide](docs/epub-storage.md) covers archive restore, sharing permissions, quotas, and retention.
 
-Najczęściej używane zmienne:
+## Documentation
 
-| Zmienna                                        | Wymagana | Opis                                         |
-|------------------------------------------------|----------|----------------------------------------------|
-| `DB_CONNECTION_STRING`                         | tak      | Connection string PostgreSQL                 |
-| `JWT_KEY`                                      | tak      | Klucz podpisujący tokeny                     |
-| `JWT_ISSUER`, `JWT_AUDIENCE`                   | tak      | Issuer i audience JWT                        |
-| `ADMIN_EMAIL`                                  | nie      | Konto, które dostanie rolę `Admin`           |
-| `REDIS_CONNECTION_STRING`                      | nie      | Redis dla cache listy książek                |
-| `WEB_PUBLIC_ORIGIN`                            | nie      | Publiczny origin dodawany do CORS            |
-| `API_PORT`, `WEB_PORT`, `WEB_HTTP_PORT`        | nie      | Porty wystawiane przez Compose               |
-| `BOOK_COVERS__S3__*`                           | nie      | Endpoint, dane dostępowe i bucket storage S3 |
-| `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD` | nie      | Konto lokalnej Grafany                       |
+| Guide                                                        | Contents                                                                             |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| [Self-hosting](docs/self-hosting.md)                         | Docker Compose, configuration, domain and TLS setup, persistence, and monitoring.    |
+| [Development](docs/development.md)                           | Local API and frontend setup, project structure, and validation commands.            |
+| [EPUB storage](docs/epub-storage.md)                         | Attachments, library archives, access rules, storage limits, and deployment details. |
+| [Crawler integration](Web/src/features/epubSearch/README.md) | The EPUB search prototype, client contracts, and backend integration work.           |
 
-Pełny zestaw wartości znajduje się w `.env.example`.
+## Development
 
-## Wyszukiwanie
+The backend uses **ASP.NET Core on .NET 10**, **Entity Framework Core**, and **PostgreSQL**. The frontend uses **React 19**, **TypeScript**, **Vite**, **Tailwind CSS**, and **TanStack Query**. Authentication uses ASP.NET Core Identity with JWT access and refresh tokens.
 
-Pole `query` w `GET /api/v1/book` łączy zwykły tekst z filtrami:
+Application logic, domain models, and infrastructure live in separate projects. The API exposes versioned routes under `/api/v1`; Swagger is available at `/swagger` in Development. OpenTelemetry connects the API to Grafana, Prometheus, Loki, and Tempo.
 
-```text
-martial title:"Lord *" author:"Er Gen" tag:favorite -status:Dropped rating:>=8
-```
+To work on the project, install the .NET SDK specified in [`global.json`](global.json), Node.js 24 or later, and PostgreSQL. Follow the [development guide](docs/development.md) for local secrets, migrations, and the test suites.
 
-Obsługiwane pola obejmują tytuł, autora, tag, gatunek, status, typ, opis, ocenę, priorytet, postęp, liczbę rozdziałów
-oraz daty utworzenia i modyfikacji. Prefiks `-` wyklucza wynik. Wartość `none` znajduje rekordy bez danej metadanej,
-na przykład `cover:none`. Cudzysłowy pozwalają używać spacji, a `*` działa jako wildcard w filtrach tekstowych.
+## Feedback and contributions
 
-Zapytanie bez pola korzysta z indeksu PostgreSQL i fuzzy matchingu. Interfejs podpowiada składnię oraz wartości autora,
-tagu, gatunku, statusu i typu na podstawie biblioteki użytkownika.
+Use [GitHub Issues](https://github.com/ShiroTsuma/NovelkiBackend/issues) for bug reports and feature proposals. For a bug, include the commit or branch, deployment method, steps to reproduce, and relevant logs with credentials removed. For changes to an import or parser, include a representative input where possible.
 
-## Architektura
+## License
 
-```text
-Web ──HTTP──> Api ──MediatR──> Application ──> Domain
-                                   │
-                                   └── kontrakty <── Infrastructure
-                                                      │
-                                                      ├── PostgreSQL / Redis
-                                                      ├── storage lokalny / S3
-                                                      └── background services
-```
-
-- `Api` konfiguruje HTTP, uwierzytelnianie, Swagger, rate limiting i monitoring.
-- `Application` zawiera use case'y, DTO, walidację i kontrakty usług.
-- `Domain` przechowuje encje, modele wyszukiwania, wyjątki i interfejsy repozytoriów.
-- `Infrastructure` implementuje dostęp do danych, Identity, okładki, import, cache i zadania w tle.
-- `Web` zawiera aplikację React oraz testy komponentowe i layoutowe.
-
-API używa prefiksu `/api/v1`. Główne grupy endpointów to `account`, `book`, `public-book`, `author`, `tag`, `genre`,
-`status`, `type` i `admin`. Swagger w trybie deweloperskim pokazuje pełną, aktualną listę operacji.
-
-## Testy
-
-Backend:
-
-```powershell
-dotnet build NovelkiBackend.sln
-dotnet test NovelkiBackend.sln --no-build
-```
-
-Testy integracyjne korzystają z SQLite oraz kontenera PostgreSQL. Docker musi działać przed ich uruchomieniem.
-
-Frontend:
-
-```powershell
-Set-Location Web
-npm ci
-npx playwright install chromium
-npm run test:all
-npm run build
-```
-
-`test:all` uruchamia sprawdzenie TypeScript, Vitest i testy layoutu Playwright dla widoku desktopowego oraz mobilnego.
-
-## Monitoring
-
-API wysyła logi, metryki i trace'y przez OTLP do OpenTelemetry Collector. Grafana korzysta z przygotowanych źródeł
-Prometheus, Loki i Tempo oraz dashboardu `Novelki overview`.
-
-Endpointy diagnostyczne:
-
-- `/health/live` sprawdza proces API;
-- `/health/ready` sprawdza gotowość aplikacji i zależności.
-
-## Licencja
-
-Autor projektu nie wybrał jeszcze licencji.
-
-## EPUB files
-
-Book attachments and separate EPUB library exports/imports are documented in [EPUB storage](docs/epub-storage.md).
-Existing full backups still contain CSV data and covers only.
+No license has been selected for this project.
