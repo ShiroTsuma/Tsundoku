@@ -93,7 +93,10 @@ public static partial class MappingExtensions
                         BookCount = item.BookCount,
                         CurrentChapters = item.CurrentChapters,
                         AverageCurrentChapter = item.AverageCurrentChapter,
-                        MedianCurrentChapter = item.MedianCurrentChapter
+                        MedianCurrentChapter = item.MedianCurrentChapter,
+                        ReadingBooks = item.ReadingBooks,
+                        ReadingBooksWithKnownTotal = item.ReadingBooksWithKnownTotal,
+                        RemainingChapters = item.RemainingChapters
                     })
                     .ToList()
             },

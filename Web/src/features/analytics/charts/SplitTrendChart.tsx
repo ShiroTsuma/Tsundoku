@@ -1,3 +1,4 @@
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import {
   Bar,
   BarChart,
@@ -30,6 +31,7 @@ export function SplitTrendChart({
   data: readonly object[]
   perBucket: Series
 }) {
+  const animate = !useMediaQuery('(prefers-reduced-motion: reduce)')
   const tooltip = (label: string) => ({
     ...analyticsTooltipProps,
     formatter: (value: unknown) => [formatCount(Number(value)), label],
@@ -50,6 +52,7 @@ export function SplitTrendChart({
               <YAxis allowDecimals={false} tickLine={false} width={44} />
               <Tooltip {...tooltip(perBucket.label)} />
               <Bar
+                isAnimationActive={animate}
                 dataKey={perBucket.key}
                 fill={seriesColor}
                 maxBarSize={32}
@@ -71,6 +74,7 @@ export function SplitTrendChart({
               <YAxis allowDecimals={false} domain={cumulativeDomain} tickLine={false} width={44} />
               <Tooltip {...tooltip(cumulative.label)} />
               <Line
+                isAnimationActive={animate}
                 dataKey={cumulative.key}
                 dot={false}
                 activeDot={{ r: 4, stroke: 'var(--color-surface)', strokeWidth: 2 }}

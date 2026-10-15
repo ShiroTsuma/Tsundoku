@@ -1,3 +1,4 @@
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import {
   Bar,
   BarChart,
@@ -27,6 +28,7 @@ type RatingDistributionChartProps = {
 }
 
 export function RatingDistributionChart({ data }: RatingDistributionChartProps) {
+  const animate = !useMediaQuery('(prefers-reduced-motion: reduce)')
   const ratings = data?.ratings
   const counts = ratings?.counts ?? []
   const totalBooks = (ratings?.ratedBooks ?? 0) + (ratings?.unratedBooks ?? 0)
@@ -86,6 +88,7 @@ export function RatingDistributionChart({ data }: RatingDistributionChartProps) 
                 ]}
               />
               <Bar
+                isAnimationActive={animate}
                 dataKey="bookCount"
                 maxBarSize={32}
                 name="Books"

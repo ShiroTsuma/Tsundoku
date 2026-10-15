@@ -160,10 +160,12 @@ Known follow-ups: the summary panel and the export and import menus still use th
 - [x] Link sources: links and book coverage per source, opens `link:` filter
 - [x] Cover availability: cover statuses and top providers with counts
 - [x] Rating distribution: rated share, average, Unrated link, bars per rating that open `rating:N`. `[~]` the ring (always drawn full) is now a number with a thin bar
-- [x] Chapter volume by type: book count and current chapters per type
-- [x] Estimated reading time: total in hours/days/months/years, per type; Edit estimates saves minutes per chapter per type to the account
-- [x] Reading activity: daily chapters and the cumulative total over the range, with bucket summaries. `[~]` two small charts on the same dates instead of one chart with two y-axes
+- [x] Chapter volume by type: book count and current chapters per type. `[~]` part of the By type table
+- [x] Estimated reading time: total in hours/days/months/years, per type; Edit estimates saves minutes per chapter per type to the account. `[~]` part of the By type table (time read and time left per type, total row); the days/months/years conversion is dropped
+- [x] Reading activity: daily chapters and the cumulative total over the range, with bucket summaries. `[~]` day bucket: reading calendar and chapters per weekday; week/month: two small charts instead of one chart with two y-axes; the summary list shows only periods with reading, latest 5 with Show all
 - [x] Library growth: books added and the cumulative count, per-type breakdown with links. `[~]` two small charts, as above
-- [x] Metadata completeness: coverage per field with "Missing: N books" links
-- [x] Every drilldown keeps the Stats query and date range (`created:>=` / `created:<`)
+- [x] Metadata completeness: coverage per field with "Missing: N books" links. `[~]` "Data gaps": ranked by missing books with "Fix N" links
+- [x] Every drilldown keeps the Stats query. `[~]` the date range is no longer added: it scopes only activity and growth (growth links keep their own bucket dates)
+- [~] New: Pace & forecast (pace, chapters left in Reading books, days to finish, hours left)
+- [~] New: "This range" band (chapters read, active days, longest streak / best week, books added) and section jump links
 - [x] Screen-reader links for chart drilldowns

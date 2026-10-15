@@ -1,18 +1,4 @@
 import type { BookAnalyticsDto } from '@/api/types'
-import { formatChapterCount } from '@/features/books/bookFormatters'
-import { formatCount } from './chartUtils'
-
-export function estimatedReadingTimeRows(
-  data?: BookAnalyticsDto,
-  settings: Record<string, number> = {},
-) {
-  return getEstimatedReadingRows(data?.progress.typeVolumes ?? [], settings).map((item) => [
-    item.type,
-    formatChapterCount(item.currentChapters),
-    formatCount(item.minutesPerChapter),
-    formatHours(item.hours),
-  ])
-}
 
 export function getMinutesByType(
   items: NonNullable<BookAnalyticsDto['progress']>['typeVolumes'],

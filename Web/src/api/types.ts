@@ -274,6 +274,9 @@ export type BookAnalyticsTypeVolumeDto = {
   currentChapters: number
   averageCurrentChapter?: number | null
   medianCurrentChapter?: number | null
+  readingBooks?: number
+  readingBooksWithKnownTotal?: number
+  remainingChapters?: number
 }
 
 export type BookAnalyticsActivityDto = {

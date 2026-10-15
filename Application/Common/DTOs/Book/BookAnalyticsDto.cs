@@ -104,6 +104,11 @@ public sealed record BookAnalyticsTypeVolumeDto
     public decimal CurrentChapters { get; init; }
     public decimal? AverageCurrentChapter { get; init; }
     public decimal? MedianCurrentChapter { get; init; }
+    /// <summary>Books with status Reading.</summary>
+    public int ReadingBooks { get; init; }
+    public int ReadingBooksWithKnownTotal { get; init; }
+    /// <summary>Chapters left in Reading books whose total is known.</summary>
+    public decimal RemainingChapters { get; init; }
 }
 
 public sealed record BookAnalyticsActivityDto

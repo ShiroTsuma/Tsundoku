@@ -29,48 +29,63 @@ export function MetadataCompletenessChart({ data }: MetadataCompletenessChartPro
 
   if (!items.length) {
     return (
-      <div className="grid min-h-56 place-items-center text-sm text-ink-2">
+      <div className="grid min-h-40 place-items-center text-sm text-ink-2">
         0 metadata fields reported for this scope.
       </div>
     )
   }
 
+  const gaps = items
+    .map((item) => ({ ...item, missing: Math.max(0, totalBooks - item.bookCount) }))
+    .filter((item) => item.missing > 0)
+    .sort((left, right) => right.missing - left.missing || left.field.localeCompare(right.field))
+  const complete = items.filter((item) => item.bookCount >= totalBooks)
+
   return (
-    <div className="grid gap-3">
-      <p className="text-sm text-ink-2">
-        Cleanup queue: fields with lower coverage are good candidates for metadata review.
-      </p>
-      {items.map((item) => {
-        const missingCount = Math.max(0, totalBooks - item.bookCount)
-        const query = missingFieldQueries[item.field]
-        return (
-          <div className="grid gap-1" key={item.field}>
-            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-              <span className="font-semibold text-ink">{formatFieldName(item.field)}</span>
-              <span className="text-ink-2">
-                {formatCount(item.bookCount)} complete · {formatPercent(item.shareOfBooks)}
-              </span>
-            </div>
-            <div
-              className="ui-progress-track"
-              aria-label={`${formatFieldName(item.field)} completeness ${formatPercent(item.shareOfBooks)}`}
-            >
-              <div
-                className="ui-progress-fill"
-                style={{ width: `${Math.min(100, Math.max(0, item.shareOfBooks))}%` }}
-              />
-            </div>
-            <div className="text-sm text-ink-2">
-              Complete {formatCount(item.bookCount)} of {formatCount(totalBooks)} books. Missing:{' '}
-              {query && missingCount > 0 ? (
-                <DrilldownLink query={query}>{formatCount(missingCount)} books</DrilldownLink>
-              ) : (
-                `${formatCount(missingCount)} books`
-              )}
-            </div>
-          </div>
-        )
-      })}
+    <div className="flex flex-col gap-3">
+      {gaps.length ? (
+        <ul className="m-0 flex list-none flex-col p-0" aria-label="Fields with missing data">
+          {gaps.map((item) => {
+            const query = missingFieldQueries[item.field]
+            const missingShare = 100 - Math.min(100, Math.max(0, item.shareOfBooks))
+            return (
+              <li
+                className="grid grid-cols-[minmax(7rem,10rem)_minmax(0,1fr)_auto] items-center gap-3 border-t border-line-soft py-2 text-sm first:border-t-0"
+                key={item.field}
+              >
+                <span className="truncate font-medium">{formatFieldName(item.field)}</span>
+                <span
+                  aria-label={`${formatFieldName(item.field)} missing for ${formatPercent(missingShare)} of books`}
+                  className="h-2 overflow-hidden rounded-full bg-line-soft"
+                  role="img"
+                >
+                  <span
+                    className="block h-full rounded-full bg-chart-1"
+                    style={{ width: `${String(missingShare)}%` }}
+                  />
+                </span>
+                <span className="flex items-center gap-2 text-ink-2 tabular-nums">
+                  {formatPercent(missingShare)}
+                  {query ? (
+                    <DrilldownLink className="min-h-0" query={query}>
+                      Fix {formatCount(item.missing)}
+                    </DrilldownLink>
+                  ) : (
+                    `${formatCount(item.missing)} missing`
+                  )}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      ) : (
+        <p className="m-0 text-sm text-ink-2">Every tracked field is filled in for these books.</p>
+      )}
+      {complete.length ? (
+        <p className="m-0 text-[13px] text-ink-3">
+          Complete everywhere: {complete.map((item) => formatFieldName(item.field)).join(', ')}
+        </p>
+      ) : null}
     </div>
   )
 }

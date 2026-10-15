@@ -477,48 +477,27 @@ describe('AnalyticsPage', () => {
     expect(screen.getByText('1,234,567.5')).toBeInTheDocument()
   })
 
-  it('places priority analytics in the right column and cover/link cleanup under priority', async () => {
+  it('groups the cards into Activity, Library, Backlog and Housekeeping sections', async () => {
     vi.mocked(api.getBookAnalytics).mockResolvedValue(createAnalytics())
 
     renderWithProviders(<AnalyticsPage />, { route: '/analytics?from=2026-01-01&to=2026-02-01' })
 
     await screen.findByText('Rating distribution')
 
-    const leftColumn = screen.getByTestId('analytics-left-column')
-    const rightColumn = screen.getByTestId('analytics-right-column')
-    const left = within(leftColumn)
-    const right = within(rightColumn)
-
-    const priority = left.getByText('Priority by status')
-    const linkSources = left.getByText('Link sources')
-    const coverAvailability = left.getByText('Cover availability')
-
-    expect(left.queryByText('Rating distribution')).not.toBeInTheDocument()
-    expect(left.queryByText('Chapter volume by type')).not.toBeInTheDocument()
-    expect(left.queryByText('Estimated reading time')).not.toBeInTheDocument()
-    expect(
-      priority.compareDocumentPosition(linkSources) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-    expect(
-      linkSources.compareDocumentPosition(coverAvailability) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-
-    const rating = right.getByText('Rating distribution')
-    const chapterVolume = right.getByText('Chapter volume by type')
-    const readingTime = right.getByText('Estimated reading time')
-    const readingActivity = right.getByText('Reading activity')
-
-    expect(right.queryByText('Link sources')).not.toBeInTheDocument()
-    expect(right.queryByText('Cover availability')).not.toBeInTheDocument()
-    expect(
-      rating.compareDocumentPosition(chapterVolume) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-    expect(
-      chapterVolume.compareDocumentPosition(readingTime) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-    expect(
-      readingTime.compareDocumentPosition(readingActivity) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
+    const sections = {
+      Activity: ['Reading activity', 'Library growth'],
+      Library: ['Status by type', 'Rating distribution', 'Top genres', 'Top tags', 'By type'],
+      Backlog: ['Pace & forecast', 'Priority by status'],
+      Housekeeping: ['Data gaps', 'Cover availability', 'Link sources'],
+    }
+    for (const [section, cards] of Object.entries(sections)) {
+      const region = screen.getByRole('region', { name: section })
+      for (const card of cards) {
+        expect(within(region).getByRole('heading', { name: card })).toBeInTheDocument()
+      }
+    }
+    expect(screen.getByRole('link', { name: 'Backlog' })).toHaveAttribute('href', '#backlog')
+    expect(screen.getByRole('region', { name: 'This range' })).toHaveTextContent(/Chapters read/)
   })
 
   it('shows useful card data tables without forcing horizontal page overflow', async () => {
@@ -621,7 +600,7 @@ describe('AnalyticsPage', () => {
     renderWithProviders(<AnalyticsPage />, { route: '/analytics?from=2026-01-01&to=2026-02-01' })
 
     const buttons = await screen.findAllByRole('button', { name: /view data for/i })
-    expect(buttons).toHaveLength(7)
+    expect(buttons).toHaveLength(5)
     expect(
       screen.queryByRole('button', { name: /view data for status by type/i }),
     ).not.toBeInTheDocument()
@@ -629,7 +608,7 @@ describe('AnalyticsPage', () => {
       screen.queryByRole('button', { name: /view data for top tags/i }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /view data for metadata completeness/i }),
+      screen.queryByRole('button', { name: /view data for data gaps/i }),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /view data for rating distribution/i }),
@@ -696,15 +675,15 @@ describe('AnalyticsPage', () => {
 
     expect(await screen.findByRole('link', { name: 'Fantasy' })).toHaveAttribute(
       'href',
-      '/books?query=created%3A%3E%3D2026-01-01%20created%3A%3C2026-02-01%20genre%3AFantasy',
+      '/books?query=genre%3AFantasy',
     )
     expect(await screen.findByRole('link', { name: 'Drama "Special" / 2026' })).toHaveAttribute(
       'href',
-      '/books?query=created%3A%3E%3D2026-01-01%20created%3A%3C2026-02-01%20genre%3A%22Drama%20%5C%22Special%5C%22%20%2F%202026%22',
+      '/books?query=genre%3A%22Drama%20%5C%22Special%5C%22%20%2F%202026%22',
     )
     expect(await screen.findByRole('link', { name: 'slow burn' })).toHaveAttribute(
       'href',
-      '/books?query=created%3A%3E%3D2026-01-01%20created%3A%3C2026-02-01%20tag%3A%22slow%20burn%22',
+      '/books?query=tag%3A%22slow%20burn%22',
     )
     expect(await screen.findByText('Other')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Show 2 more' }))
@@ -762,16 +741,16 @@ describe('AnalyticsPage', () => {
       route: '/analytics?query=type%3AManga&from=2026-01-01&to=2026-02-01',
     })
 
-    expect(await screen.findByText('10%')).toBeInTheDocument()
+    expect(await screen.findByLabelText('10% of books rated')).toBeInTheDocument()
     expect(document.querySelector('.analytics-drilldown-chart')).toBeTruthy()
     expect(screen.getAllByText('Unrated: 9')).toHaveLength(1)
     expect(screen.getByRole('link', { name: /unrated: 9/i })).toHaveAttribute(
       'href',
-      '/books?query=type%3AManga%20created%3A%3E%3D2026-01-01%20created%3A%3C2026-02-01%20rating%3Anone',
+      '/books?query=type%3AManga%20rating%3Anone',
     )
     expect(screen.getByRole('link', { name: /open rating 10 books/i })).toHaveAttribute(
       'href',
-      '/books?query=type%3AManga%20created%3A%3E%3D2026-01-01%20created%3A%3C2026-02-01%20rating%3A10',
+      '/books?query=type%3AManga%20rating%3A10',
     )
     expect(
       screen.queryByRole('button', { name: /view data for rating distribution/i }),
@@ -804,7 +783,7 @@ describe('AnalyticsPage', () => {
     ).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Plan to Read' })).toHaveAttribute(
       'href',
-      '/books?query=created%3A%3E%3D2026-01-01%20created%3A%3C2026-02-01%20status%3A%22Plan%20to%20Read%22',
+      '/books?query=status%3A%22Plan%20to%20Read%22',
     )
     expect(screen.getByRole('columnheader', { name: 'Unset' })).toHaveClass(
       'analytics-priority-heading',
@@ -812,7 +791,7 @@ describe('AnalyticsPage', () => {
     const unsetLink = screen.getByRole('link', { name: '3' })
     expect(unsetLink).toHaveAttribute(
       'href',
-      '/books?query=created%3A%3E%3D2026-01-01%20created%3A%3C2026-02-01%20status%3A%22Plan%20to%20Read%22%20priority%3Anone',
+      '/books?query=status%3A%22Plan%20to%20Read%22%20priority%3Anone',
     )
     expect(unsetLink).toHaveClass('analytics-heat-value')
     expect(screen.getByText('75%')).toHaveClass('text-current/85')
@@ -827,7 +806,7 @@ describe('AnalyticsPage', () => {
     expect(screen.getByText('No priority data for this analytics scope.')).toBeInTheDocument()
   })
 
-  it('renders chapter volume with separate count and chapter sections', async () => {
+  it('shows books, chapters, time read and chapters left per type in one table', async () => {
     vi.mocked(api.getBookAnalytics).mockResolvedValue(
       createAnalytics({
         progress: {
@@ -838,6 +817,9 @@ describe('AnalyticsPage', () => {
               currentChapters: 120.5,
               averageCurrentChapter: 60.25,
               medianCurrentChapter: 55,
+              readingBooks: 2,
+              readingBooksWithKnownTotal: 1,
+              remainingChapters: 30,
             },
             {
               type: 'Manga',
@@ -853,22 +835,20 @@ describe('AnalyticsPage', () => {
 
     renderWithProviders(<AnalyticsPage />, { route: '/analytics?from=2026-01-01&to=2026-02-01' })
 
-    expect(await screen.findByText('Book count by type')).toBeInTheDocument()
-    expect(screen.getByText('Current chapters by type')).toBeInTheDocument()
-    expect(document.querySelectorAll('.analytics-drilldown-chart').length).toBeGreaterThanOrEqual(2)
-    expect(screen.queryByText(/Current chapters: 120.5/)).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /open manga books by count/i })).toHaveAttribute(
+    const table = await screen.findByRole('table', {
+      name: 'Books, chapters and reading time per type',
+    })
+    const novel = within(table).getByRole('row', { name: /Novel/ })
+    expect(novel).toHaveTextContent('120.5')
+    expect(novel).toHaveTextContent('60.3 · 55')
+    expect(novel).toHaveTextContent('30 ch · 2.5 h')
+    expect(within(table).getByRole('row', { name: /Manga/ })).toHaveTextContent('— · —')
+    expect(within(table).getByRole('row', { name: /Total/ })).toHaveTextContent('120.5')
+    expect(within(table).getByRole('link', { name: /Manga/ })).toHaveAttribute(
       'href',
-      '/books?query=created%3A%3E%3D2026-01-01%20created%3A%3C2026-02-01%20type%3AManga',
-    )
-    expect(
-      screen.getByRole('link', { name: /open manga books by current chapters/i }),
-    ).toHaveAttribute(
-      'href',
-      '/books?query=created%3A%3E%3D2026-01-01%20created%3A%3C2026-02-01%20type%3AManga',
+      '/books?query=type%3AManga',
     )
   })
-
   it('exposes status by type drill-down links for chart segments', async () => {
     vi.mocked(api.getBookAnalytics).mockResolvedValue(
       createAnalytics({
@@ -894,15 +874,15 @@ describe('AnalyticsPage', () => {
     expect(screen.queryByRole('link', { name: 'Manga' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /open manga books$/i })).toHaveAttribute(
       'href',
-      '/books?query=created%3A%3E%3D2026-01-01%20created%3A%3C2026-02-01%20type%3AManga',
+      '/books?query=type%3AManga',
     )
     expect(screen.getByRole('link', { name: /open manga reading books/i })).toHaveAttribute(
       'href',
-      '/books?query=created%3A%3E%3D2026-01-01%20created%3A%3C2026-02-01%20type%3AManga%20status%3AReading',
+      '/books?query=type%3AManga%20status%3AReading',
     )
     expect(screen.getByRole('link', { name: /open manga completed books/i })).toHaveAttribute(
       'href',
-      '/books?query=created%3A%3E%3D2026-01-01%20created%3A%3C2026-02-01%20type%3AManga%20status%3ACompleted',
+      '/books?query=type%3AManga%20status%3ACompleted',
     )
   })
 
@@ -933,14 +913,13 @@ describe('AnalyticsPage', () => {
     renderWithProviders(<AnalyticsPage />, { route: '/analytics?from=2026-01-01&to=2026-02-01' })
 
     expect(await screen.findByText('15.6 h')).toBeInTheDocument()
-    expect(screen.getByText(/0\.0 years based on known current chapters/i)).toBeInTheDocument()
     const requestCount = vi.mocked(api.getBookAnalytics).mock.calls.length
-    expect(screen.getByText('2 minutes per chapter')).toBeInTheDocument()
+    expect(screen.getByRole('row', { name: /Novel/ })).toHaveTextContent('15.6 h')
     expect(
       screen.queryByRole('spinbutton', { name: /novel minutes per chapter/i }),
     ).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /edit estimates/i }))
+    await user.click(screen.getByRole('button', { name: /edit minutes per chapter/i }))
     const input = screen.getByRole('spinbutton', { name: /novel minutes per chapter/i })
 
     await user.clear(input)
@@ -948,7 +927,7 @@ describe('AnalyticsPage', () => {
 
     expect(await screen.findByText('0.0 h')).toBeInTheDocument()
     expect(api.updateReadingTimeSettings).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: /done/i }))
+    await user.click(screen.getByRole('button', { name: /save estimates/i }))
     await waitFor(() =>
       expect(vi.mocked(api.updateReadingTimeSettings).mock.calls[0]?.[0]).toEqual({
         settings: [{ contentType: 'Novel', minutesPerChapter: 0 }],
@@ -968,10 +947,8 @@ describe('AnalyticsPage', () => {
 
     renderWithProviders(<AnalyticsPage />, { route: '/analytics?from=2026-01-01&to=2026-02-01' })
 
-    expect(
-      await screen.findByText('No chapter volume data for this analytics scope.'),
-    ).toBeInTheDocument()
-    expect(screen.getByText('No chapter data to estimate reading time.')).toBeInTheDocument()
+    expect(await screen.findByText('No chapter data for this analytics scope.')).toBeInTheDocument()
+    expect(screen.getByText('No books with status Reading match the query.')).toBeInTheDocument()
   })
 
   it('renders reading activity and library growth trends for empty buckets, one point, and import jumps', async () => {
@@ -1011,14 +988,14 @@ describe('AnalyticsPage', () => {
       route: '/analytics?from=2026-01-01&to=2026-02-01&bucket=week',
     })
 
-    expect(await screen.findByText(/Cumulative: 9,999 chapters/i)).toBeInTheDocument()
-    expect(screen.getAllByText('January 1–14, 2026').length).toBeGreaterThan(1)
+    expect(await screen.findByText(/9,999 in total/i)).toBeInTheDocument()
+    expect(screen.getAllByText('January 1–14, 2026').length).toBeGreaterThan(0)
     expect(screen.getByText(/\+1,000,000 added/i)).toBeInTheDocument()
     expect(screen.getByText(/No additions by type/i)).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /January 15/i })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Novel: 1,000,000/i })).toHaveAttribute(
       'href',
-      '/books?query=created%3A%3E%3D2026-01-01%20created%3A%3C2026-02-01%20type%3ANovel%20created%3A%3E%3D2026-01-15%20created%3A%3C2026-01-22',
+      '/books?query=type%3ANovel%20created%3A%3E%3D2026-01-15%20created%3A%3C2026-01-22',
     )
 
     await user.click(screen.getByRole('button', { name: /view data for library growth/i }))
@@ -1080,7 +1057,10 @@ describe('AnalyticsPage', () => {
       route: '/analytics?from=2026-07-10&to=2026-07-14&bucket=day',
     })
 
-    expect((await screen.findAllByText(/Cumulative: 7 chapters/i)).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(/7 in total/i)).length).toBeGreaterThan(0)
+    expect(
+      screen.getByRole('img', { name: /Reading calendar: progress on 1 of 4 days/ }),
+    ).toBeInTheDocument()
 
     const readingActivitySection = screen
       .getByRole('heading', { name: 'Reading activity' })
@@ -1091,12 +1071,10 @@ describe('AnalyticsPage', () => {
     expect(readingActivitySection).not.toBeNull()
     expect(libraryGrowthSection).not.toBeNull()
 
+    // The latest-reading list skips periods without progress.
     const readingText = readingActivitySection!.textContent
-    expect(readingText).toContain('Jul 13, 2026')
-    expect(readingText).toContain('July 10\u201311, 2026')
-    expect(readingText.indexOf('Jul 13, 2026')).toBeLessThan(
-      readingText.indexOf('July 10\u201311, 2026'),
-    )
+    expect(readingText).toContain('Jul 12, 2026')
+    expect(readingText).not.toContain('July 10\u201311, 2026')
 
     const growthText = libraryGrowthSection!.textContent
     expect(growthText).toContain('Jul 13, 2026')
@@ -1145,17 +1123,13 @@ describe('AnalyticsPage', () => {
 
     renderWithProviders(<AnalyticsPage />, { route: '/analytics?from=2026-01-01&to=2026-02-01' })
 
-    expect(await screen.findByText(/Cleanup queue/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Complete everywhere: Author/)).toBeInTheDocument()
     expect(screen.getByText(/Usable covers are counted only/i)).toBeInTheDocument()
-    expect(
-      screen.getByTitle(
-        'Open books filtered by created:>=2026-01-01 created:<2026-02-01 cover:none',
-      ),
-    ).toBeInTheDocument()
+    expect(screen.getByTitle('Open books filtered by cover:none')).toBeInTheDocument()
     expect(screen.getByText(/Unknown status bucket: 2 books/i)).toBeInTheDocument()
     expect(screen.getByText(/Very Long Source Name/i)).toBeInTheDocument()
-    const authorCompleteness = screen.getByLabelText('Author completeness 100%')
-    expect(authorCompleteness.firstElementChild).toHaveStyle({ width: '100%' })
+    const description = screen.getByRole('img', { name: 'Description missing for 100% of books' })
+    expect(description.firstElementChild).toHaveStyle({ width: '100%' })
 
     const analyticsLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href]'))
     expect(analyticsLinks.some((link) => link.href.includes('description%3Anone'))).toBe(true)
@@ -1194,7 +1168,7 @@ describe('AnalyticsPage', () => {
     )
 
     renderWithProviders(<AnalyticsPage />, { route: '/analytics?from=2026-01-01&to=2026-02-01' })
-    await screen.findByText(/Cleanup queue/i)
+    await screen.findAllByText(/Fix 10/)
 
     for (const query of [
       'author:none',
@@ -1208,7 +1182,7 @@ describe('AnalyticsPage', () => {
       'alternateTitle:none',
       'cover:none',
     ]) {
-      const scopedQuery = `created:>=2026-01-01 created:<2026-02-01 ${query}`
+      const scopedQuery = query
       const expectedHref = `/books?query=${encodeURIComponent(scopedQuery)}`
       expect(
         screen

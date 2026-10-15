@@ -5,15 +5,19 @@ using Domain.Models;
 public sealed class BookAnalyticsQueryService(ApplicationDbContext context, BookSearchCriteriaApplier criteriaApplier)
     : IBookAnalyticsQueryService
 {
+    private const string ReadingStatusName = "Reading";
+
     public async Task<BookAnalyticsSnapshot> GetAnalyticsAsync(
         Guid ownerId,
         BookSearchCriteria criteria,
         BookAnalyticsScopeSnapshot scope,
         CancellationToken cancellationToken)
     {
-        var query = ApplyScope(
-            ApplyCriteria(context.Books.AsNoTracking().Where(book => book.OwnerId == ownerId), criteria),
-            scope);
+        // The snapshot covers every matching book; the date range only scopes the time series
+        // (reading activity by progress date, library growth by created date).
+        var query = ApplyCriteria(
+            context.Books.AsNoTracking().Where(book => book.OwnerId == ownerId),
+            criteria);
         var overview = await GetOverviewAsync(query, cancellationToken);
         var composition =
             await GetCompositionAsync(query, overview.TotalBooks, cancellationToken);
@@ -42,22 +46,6 @@ public sealed class BookAnalyticsQueryService(ApplicationDbContext context, Book
     private IQueryable<Book> ApplyCriteria(IQueryable<Book> query, BookSearchCriteria criteria)
     {
         return criteria.HasFilters ? criteriaApplier.Apply(query, criteria) : query;
-    }
-
-    private IQueryable<Book> ApplyScope(IQueryable<Book> query, BookAnalyticsScopeSnapshot scope)
-    {
-        var from = ToUtcDateTimeOffset(scope.From);
-        var to = ToUtcDateTimeOffset(scope.To);
-        if (!IsSqliteProvider())
-        {
-            return query.Where(book => book.Created >= from && book.Created < to);
-        }
-
-        var fromText = ToSqliteDateTimeOffsetString(from);
-        var toText = ToSqliteDateTimeOffsetString(to);
-        return query.Where(book =>
-            string.Compare(book.Created.ToString(), fromText) >= 0 &&
-            string.Compare(book.Created.ToString(), toText) < 0);
     }
 
     private static async Task<BookAnalyticsOverviewSnapshot> GetOverviewAsync(
@@ -273,7 +261,13 @@ public sealed class BookAnalyticsQueryService(ApplicationDbContext context, Book
         // so keep the database work to the filtered scalar projection and compute
         // per-type medians from chapter values only.
         var rows = await query
-            .Select(book => new { Type = book.ContentType.Name, book.CurrentChapterNumber })
+            .Select(book => new
+            {
+                Type = book.ContentType.Name,
+                book.CurrentChapterNumber,
+                book.TotalChapters,
+                Status = book.Status.Name
+            })
             .OrderBy(row => row.Type)
             .ToListAsync(cancellationToken);
 
@@ -287,13 +281,21 @@ public sealed class BookAnalyticsQueryService(ApplicationDbContext context, Book
                     .OrderBy(value => value)
                     .ToList();
                 var sum = knownChapters.Sum();
+                // Books in progress and how much of them is left, for the finish forecast.
+                var reading = group
+                    .Where(row => string.Equals(row.Status, ReadingStatusName, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                var readingWithTotal = reading.Where(row => row.TotalChapters != null).ToList();
 
                 return new BookAnalyticsTypeVolumeSnapshot(
                     group.Key,
                     group.Count(),
                     sum,
                     knownChapters.Count == 0 ? null : sum / knownChapters.Count,
-                    CalculateMedian(knownChapters));
+                    CalculateMedian(knownChapters),
+                    reading.Count,
+                    readingWithTotal.Count,
+                    readingWithTotal.Sum(row => Math.Max(0m, row.TotalChapters!.Value - (row.CurrentChapterNumber ?? 0m))));
             })
             .OrderByDescending(item => item.BookCount)
             .ThenBy(item => item.Type)
@@ -594,11 +596,6 @@ public sealed class BookAnalyticsQueryService(ApplicationDbContext context, Book
     private static DateTimeOffset ToUtcDateTimeOffset(DateOnly value)
     {
         return new DateTimeOffset(value.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
-    }
-
-    private static string ToSqliteDateTimeOffsetString(DateTimeOffset value)
-    {
-        return value.ToString("yyyy-MM-dd HH:mm:ss.FFFFFFFzzz", CultureInfo.InvariantCulture);
     }
 
     private bool IsSqliteProvider()

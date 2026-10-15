@@ -160,7 +160,7 @@ export const invalidImportSession = {
   }),
 }
 
-const analytics = {
+export const analytics = {
   generatedAt: '2026-07-15T12:00:00Z',
   scope: {
     query: null,

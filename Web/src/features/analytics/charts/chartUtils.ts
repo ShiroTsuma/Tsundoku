@@ -107,17 +107,9 @@ export function useBooksDrilldown() {
   }
 }
 
+/** Drilldowns open the matching books; the date range only scopes the time series, so it is not added. */
 export function mergeAnalyticsQuery(searchParams: URLSearchParams, drilldownQuery: string) {
-  const from = searchParams.get('from')?.trim()
-  const to = searchParams.get('to')?.trim()
-  return [
-    searchParams.get('query')?.trim(),
-    from ? `created:>=${from}` : '',
-    to ? `created:<${to}` : '',
-    drilldownQuery.trim(),
-  ]
-    .filter(Boolean)
-    .join(' ')
+  return [searchParams.get('query')?.trim(), drilldownQuery.trim()].filter(Boolean).join(' ')
 }
 
 export function getActiveChartLabel(event: unknown) {

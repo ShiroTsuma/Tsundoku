@@ -489,7 +489,7 @@ public class RepositoryTests
     }
 
     [Fact]
-    public async Task BookAnalytics_ShouldScopeOverviewByOwnerAndQuery()
+    public async Task BookAnalytics_ShouldScopeOverviewByOwnerAndQueryButNotByDateRange()
     {
         using var database = new SqliteTestDatabase();
         await using var context = database.CreateContext();
@@ -521,11 +521,12 @@ public class RepositoryTests
             AnalyticsScope("title:\"Analytics Match\""),
             CancellationToken.None);
 
-        Assert.Equal(1, result.Overview.TotalBooks);
-        Assert.Equal(1, result.Overview.RatedBooks);
+        // The book added before the range still counts: the range only scopes activity and growth.
+        Assert.Equal(2, result.Overview.TotalBooks);
+        Assert.Equal(2, result.Overview.RatedBooks);
         Assert.Equal(0, result.Overview.UnratedBooks);
-        Assert.Equal(8, result.Overview.AverageRating);
-        Assert.Equal(10, result.Overview.CurrentChapters);
+        Assert.Equal(9, result.Overview.AverageRating);
+        Assert.Equal(10 + (outOfRangeMatch.CurrentChapterNumber ?? 0), result.Overview.CurrentChapters);
     }
 
     [Fact]
@@ -892,6 +893,40 @@ public class RepositoryTests
     }
 
     [Fact]
+    public async Task BookAnalytics_ShouldCountChaptersLeftInReadingBooksWithKnownTotals()
+    {
+        using var database = new SqliteTestDatabase();
+        await using var context = database.CreateContext();
+        var halfway = TestData.Book(database.UserId, "Forecast Halfway");
+        halfway.CurrentChapterNumber = 40m;
+        halfway.TotalChapters = 100m;
+        var notStarted = TestData.Book(database.UserId, "Forecast Not Started");
+        notStarted.CurrentChapterNumber = null;
+        notStarted.TotalChapters = 20m;
+        var ahead = TestData.Book(database.UserId, "Forecast Ahead Of Total");
+        ahead.CurrentChapterNumber = 30m;
+        ahead.TotalChapters = 25m;
+        var ongoing = TestData.Book(database.UserId, "Forecast Unknown Total");
+        ongoing.CurrentChapterNumber = 10m;
+        var completed = TestData.Book(database.UserId, "Forecast Completed");
+        completed.StatusId = Guid.Parse("20000000-0000-0000-0000-000000000002");
+        completed.CurrentChapterNumber = 5m;
+        completed.TotalChapters = 50m;
+        context.Books.AddRange(halfway, notStarted, ahead, ongoing, completed);
+        await context.SaveChangesAsync();
+        var service = CreateAnalyticsQueryService(context);
+
+        var result = await service.GetAnalyticsAsync(database.UserId,
+            BookSearchQueryParser.Parse("title:Forecast"), AnalyticsScope("title:Forecast"), CancellationToken.None);
+
+        var novel = Assert.Single(result.Progress.TypeVolumes);
+        Assert.Equal(4, novel.ReadingBooks);
+        Assert.Equal(3, novel.ReadingBooksWithKnownTotal);
+        // 60 left + 20 left + 0 (already past the total); the completed book does not count.
+        Assert.Equal(80m, novel.RemainingChapters);
+    }
+
+    [Fact]
     public async Task BookAnalytics_ShouldAggregateLibraryGrowthByCreatedDateAndType()
     {
         using var database = new SqliteTestDatabase();
@@ -930,13 +965,13 @@ public class RepositoryTests
                 new DateOnly(2026, 1, 5), "day"),
             CancellationToken.None);
 
-        Assert.Equal(3, day.Overview.TotalBooks);
-        Assert.Equal(0, day.LibraryGrowth.OpeningCount);
+        Assert.Equal(5, day.Overview.TotalBooks);
+        Assert.Equal(2, day.LibraryGrowth.OpeningCount);
         Assert.Equal(4, day.LibraryGrowth.Points.Count);
-        AssertGrowthPoint(day, new DateOnly(2026, 1, 1), 2, 2, ("Manga", 1), ("Novel", 1));
-        AssertGrowthPoint(day, new DateOnly(2026, 1, 2), 0, 2);
-        AssertGrowthPoint(day, new DateOnly(2026, 1, 3), 1, 3, ("Manga", 1));
-        AssertGrowthPoint(day, new DateOnly(2026, 1, 4), 0, 3);
+        AssertGrowthPoint(day, new DateOnly(2026, 1, 1), 2, 4, ("Manga", 1), ("Novel", 1));
+        AssertGrowthPoint(day, new DateOnly(2026, 1, 2), 0, 4);
+        AssertGrowthPoint(day, new DateOnly(2026, 1, 3), 1, 5, ("Manga", 1));
+        AssertGrowthPoint(day, new DateOnly(2026, 1, 4), 0, 5);
 
         var month = await service.GetAnalyticsAsync(
             database.UserId,
@@ -945,9 +980,9 @@ public class RepositoryTests
                 new DateOnly(2026, 2, 1), "month"),
             CancellationToken.None);
 
-        Assert.Equal(0, month.LibraryGrowth.OpeningCount);
-        AssertGrowthPoint(month, new DateOnly(2025, 12, 31), 1, 1, ("Manhwa", 1));
-        AssertGrowthPoint(month, new DateOnly(2026, 1, 1), 3, 4, ("Manga", 2), ("Novel", 1));
+        Assert.Equal(1, month.LibraryGrowth.OpeningCount);
+        AssertGrowthPoint(month, new DateOnly(2025, 12, 31), 1, 2, ("Manhwa", 1));
+        AssertGrowthPoint(month, new DateOnly(2026, 1, 1), 3, 5, ("Manga", 2), ("Novel", 1));
 
         static void AssertGrowthPoint(
             BookAnalyticsSnapshot snapshot,
@@ -1157,7 +1192,11 @@ public class RepositoryTests
         Assert.NotEmpty(result.Composition.Genres);
         Assert.NotEmpty(result.Composition.Tags);
         Assert.NotEmpty(result.Activity.Points);
-        Assert.Equal(result.Overview.TotalBooks, result.LibraryGrowth.Points.Last().CumulativeBooks);
+        // Seeded books are created "now", so compare with the books that exist before the range end.
+        var rangeEnd = new DateTimeOffset(2026, 8, 1, 0, 0, 0, TimeSpan.Zero);
+        var createdBeforeRangeEnd = (await context.Books.Select(book => book.Created).ToListAsync())
+            .Count(created => created < rangeEnd);
+        Assert.Equal(createdBeforeRangeEnd, result.LibraryGrowth.Points.Last().CumulativeBooks);
         _output.WriteLine($"Analytics performance artifact: {artifact}");
     }
 

@@ -86,7 +86,10 @@ public sealed record BookAnalyticsTypeVolumeSnapshot(
     int BookCount,
     decimal CurrentChapters,
     decimal? AverageCurrentChapter,
-    decimal? MedianCurrentChapter);
+    decimal? MedianCurrentChapter,
+    int ReadingBooks = 0,
+    int ReadingBooksWithKnownTotal = 0,
+    decimal RemainingChapters = 0m);
 
 public sealed record BookAnalyticsActivitySnapshot(
     decimal BaselineChapters,

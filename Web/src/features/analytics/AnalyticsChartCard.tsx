@@ -1,5 +1,6 @@
 import { useId, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/Button'
+import { cn } from '@/lib/utils'
 
 type AnalyticsChartCardProps = {
   title: string
@@ -13,6 +14,7 @@ type AnalyticsChartCardProps = {
   columns: string[]
   rows: ReactNode[][]
   dataTableEnabled?: boolean
+  className?: string
 }
 
 export function AnalyticsChartCard({
@@ -27,6 +29,7 @@ export function AnalyticsChartCard({
   columns,
   rows,
   dataTableEnabled = true,
+  className,
 }: AnalyticsChartCardProps) {
   const [showData, setShowData] = useState(false)
   const reactId = useId()
@@ -38,7 +41,10 @@ export function AnalyticsChartCard({
     <section
       aria-describedby={descriptionId}
       aria-labelledby={titleId}
-      className="flex min-w-0 flex-col gap-4 rounded-panel border border-line bg-surface p-5"
+      className={cn(
+        'flex min-w-0 flex-col gap-4 rounded-panel border border-line bg-surface p-5',
+        className,
+      )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">

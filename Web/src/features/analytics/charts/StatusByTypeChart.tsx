@@ -1,3 +1,4 @@
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { BookAnalyticsDto } from '@/api/types'
 import {
@@ -29,6 +30,7 @@ type StatusByTypeTooltipProps = {
 }
 
 export function StatusByTypeChart({ data }: StatusByTypeChartProps) {
+  const animate = !useMediaQuery('(prefers-reduced-motion: reduce)')
   const items = data?.composition.statusByType ?? []
   const openBooks = useBooksDrilldown()
   const statuses = Array.from(
@@ -89,6 +91,7 @@ export function StatusByTypeChart({ data }: StatusByTypeChartProps) {
             <Tooltip {...analyticsTooltipProps} content={<StatusByTypeTooltip />} />
             {statuses.map((status) => (
               <Bar
+                isAnimationActive={animate}
                 className="analytics-drilldown-shape"
                 dataKey={status}
                 barSize={24}

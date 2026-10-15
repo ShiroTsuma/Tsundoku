@@ -80,6 +80,11 @@
   --color-chart-seq-low: #0d366b;
   --color-chart-seq-mid: #184f95;
   --color-chart-seq-high: #2362b3;
+  /* Reading calendar levels (ordinal, validated: monotone, darkest step 2.1:1 on the surface). */
+  --color-chart-cal-1: #184f95;
+  --color-chart-cal-2: #256abf;
+  --color-chart-cal-3: #3987e5;
+  --color-chart-cal-4: #6da7ec;
 
   /* Book type: missing-cover placeholders */
   --color-type-novel: #1e2a36;

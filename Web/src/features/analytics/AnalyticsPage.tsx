@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { addDays, format, isSameDay, parseISO, subMonths, subYears } from 'date-fns'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { DayPicker, type DateRange } from 'react-day-picker'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '@/api/client'
@@ -13,17 +13,16 @@ import { cn } from '@/lib/utils'
 import { formatAverageRating, formatChapterCount } from '@/features/books/bookFormatters'
 import { BookSearchInput } from '@/features/books/BookSearchInput'
 import { AnalyticsChartCard } from './AnalyticsChartCard'
-import { ChapterVolumeChart } from './charts/ChapterVolumeChart'
-import { chapterVolumeRows } from './charts/chapterVolumeData'
-import { formatCount } from './charts/chartUtils'
+import { ByTypeTable } from './charts/ByTypeTable'
+import { dateRangeForBucket, formatCount, formatDateRange } from './charts/chartUtils'
 import { CoverAvailabilityChart } from './charts/CoverAvailabilityChart'
 import { coverAvailabilityRows } from './charts/coverAvailabilityData'
-import { EstimatedReadingTimeChart } from './charts/EstimatedReadingTimeChart'
-import { estimatedReadingTimeRows } from './charts/estimatedReadingTimeData'
+import { getMinutesByType } from './charts/estimatedReadingTimeData'
 import { LibraryGrowthChart } from './charts/LibraryGrowthChart'
 import { libraryGrowthRows } from './charts/libraryGrowthData'
 import { LinkSourcesChart } from './charts/LinkSourcesChart'
 import { linkSourceRows } from './charts/linkSourcesData'
+import { PaceForecast } from './charts/PaceForecast'
 import { MetadataCompletenessChart } from './charts/MetadataCompletenessChart'
 import { metadataCompletenessRows } from './charts/metadataCompletenessData'
 import { PriorityByStatusChart } from './charts/PriorityByStatusChart'
@@ -37,11 +36,18 @@ import { statusByTypeRows } from './charts/statusByTypeData'
 import { TopRelationsChart } from './charts/TopRelationsChart'
 import { relationRows } from './charts/topRelationsData'
 import { extractAnalyticsDateFilters } from './dateQueryFilters'
+import { bucketNoun, getRangeSummary } from './statsSummary'
 
 type AnalyticsBucket = 'day' | 'week' | 'month'
 
 const analyticsBuckets: AnalyticsBucket[] = ['day', 'week', 'month']
 const bucketLabels: Record<AnalyticsBucket, string> = { day: 'Day', week: 'Week', month: 'Month' }
+const statsSections = [
+  { id: 'activity', title: 'Activity' },
+  { id: 'library', title: 'Library' },
+  { id: 'backlog', title: 'Backlog' },
+  { id: 'housekeeping', title: 'Housekeeping' },
+] as const
 const analyticsRangePresets = [
   { label: 'Beginning', getFrom: (_today: Date) => null },
   { label: 'Last 2 years', getFrom: (today: Date) => subYears(today, 2) },
@@ -112,7 +118,7 @@ export function AnalyticsPage() {
             Stats
           </h1>
           <p className="m-0 mt-2 text-[15px] text-ink-2">
-            Library metrics for the books that match the query, added in the date range.
+            Your library as it is today, and what you read and added in the date range.
           </p>
         </div>
         {analyticsQuery.isFetching && data ? (
@@ -179,36 +185,92 @@ export function AnalyticsPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <MetricCard
-          label="Total books"
-          loading={isInitialLoading}
-          value={data ? formatCount(data.overview.totalBooks) : '-'}
-        />
-        <MetricCard
-          label="Rated"
-          loading={isInitialLoading}
-          value={data ? formatCount(data.overview.ratedBooks) : '-'}
-        />
-        <MetricCard
-          label="Unrated"
-          loading={isInitialLoading}
-          value={data ? formatCount(data.overview.unratedBooks) : '-'}
-        />
-        <MetricCard
-          label="Average rating"
-          loading={isInitialLoading}
-          value={data ? formatAverageRating(data.overview.averageRating) : '-'}
-        />
-        <MetricCard
-          label="Current chapters"
-          loading={isInitialLoading}
-          value={data ? formatChapterCount(data.overview.currentChapters) : '-'}
-        />
-      </div>
+      <nav aria-label="Stats sections" className="-mt-1 flex flex-wrap gap-1.5">
+        {statsSections.map((section) => (
+          <a
+            className="rounded-pill border border-line px-3 py-1 text-[13px] font-medium text-ink-2 hover:border-line-strong hover:text-ink"
+            href={`#${section.id}`}
+            key={section.id}
+          >
+            {section.title}
+          </a>
+        ))}
+      </nav>
 
-      <div className="grid min-w-0 items-start gap-5 xl:grid-cols-2">
-        <div className="grid min-w-0 gap-5" data-testid="analytics-left-column">
+      <RangeHighlights data={data} loading={isInitialLoading} />
+
+      <StatsSection
+        description="What you read and added in the date range, for the books that match the query."
+        id="activity"
+        title="Activity"
+      >
+        <AnalyticsChartCard
+          columns={[
+            'Date',
+            'Daily chapters',
+            'Cumulative chapters',
+            'Progress events',
+            'Books touched',
+          ]}
+          description="How much you read, when in the week, and your latest sessions."
+          emptyMessage="No reading activity in this time range."
+          isEmpty={!isInitialLoading && !data?.activity.points.length}
+          isError={analyticsQuery.isError && !!data}
+          isLoading={isInitialLoading}
+          rows={readingActivityRows(data)}
+          title="Reading activity"
+          onRetry={retryAnalytics}
+        >
+          <ReadingActivityChart data={data} />
+        </AnalyticsChartCard>
+        <AnalyticsChartCard
+          columns={['Date', 'Books added', 'Cumulative books', 'By type']}
+          description="See when books were added and which types caused growth."
+          emptyMessage="No library growth points in this time range."
+          isEmpty={!isInitialLoading && !data?.libraryGrowth.points.length}
+          isError={analyticsQuery.isError && !!data}
+          isLoading={isInitialLoading}
+          rows={libraryGrowthRows(data)}
+          title="Library growth"
+          onRetry={retryAnalytics}
+        >
+          <LibraryGrowthChart data={data} />
+        </AnalyticsChartCard>
+      </StatsSection>
+
+      <StatsSection
+        description="Every book that matches the query, as it is today."
+        id="library"
+        title="Library"
+      >
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+          <MetricCard
+            label="Total books"
+            loading={isInitialLoading}
+            value={data ? formatCount(data.overview.totalBooks) : '-'}
+          />
+          <MetricCard
+            label="Rated"
+            loading={isInitialLoading}
+            value={data ? formatCount(data.overview.ratedBooks) : '-'}
+          />
+          <MetricCard
+            label="Unrated"
+            loading={isInitialLoading}
+            value={data ? formatCount(data.overview.unratedBooks) : '-'}
+          />
+          <MetricCard
+            label="Average rating"
+            loading={isInitialLoading}
+            value={data ? formatAverageRating(data.overview.averageRating) : '-'}
+          />
+          <MetricCard
+            label="Current chapters"
+            loading={isInitialLoading}
+            value={data ? formatChapterCount(data.overview.currentChapters) : '-'}
+          />
+        </div>
+        <div className="grid min-w-0 gap-4 xl:grid-cols-2">
           <AnalyticsChartCard
             columns={['Type', 'Status', 'Books', 'Share of type']}
             dataTableEnabled={false}
@@ -222,6 +284,20 @@ export function AnalyticsPage() {
             onRetry={retryAnalytics}
           >
             <StatusByTypeChart data={data} />
+          </AnalyticsChartCard>
+          <AnalyticsChartCard
+            columns={['Rating', 'Books']}
+            dataTableEnabled={false}
+            description="See the rating spread and jump directly to unrated books."
+            emptyMessage="No rating data for this analytics scope."
+            isEmpty={!isInitialLoading && !data?.overview.totalBooks}
+            isError={analyticsQuery.isError && !!data}
+            isLoading={isInitialLoading}
+            rows={ratingRows(data)}
+            title="Rating distribution"
+            onRetry={retryAnalytics}
+          >
+            <RatingDistributionChart data={data} />
           </AnalyticsChartCard>
           <AnalyticsChartCard
             columns={['Genre', 'Books', 'Share of books']}
@@ -255,92 +331,19 @@ export function AnalyticsPage() {
             <TopRelationsChart field="tag" items={data?.composition.tags ?? []} title="Tags" />
           </AnalyticsChartCard>
           <AnalyticsChartCard
-            columns={['Status', 'Priority', 'Books', 'Share of status']}
+            className="xl:col-span-2"
+            columns={[]}
             dataTableEnabled={false}
-            description="Spot statuses where books are still unprioritized or clustered in one priority."
-            emptyMessage="No priority data for this analytics scope."
-            isEmpty={!isInitialLoading && !data?.planning.prioritiesByStatus.length}
-            isError={analyticsQuery.isError && !!data}
-            isLoading={isInitialLoading}
-            rows={priorityRows(data)}
-            title="Priority by status"
-            onRetry={retryAnalytics}
-          >
-            <PriorityByStatusChart data={data} />
-          </AnalyticsChartCard>
-          <AnalyticsChartCard
-            columns={['Source', 'Links', 'Books', 'Coverage']}
-            description="Check which external sources are represented in matching books."
-            emptyMessage="0 link sources found for this scope."
-            isEmpty={!isInitialLoading && !data?.quality.linkSources.length}
-            isError={analyticsQuery.isError && !!data}
-            isLoading={isInitialLoading}
-            rows={linkSourceRows(data)}
-            title="Link sources"
-            onRetry={retryAnalytics}
-          >
-            <LinkSourcesChart data={data} />
-          </AnalyticsChartCard>
-          <AnalyticsChartCard
-            columns={['Kind', 'Bucket', 'Books', 'Coverage']}
-            description="Review cover fetch state and provider coverage without opening each book."
-            emptyMessage="0 cover records reported for this scope."
-            isEmpty={
-              !isInitialLoading &&
-              !(
-                (data?.quality.coverStatuses.length ?? 0) > 0 ||
-                (data?.quality.coverSources.length ?? 0) > 0
-              )
-            }
-            isError={analyticsQuery.isError && !!data}
-            isLoading={isInitialLoading}
-            rows={coverAvailabilityRows(data)}
-            title="Cover availability"
-            onRetry={retryAnalytics}
-          >
-            <CoverAvailabilityChart data={data} />
-          </AnalyticsChartCard>
-        </div>
-        <div className="grid min-w-0 gap-5" data-testid="analytics-right-column">
-          <AnalyticsChartCard
-            columns={['Rating', 'Books']}
-            dataTableEnabled={false}
-            description="See the rating spread and jump directly to unrated books."
-            emptyMessage="No rating data for this analytics scope."
-            isEmpty={!isInitialLoading && !data?.overview.totalBooks}
-            isError={analyticsQuery.isError && !!data}
-            isLoading={isInitialLoading}
-            rows={ratingRows(data)}
-            title="Rating distribution"
-            onRetry={retryAnalytics}
-          >
-            <RatingDistributionChart data={data} />
-          </AnalyticsChartCard>
-          <AnalyticsChartCard
-            columns={['Type', 'Books', 'Current chapters', 'Average current', 'Median current']}
-            description="Compare where your chapter backlog sits by content type."
-            emptyMessage="No chapter volume data for this analytics scope."
+            description="Books, chapters read and reading time per content type. Minutes per chapter are your own estimates."
+            emptyMessage="No chapter data for this analytics scope."
             isEmpty={!isInitialLoading && !data?.progress.typeVolumes.length}
             isError={analyticsQuery.isError && !!data}
             isLoading={isInitialLoading}
-            rows={chapterVolumeRows(data)}
-            title="Chapter volume by type"
+            rows={[]}
+            title="By type"
             onRetry={retryAnalytics}
           >
-            <ChapterVolumeChart data={data} />
-          </AnalyticsChartCard>
-          <AnalyticsChartCard
-            columns={['Type', 'Current chapters', 'Minutes / chapter', 'Estimated time']}
-            description="Estimate reading effort from chapter counts and your minutes-per-chapter settings."
-            emptyMessage="No chapter data to estimate reading time."
-            isEmpty={!isInitialLoading && !data?.progress.typeVolumes.length}
-            isError={analyticsQuery.isError && !!data}
-            isLoading={isInitialLoading}
-            rows={estimatedReadingTimeRows(data, readingTimeSettings)}
-            title="Estimated reading time"
-            onRetry={retryAnalytics}
-          >
-            <EstimatedReadingTimeChart
+            <ByTypeTable
               data={data}
               isSaving={readingTimeSettingsMutation.isPending}
               settings={readingTimeSettings}
@@ -354,55 +357,200 @@ export function AnalyticsPage() {
               }
             />
           </AnalyticsChartCard>
+        </div>
+      </StatsSection>
+
+      <StatsSection
+        description="What you are reading now, when it would be done, and what is planned next."
+        id="backlog"
+        title="Backlog"
+      >
+        <div className="grid min-w-0 gap-4 xl:grid-cols-2">
           <AnalyticsChartCard
-            columns={[
-              'Date',
-              'Daily chapters',
-              'Cumulative chapters',
-              'Progress events',
-              'Books touched',
-            ]}
-            description="Compare daily chapter progress with the cumulative reading total in the selected range."
-            emptyMessage="No reading activity in this time range."
-            isEmpty={!isInitialLoading && !data?.activity.points.length}
+            columns={[]}
+            dataTableEnabled={false}
+            description="Your pace in the date range applied to the chapters left in books with status Reading."
+            emptyMessage="No books with status Reading match the query."
             isError={analyticsQuery.isError && !!data}
             isLoading={isInitialLoading}
-            rows={readingActivityRows(data)}
-            title="Reading activity"
+            rows={[]}
+            title="Pace & forecast"
             onRetry={retryAnalytics}
           >
-            <ReadingActivityChart data={data} />
+            <PaceForecast
+              data={data}
+              minutesPerType={getMinutesByType(
+                data?.progress.typeVolumes ?? [],
+                readingTimeSettings,
+              )}
+            />
           </AnalyticsChartCard>
           <AnalyticsChartCard
-            columns={['Date', 'Books added', 'Cumulative books', 'By type']}
-            description="See when books were added and which types caused growth."
-            emptyMessage="No library growth points in this time range."
-            isEmpty={!isInitialLoading && !data?.libraryGrowth.points.length}
+            columns={['Status', 'Priority', 'Books', 'Share of status']}
+            dataTableEnabled={false}
+            description="Spot statuses where books are still unprioritized or clustered in one priority."
+            emptyMessage="No priority data for this analytics scope."
+            isEmpty={!isInitialLoading && !data?.planning.prioritiesByStatus.length}
             isError={analyticsQuery.isError && !!data}
             isLoading={isInitialLoading}
-            rows={libraryGrowthRows(data)}
-            title="Library growth"
+            rows={priorityRows(data)}
+            title="Priority by status"
             onRetry={retryAnalytics}
           >
-            <LibraryGrowthChart data={data} />
+            <PriorityByStatusChart data={data} />
           </AnalyticsChartCard>
+        </div>
+      </StatsSection>
+
+      <StatsSection
+        description="Missing data worth filling in. Each count opens the books it applies to."
+        id="housekeeping"
+        title="Housekeeping"
+      >
+        <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <AnalyticsChartCard
             columns={['Field', 'Complete books', 'Coverage', 'Missing books']}
             dataTableEnabled={false}
-            description="Find fields that are missing most often in the current scope."
+            description="Fields that are missing most often, worst first. Fix opens the books that lack it."
             emptyMessage="0 metadata fields reported for this scope."
             isEmpty={!isInitialLoading && !data?.quality.fieldCompleteness.length}
             isError={analyticsQuery.isError && !!data}
             isLoading={isInitialLoading}
             rows={metadataCompletenessRows(data)}
-            title="Metadata completeness"
+            title="Data gaps"
             onRetry={retryAnalytics}
           >
             <MetadataCompletenessChart data={data} />
           </AnalyticsChartCard>
+          <div className="flex min-w-0 flex-col gap-4">
+            <AnalyticsChartCard
+              columns={['Kind', 'Bucket', 'Books', 'Coverage']}
+              description="Review cover fetch state and provider coverage without opening each book."
+              emptyMessage="0 cover records reported for this scope."
+              isEmpty={
+                !isInitialLoading &&
+                !(
+                  (data?.quality.coverStatuses.length ?? 0) > 0 ||
+                  (data?.quality.coverSources.length ?? 0) > 0
+                )
+              }
+              isError={analyticsQuery.isError && !!data}
+              isLoading={isInitialLoading}
+              rows={coverAvailabilityRows(data)}
+              title="Cover availability"
+              onRetry={retryAnalytics}
+            >
+              <CoverAvailabilityChart data={data} />
+            </AnalyticsChartCard>
+            <AnalyticsChartCard
+              columns={['Source', 'Links', 'Books', 'Coverage']}
+              description="Check which external sources are represented in matching books."
+              emptyMessage="0 link sources found for this scope."
+              isEmpty={!isInitialLoading && !data?.quality.linkSources.length}
+              isError={analyticsQuery.isError && !!data}
+              isLoading={isInitialLoading}
+              rows={linkSourceRows(data)}
+              title="Link sources"
+              onRetry={retryAnalytics}
+            >
+              <LinkSourcesChart data={data} />
+            </AnalyticsChartCard>
+          </div>
         </div>
-      </div>
+      </StatsSection>
     </div>
+  )
+}
+
+function StatsSection({
+  children,
+  description,
+  id,
+  title,
+}: {
+  children: ReactNode
+  description: string
+  id: string
+  title: string
+}) {
+  return (
+    <section
+      aria-labelledby={`${id}-title`}
+      className="flex scroll-mt-20 flex-col gap-4 border-t border-line pt-6"
+      id={id}
+    >
+      <div>
+        <h2 className="m-0 font-display text-2xl font-bold" id={`${id}-title`}>
+          {title}
+        </h2>
+        <p className="m-0 mt-1 text-ink-2">{description}</p>
+      </div>
+      {children}
+    </section>
+  )
+}
+
+/** Headline numbers for the selected range, above the sections. */
+function RangeHighlights({
+  data,
+  loading,
+}: {
+  data: BookAnalyticsDto | undefined
+  loading: boolean
+}) {
+  const summary = getRangeSummary(data)
+  const best = summary.best
+  const bestPeriod = best ? dateRangeForBucket(best.date, summary.bucket) : null
+  const items = [
+    {
+      label: 'Chapters read',
+      value: formatCount(summary.chaptersRead),
+      hint: `${formatCount(summary.progressUpdates)} progress ${summary.progressUpdates === 1 ? 'update' : 'updates'}`,
+    },
+    {
+      label: `Active ${bucketNoun(summary.bucket, 2)}`,
+      value: formatCount(summary.activeBuckets),
+      hint: `of ${formatCount(summary.totalBuckets)} ${bucketNoun(summary.bucket, summary.totalBuckets)} in the range`,
+    },
+    summary.longestStreak !== null
+      ? {
+          label: 'Longest streak',
+          value: `${formatCount(summary.longestStreak)} ${bucketNoun('day', summary.longestStreak)}`,
+          hint: best ? `Best day: ${formatCount(best.chaptersAdvanced)} ch` : 'No reading yet',
+        }
+      : {
+          label: `Best ${bucketNoun(summary.bucket, 1)}`,
+          value: best ? `${formatCount(best.chaptersAdvanced)} ch` : '—',
+          hint: bestPeriod ? formatDateRange(bestPeriod.start, bestPeriod.end) : 'No reading yet',
+        },
+    {
+      label: 'Books added',
+      value: formatCount(summary.booksAdded),
+      hint: data ? `${formatCount(data.overview.totalBooks)} in the library now` : ' ',
+    },
+  ]
+
+  return (
+    <section
+      aria-label="This range"
+      className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line lg:grid-cols-4"
+    >
+      {items.map((item) => (
+        <div className="flex min-w-0 flex-col gap-1 bg-surface p-5" key={item.label}>
+          <div className="text-xs font-semibold tracking-[0.06em] text-ink-3 uppercase">
+            {item.label}
+          </div>
+          <div className="text-[32px] leading-tight font-semibold">
+            {loading ? (
+              <span className="inline-block h-9 w-20 animate-pulse rounded bg-raised motion-reduce:animate-none" />
+            ) : (
+              item.value
+            )}
+          </div>
+          <div className="truncate text-[13px] text-ink-3">{loading ? ' ' : item.hint}</div>
+        </div>
+      ))}
+    </section>
   )
 }
 
