@@ -169,3 +169,25 @@ Known follow-ups: the summary panel and the export and import menus still use th
 - [~] New: Pace & forecast (pace, chapters left in Reading books, days to finish, hours left)
 - [~] New: "This range" band (chapters read, active days, longest streak / best week, books added) and section jump links
 - [x] Screen-reader links for chart drilldowns
+
+## Discover (`/discover`) — restyled
+
+- [x] Search shared snapshots with the search syntax (title, author, description, genre, tag, type, chapters; `-` excludes), no remote suggestions; "Searching…" while loading; count of shared snapshots
+- [x] Error, loading and empty states (different text with and without a search)
+- [x] Card: cover (or placeholder), title with alternative titles tooltip, author with other names tooltip (or "Unknown author"), type, description. `[~]` an empty description is left out instead of a filler sentence; cards show the Library type placeholder when there is no cover; titles are headings, total chapters, genres and tags with descriptions on hover/focus (4 visible + more), snapshot date
+- [x] Files (N) opens the shared EPUB files dialog
+- [x] Add to library copies the snapshot, refreshes the library and opens the new book; "Adding…" while busy; your own listing shows "Your listing" and cannot be added
+
+## Manage (`/manage`) — restyled
+
+- [x] Sections Tags, Authors, Books (`[~]` underline tabs instead of a side rail); switching clears the search; debounced search per section; "Searching…"; count shown
+- [x] Tags: sorted list with description (or "No description yet"), Global badge; your tags editable (Edit button or double-click), global tags read-only
+- [x] Authors: sorted list with alternative names, Yours / Global, Public, alias count; your authors editable, global ones read-only
+- [x] Add tag / Add author
+- [x] Tag dialog: name (create only), description up to 500 characters with a counter; delete with confirmation note
+- [x] Author dialog: primary name (create only), alternative names one per line; make public / private with explanation; delete with confirmation note (public author note)
+- [x] Dialog closes on Esc and backdrop; focus goes to the first field
+- [x] Books: your books with listing state (Listed with snapshot date / Private), infinite scroll (50 per page)
+- [x] List publicly, Refresh snapshot, Unlist, with toasts; Discover and Manage refresh afterwards
+- [x] Listing needs description, author, genre, tag and a stored cover; the button is disabled. `[~]` the missing items are written in the row with an Edit book link (the tooltip stays)
+- [x] Hint that listing creates a public snapshot and imports never change

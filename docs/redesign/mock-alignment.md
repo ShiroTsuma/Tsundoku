@@ -133,3 +133,26 @@ No mock board. Built from the system the mocked screens use; where the dataviz g
 | Chart colours | Validated with the dataviz palette checker on the chart surface (#1b1c1d): single-series charts use one blue; status charts follow the app's status hues in a passing order (Reading blue, Completed green, On hold orange, Plan to read violet, Dropped red, Unknown neutral grey with its label); other categories use the validated categorical order. The old lavender/teal palette is gone |
 | Reading activity, Library growth | Split into two small charts on the same dates (per-bucket values, cumulative total) instead of one chart with two y-axes (dataviz rule: never dual axis) |
 | Axes and grid | Hairline grid in `line`, muted tick labels, tooltip in the popover style |
+
+## Discover
+
+No mock board; built from the Library and details system.
+
+| Element | Decision |
+| --- | --- |
+| Header | Serif "Discover" with a one-line explanation, like Library; no eyebrow |
+| Search | Library search field style, full width, with the snapshot count beside it |
+| Cards | Horizontal cards in an auto-fill grid: 2:3 cover on the left (the Library's type-coloured placeholder when there is none), title, author, type · chapters, description clamped to three lines (left out when empty instead of a filler sentence), genres and tags as compact chips, footer with snapshot date, Files and Add to library on one line |
+
+## Manage
+
+No mock board; built from the Library and form system.
+
+| Element | Decision |
+| --- | --- |
+| Header | Serif "Manage" with a one-line explanation |
+| Sections | Underline tabs like the status tabs (Tags, Authors, Books) instead of a side rail; the panel heading and eyebrow inside the panel are gone (the tab names the section) |
+| Toolbar | Search field, result count, primary Add button on one row |
+| Lists | One bordered list box like the library table; rows with name, secondary line, pills, row-size actions |
+| Books | Cover thumbnail, title, author · type, Listed / Private pill with the snapshot date. What is missing before a book can be listed is written in the row (not only in a tooltip), with a link to edit the book |
+| Dialogs | The shared Dialog (serif title, footer with actions); delete asks inline as before |

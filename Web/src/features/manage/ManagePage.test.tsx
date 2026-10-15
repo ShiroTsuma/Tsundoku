@@ -353,7 +353,7 @@ describe('ManagePage', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Books' }))
     const list = await screen.findByLabelText('Books')
     const titles = Array.from(
-      list.querySelectorAll('.manage-item__body strong'),
+      list.querySelectorAll('[data-manage-title]'),
       (title) => title.textContent,
     )
 

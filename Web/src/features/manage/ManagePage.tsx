@@ -1,17 +1,7 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  BookOpen,
-  EyeOff,
-  Globe2,
-  Plus,
-  RefreshCw,
-  Search,
-  Tags,
-  Trash2,
-  Users,
-  X,
-} from 'lucide-react'
-import { useEffect, useId, useRef, useState } from 'react'
+import { EyeOff, Globe2, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { api } from '@/api/client'
 import { HttpError } from '@/api/http'
@@ -22,14 +12,34 @@ import type {
   ManagedBookListingDto,
   TagDto,
 } from '@/api/types'
-import { buttonVariants, controlClass } from '@/components/app/designTokens'
-import { Badge, DialogPanel, PageHeader, Surface } from '@/components/app/DesignSystem'
-import { useBodyScrollLock } from '@/components/app/useBodyScrollLock'
+import { Button } from '@/components/ui/Button'
+import { Dialog } from '@/components/ui/Dialog'
+import { fieldClass, textareaClass } from '@/components/ui/fieldStyles'
+import { CoverThumb } from '@/features/books/BookListCells'
 import { cn } from '@/lib/utils'
 
 type ManageSection = 'tags' | 'authors' | 'books'
 type ManagedItem =
   { kind: 'tag'; value: TagDto | null } | { kind: 'author'; value: AuthorDto | null }
+
+const sections: { id: ManageSection; label: string }[] = [
+  { id: 'tags', label: 'Tags' },
+  { id: 'authors', label: 'Authors' },
+  { id: 'books', label: 'Books' },
+]
+
+const searchPlaceholders: Record<ManageSection, string> = {
+  tags: 'Search tags…',
+  authors: 'Search authors or aliases…',
+  books: 'Search your books, e.g. -tag:dropped…',
+}
+
+const hints: Record<ManageSection, string> = {
+  tags: 'Your own tags and their descriptions. Global tags are managed by the admin.',
+  authors: 'Author identities and their other names. Global identities are shared by everyone.',
+  books:
+    'Listing publishes a snapshot to Discover. Refresh it after editing your copy; books others already added never change.',
+}
 
 export function ManagePage() {
   const [section, setSection] = useState<ManageSection>('tags')
@@ -83,6 +93,8 @@ export function ManagePage() {
   )
   const itemCount =
     section === 'books' ? (libraryBookPages[0]?.total ?? 0) : (results.data?.length ?? 0)
+  const fetching = section === 'books' ? libraryBooks.isFetching : results.isFetching
+  const noun = section === 'tags' ? 'tag' : section === 'authors' ? 'author' : 'book'
 
   async function runBookAction(bookId: string, action: () => Promise<unknown>, success: string) {
     setBookActionId(bookId)
@@ -101,172 +113,131 @@ export function ManagePage() {
   }
 
   return (
-    <div className="manage-page">
-      <PageHeader
-        description="Keep saved metadata tidy and control which private books have a public snapshot."
-        eyebrow="Library controls"
-        title="Manage"
-      />
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
+      <div>
+        <h1 className="m-0 font-display text-[40px] leading-tight font-bold tracking-tight">
+          Manage
+        </h1>
+        <p className="m-0 mt-2 max-w-prose text-[15px] text-ink-2">
+          Keep your tags and authors tidy, and choose which books are shared in Discover.
+        </p>
+      </div>
 
-      <Surface className="manage-workspace">
-        <div className="manage-rail" role="tablist" aria-label="Manage section">
-          <button
-            aria-selected={section === 'tags'}
-            className={cn('manage-tab', section === 'tags' && 'manage-tab--active')}
-            role="tab"
-            type="button"
-            onClick={() => changeSection('tags')}
-          >
-            <Tags className="h-4 w-4" />
-            <span>Tags</span>
-          </button>
-          <button
-            aria-selected={section === 'authors'}
-            className={cn('manage-tab', section === 'authors' && 'manage-tab--active')}
-            role="tab"
-            type="button"
-            onClick={() => changeSection('authors')}
-          >
-            <Users className="h-4 w-4" />
-            <span>Authors</span>
-          </button>
-          <button
-            aria-selected={section === 'books'}
-            className={cn('manage-tab', section === 'books' && 'manage-tab--active')}
-            role="tab"
-            type="button"
-            onClick={() => changeSection('books')}
-          >
-            <BookOpen className="h-4 w-4" />
-            <span>Books</span>
-          </button>
-        </div>
+      <div aria-label="Manage section" className="flex gap-0.5 border-b border-line" role="tablist">
+        {sections.map((item) => {
+          const active = section === item.id
+          return (
+            <button
+              aria-controls="manage-panel"
+              aria-selected={active}
+              className={cn(
+                '-mb-px h-11 border-0 border-b-2 bg-transparent px-3.5 text-sm',
+                active
+                  ? 'border-accent font-semibold text-ink'
+                  : 'border-transparent font-medium text-ink-2 hover:text-ink',
+              )}
+              key={item.id}
+              role="tab"
+              type="button"
+              onClick={() => changeSection(item.id)}
+            >
+              {item.label}
+            </button>
+          )
+        })}
+      </div>
 
-        <section className="manage-content" role="tabpanel">
-          <div className="manage-toolbar">
-            <div>
-              <div className="ui-eyebrow">
-                {section === 'tags'
-                  ? 'Personal taxonomy'
-                  : section === 'authors'
-                    ? 'Shared identities'
-                    : 'Community listings'}
-              </div>
-              <h2 className="manage-title">
-                {section === 'tags'
-                  ? 'Saved tags'
-                  : section === 'authors'
-                    ? 'Known authors'
-                    : 'Your books'}
-              </h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge tone="neutral">{itemCount} shown</Badge>
-              {section !== 'books' ? (
-                <button
-                  className={buttonVariants.primary}
-                  type="button"
-                  onClick={() =>
-                    setSelected({
-                      kind: section === 'tags' ? 'tag' : 'author',
-                      value: null,
-                    })
-                  }
-                >
-                  <Plus className="h-4 w-4" />
-                  Add {section === 'tags' ? 'tag' : 'author'}
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          <label className="manage-search">
-            <Search aria-hidden="true" className="h-4 w-4" />
+      <section className="flex min-w-0 flex-col gap-3" id="manage-panel" role="tabpanel">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="relative min-w-0 flex-[1_1_320px]">
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-3"
+            />
             <span className="sr-only">Search {section}</span>
             <input
               autoComplete="off"
-              placeholder={
-                section === 'tags'
-                  ? 'Search tags…'
-                  : section === 'authors'
-                    ? 'Search authors or aliases…'
-                    : 'Search your books, e.g. -tag:dropped…'
-              }
+              className={cn(fieldClass, 'pl-9 text-sm')}
+              placeholder={searchPlaceholders[section]}
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
-            {(section === 'books' ? libraryBooks.isFetching : results.isFetching) ? (
-              <span className="manage-search__status">Searching…</span>
-            ) : null}
           </label>
+          <span className="text-[13px] text-ink-3 tabular-nums" role="status">
+            {fetching
+              ? 'Searching…'
+              : `${itemCount.toLocaleString()} ${itemCount === 1 ? noun : `${noun}s`}`}
+          </span>
+          {section !== 'books' ? (
+            <Button
+              variant="primary"
+              onClick={() =>
+                setSelected({ kind: section === 'tags' ? 'tag' : 'author', value: null })
+              }
+            >
+              <Plus aria-hidden="true" className="size-4" />
+              Add {noun}
+            </Button>
+          ) : null}
+        </div>
+        <p className="m-0 text-[13px] text-ink-3">{hints[section]}</p>
 
-          <p className="manage-hint">
-            {section === 'books'
-              ? 'Listing creates a public snapshot. Refresh it after editing your private copy; existing imports never change.'
-              : 'Double-click a row to edit it, or use the Edit button.'}
-          </p>
-
-          {section === 'books' ? (
-            <ManagedBooks
-              actionId={bookActionId}
-              error={libraryBooks.isError}
-              hasMore={libraryBooks.hasNextPage}
-              items={libraryBookItems}
-              loading={libraryBooks.isPending}
-              loadingMore={libraryBooks.isFetchingNextPage}
-              search={search}
-              onLoadMore={() => void libraryBooks.fetchNextPage({ cancelRefetch: false })}
-              onPublish={(book) =>
-                void runBookAction(
-                  book.id,
-                  () => api.publishBook(book.id),
-                  `“${book.primaryTitle}” is now listed.`,
-                )
-              }
-              onRefresh={(listing, book) =>
-                void runBookAction(
-                  book.id,
-                  () => api.refreshPublishedBook(listing.id),
-                  `“${book.primaryTitle}” snapshot refreshed.`,
-                )
-              }
-              onUnlist={(listing, book) =>
-                void runBookAction(
-                  book.id,
-                  () => api.unlistPublishedBook(listing.id),
-                  `“${book.primaryTitle}” was unlisted.`,
-                )
-              }
-            />
-          ) : results.isError ? (
-            <div className="manage-state manage-state--error">
-              Could not load {section}. Try again.
-            </div>
-          ) : results.isPending ? (
-            <div className="manage-state">Loading {section}…</div>
-          ) : itemCount === 0 ? (
-            <div className="manage-state">
-              <span>No {section} found.</span>
-              <small>
-                {search.trim()
-                  ? 'Try a broader search.'
-                  : `Use Add ${section === 'tags' ? 'tag' : 'author'} to create one.`}
-              </small>
-            </div>
-          ) : section === 'tags' ? (
-            <TagList
-              tags={results.data as TagDto[]}
-              onEdit={(tag) => setSelected({ kind: 'tag', value: tag })}
-            />
-          ) : (
-            <AuthorList
-              authors={results.data as AuthorDto[]}
-              onEdit={(author) => setSelected({ kind: 'author', value: author })}
-            />
-          )}
-        </section>
-      </Surface>
+        {section === 'books' ? (
+          <ManagedBooks
+            actionId={bookActionId}
+            error={libraryBooks.isError}
+            hasMore={libraryBooks.hasNextPage}
+            items={libraryBookItems}
+            loading={libraryBooks.isPending}
+            loadingMore={libraryBooks.isFetchingNextPage}
+            search={search}
+            onLoadMore={() => void libraryBooks.fetchNextPage({ cancelRefetch: false })}
+            onPublish={(book) =>
+              void runBookAction(
+                book.id,
+                () => api.publishBook(book.id),
+                `“${book.primaryTitle}” is now listed.`,
+              )
+            }
+            onRefresh={(listing, book) =>
+              void runBookAction(
+                book.id,
+                () => api.refreshPublishedBook(listing.id),
+                `“${book.primaryTitle}” snapshot refreshed.`,
+              )
+            }
+            onUnlist={(listing, book) =>
+              void runBookAction(
+                book.id,
+                () => api.unlistPublishedBook(listing.id),
+                `“${book.primaryTitle}” was unlisted.`,
+              )
+            }
+          />
+        ) : results.isError ? (
+          <StateBox tone="error">Could not load {section}. Try again.</StateBox>
+        ) : results.isPending ? (
+          <StateBox>Loading {section}…</StateBox>
+        ) : itemCount === 0 ? (
+          <StateBox>
+            <span className="font-semibold text-ink">No {section} found.</span>
+            <span>
+              {search.trim() ? 'Try a broader search.' : `Use Add ${noun} to create one.`}
+            </span>
+          </StateBox>
+        ) : section === 'tags' ? (
+          <TagList
+            tags={results.data as TagDto[]}
+            onEdit={(tag) => setSelected({ kind: 'tag', value: tag })}
+          />
+        ) : (
+          <AuthorList
+            authors={results.data as AuthorDto[]}
+            onEdit={(author) => setSelected({ kind: 'author', value: author })}
+          />
+        )}
+      </section>
 
       {selected ? (
         <ManageDialog
@@ -278,6 +249,65 @@ export function ManagePage() {
     </div>
   )
 }
+
+function StateBox({ children, tone }: { children: ReactNode; tone?: 'error' }) {
+  return (
+    <div
+      className={cn(
+        'flex flex-col items-center gap-1 rounded-xl border px-6 py-10 text-center',
+        tone === 'error'
+          ? 'border-danger-line bg-danger-soft text-danger-ink'
+          : 'border-dashed border-line text-ink-2',
+      )}
+      role={tone === 'error' ? 'alert' : undefined}
+    >
+      {children}
+    </div>
+  )
+}
+
+function Pill({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'neutral' | 'good' }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex h-6 shrink-0 items-center rounded-pill border px-2 text-xs font-medium',
+        tone === 'good'
+          ? 'border-transparent bg-status-finished-soft text-status-finished-ink'
+          : 'border-line bg-raised text-ink-2',
+      )}
+    >
+      {children}
+    </span>
+  )
+}
+
+function ListBox({
+  children,
+  label,
+  onScroll,
+  busy,
+}: {
+  children: ReactNode
+  label: string
+  onScroll?: (event: React.UIEvent<HTMLDivElement>) => void
+  busy?: boolean
+}) {
+  return (
+    <div
+      aria-busy={busy}
+      aria-label={label}
+      className="max-h-[min(70vh,48rem)] overflow-y-auto rounded-xl border border-line bg-sunk"
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scrollable list must stay keyboard-focusable so it can be scrolled without a mouse (axe scrollable-region-focusable)
+      tabIndex={0}
+      onScroll={onScroll}
+    >
+      {children}
+    </div>
+  )
+}
+
+const rowClass =
+  'flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-soft px-4 py-3 last:border-b-0'
 
 function ManagedBooks({
   items,
@@ -304,33 +334,25 @@ function ManagedBooks({
   onRefresh: (listing: ManagedBookListingDto, book: BookListItemDto) => void
   onUnlist: (listing: ManagedBookListingDto, book: BookListItemDto) => void
 }) {
-  if (error)
-    return (
-      <div className="manage-state manage-state--error">
-        Could not load your book listings. Try again.
-      </div>
-    )
-  if (loading) return <div className="manage-state">Loading your books…</div>
+  if (error) return <StateBox tone="error">Could not load your books. Try again.</StateBox>
+  if (loading) return <StateBox>Loading your books…</StateBox>
   if (items.length === 0) {
     return (
-      <div className="manage-state">
-        <span>No books found.</span>
-        <small>
+      <StateBox>
+        <span className="font-semibold text-ink">No books found.</span>
+        <span>
           {search.trim()
             ? 'Try a broader search.'
-            : 'Add a book to your library before creating a public listing.'}
-        </small>
-      </div>
+            : 'Add a book to your library before sharing it.'}
+        </span>
+      </StateBox>
     )
   }
 
   return (
-    <div
-      aria-busy={loadingMore}
-      aria-label="Books"
-      className="manage-list"
-      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scrollable list must stay keyboard-focusable so it can be scrolled without a mouse (axe scrollable-region-focusable)
-      tabIndex={0}
+    <ListBox
+      busy={loadingMore}
+      label="Books"
       onScroll={(event) => {
         const list = event.currentTarget
         if (
@@ -344,88 +366,90 @@ function ManagedBooks({
     >
       {items.map(({ book, listing }) => {
         const busy = actionId === book.id
-        const missingRequirements = getMissingListingRequirements(book)
-        const canPublish = missingRequirements.length === 0
+        const missing = getMissingListingRequirements(book)
+        const canPublish = missing.length === 0
+        const blockedTitle = canPublish
+          ? undefined
+          : `Required before ${listing ? 'refreshing' : 'listing'}: ${missing.join(', ')}`
         return (
-          <div className="manage-item" key={book.id}>
-            <span className="manage-item__icon">
-              <BookOpen className="h-4 w-4" />
-            </span>
-            <span className="manage-item__body">
-              <strong>{book.primaryTitle}</strong>
-              <small>
-                {book.author?.length ? book.author : 'Unknown author'} · {book.contentType}
-                {listing ? ` · Snapshot ${new Date(listing.snapshotAt).toLocaleDateString()}` : ''}
-              </small>
-            </span>
-            <Badge tone={listing ? 'success' : 'neutral'}>{listing ? 'Listed' : 'Private'}</Badge>
-            {listing ? (
-              <span className="manage-book-actions">
-                <button
-                  aria-label={`Refresh listing ${book.primaryTitle}`}
-                  className={buttonVariants.secondary}
-                  disabled={busy || !canPublish}
-                  type="button"
-                  title={
-                    canPublish
-                      ? undefined
-                      : `Required before refreshing: ${missingRequirements.join(', ')}`
-                  }
-                  onClick={() => onRefresh(listing, book)}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Refresh
-                </button>
-                <button
-                  aria-label={`Unlist ${book.primaryTitle}`}
-                  className={buttonVariants.ghost}
-                  disabled={busy}
-                  type="button"
-                  onClick={() => onUnlist(listing, book)}
-                >
-                  <EyeOff className="h-4 w-4" />
-                  Unlist
-                </button>
-              </span>
-            ) : (
-              <button
-                aria-label={`List ${book.primaryTitle}`}
-                className={buttonVariants.primary}
-                disabled={busy || !canPublish}
-                type="button"
-                title={
-                  canPublish
-                    ? undefined
-                    : `Required before listing: ${missingRequirements.join(', ')}`
-                }
-                onClick={() => onPublish(book)}
+          <div className={rowClass} key={book.id}>
+            <CoverThumb book={book} />
+            <div className="min-w-0 flex-[1_1_16rem]">
+              <Link
+                className="block truncate font-semibold text-ink hover:underline"
+                data-manage-title=""
+                to={`/books/${book.id}`}
               >
-                <Globe2 className="h-4 w-4" />
-                {busy ? 'Listing…' : 'List publicly'}
-              </button>
-            )}
+                {book.primaryTitle}
+              </Link>
+              <div className="truncate text-[13px] text-ink-3">
+                {book.author?.length ? book.author : 'Unknown author'} · {book.contentType}
+                {listing ? ` · shared ${new Date(listing.snapshotAt).toLocaleDateString()}` : ''}
+              </div>
+              {!canPublish ? (
+                <div className="text-[13px] text-status-hold-ink">
+                  Needs {missing.join(', ')} to be shared ·{' '}
+                  <Link className="underline underline-offset-2" to={`/books/${book.id}/edit`}>
+                    Edit book
+                  </Link>
+                </div>
+              ) : null}
+            </div>
+            <Pill tone={listing ? 'good' : 'neutral'}>{listing ? 'Listed' : 'Private'}</Pill>
+            <div className="flex shrink-0 gap-1.5">
+              {listing ? (
+                <>
+                  <Button
+                    aria-label={`Refresh listing ${book.primaryTitle}`}
+                    disabled={busy || !canPublish}
+                    size="row"
+                    title={blockedTitle}
+                    onClick={() => onRefresh(listing, book)}
+                  >
+                    <RefreshCw aria-hidden="true" className="size-4" />
+                    Refresh
+                  </Button>
+                  <Button
+                    aria-label={`Unlist ${book.primaryTitle}`}
+                    disabled={busy}
+                    size="row"
+                    variant="ghost"
+                    onClick={() => onUnlist(listing, book)}
+                  >
+                    <EyeOff aria-hidden="true" className="size-4" />
+                    Unlist
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  aria-label={`List ${book.primaryTitle}`}
+                  disabled={busy || !canPublish}
+                  size="row"
+                  title={blockedTitle}
+                  variant="primary"
+                  onClick={() => onPublish(book)}
+                >
+                  <Globe2 aria-hidden="true" className="size-4" />
+                  {busy ? 'Listing…' : 'List publicly'}
+                </Button>
+              )}
+            </div>
           </div>
         )
       })}
-      {loadingMore ? <div className="manage-list__loading">Loading more books…</div> : null}
-    </div>
+      {loadingMore ? (
+        <div className="px-4 py-3 text-center text-[13px] text-ink-3">Loading more books…</div>
+      ) : null}
+    </ListBox>
   )
 }
 
 function TagList({ tags, onEdit }: { tags: TagDto[]; onEdit: (tag: TagDto) => void }) {
   const sortedTags = [...tags].sort((left, right) =>
-    left.name.localeCompare(right.name, undefined, {
-      sensitivity: 'base',
-      numeric: true,
-    }),
+    left.name.localeCompare(right.name, undefined, { sensitivity: 'base', numeric: true }),
   )
   return (
-    <div
-      className="manage-list"
-      aria-label="Tags"
-      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scrollable list must stay keyboard-focusable so it can be scrolled without a mouse (axe scrollable-region-focusable)
-      tabIndex={0}
-    >
+    <ListBox label="Tags">
       {sortedTags.map((tag) => (
         <ManageRow
           editable={!tag.isGlobal}
@@ -433,17 +457,18 @@ function TagList({ tags, onEdit }: { tags: TagDto[]; onEdit: (tag: TagDto) => vo
           label={`Edit tag ${tag.name}`}
           onEdit={() => onEdit(tag)}
         >
-          <span className="manage-item__icon">
-            <Tags className="h-4 w-4" />
-          </span>
-          <span className="manage-item__body">
-            <strong>{tag.name}</strong>
-            <small>{tag.description?.length ? tag.description : 'No description yet'}</small>
-          </span>
-          {tag.isGlobal ? <Badge tone="accent">Global</Badge> : null}
+          <div className="min-w-0 flex-[1_1_16rem]">
+            <div className="truncate font-semibold" data-manage-title="">
+              {tag.name}
+            </div>
+            <div className="line-clamp-2 text-[13px] text-ink-3">
+              {tag.description?.length ? tag.description : 'No description yet'}
+            </div>
+          </div>
+          {tag.isGlobal ? <Pill>Global</Pill> : null}
         </ManageRow>
       ))}
-    </div>
+    </ListBox>
   )
 }
 
@@ -461,41 +486,33 @@ function AuthorList({
     }),
   )
   return (
-    <div
-      className="manage-list"
-      aria-label="Authors"
-      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scrollable list must stay keyboard-focusable so it can be scrolled without a mouse (axe scrollable-region-focusable)
-      tabIndex={0}
-    >
+    <ListBox label="Authors">
       {sortedAuthors.map((author) => (
         <ManageRow
           editable={author.isOwned}
           key={author.id}
           label={`Edit author ${author.primaryName}`}
-          onEdit={() => onEdit(author)}
           readOnlyLabel="Global identity"
+          onEdit={() => onEdit(author)}
         >
-          <span className="manage-item__icon">
-            <Users className="h-4 w-4" />
-          </span>
-          <span className="manage-item__body">
-            <strong>{author.primaryName}</strong>
-            <small>
+          <div className="min-w-0 flex-[1_1_16rem]">
+            <div className="truncate font-semibold" data-manage-title="">
+              {author.primaryName}
+            </div>
+            <div className="truncate text-[13px] text-ink-3">
               {author.otherNames.length > 0
                 ? author.otherNames.join(' · ')
                 : 'No alternative names'}
-            </small>
-          </span>
-          <Badge tone={author.isOwned ? 'neutral' : 'accent'}>
-            {author.isOwned ? 'Yours' : 'Global'}
-          </Badge>
-          {author.isOwned && author.isPublic ? <Badge tone="accent">Public</Badge> : null}
-          <Badge tone={author.otherNames.length > 0 ? 'accent' : 'neutral'}>
-            {author.otherNames.length} aliases
-          </Badge>
+            </div>
+          </div>
+          <Pill>{author.isOwned ? 'Yours' : 'Global'}</Pill>
+          {author.isOwned && author.isPublic ? <Pill>Public</Pill> : null}
+          <Pill>
+            {author.otherNames.length} {author.otherNames.length === 1 ? 'alias' : 'aliases'}
+          </Pill>
         </ManageRow>
       ))}
-    </div>
+    </ListBox>
   )
 }
 
@@ -505,9 +522,7 @@ function getMissingListingRequirements(book: BookListItemDto) {
   if (!book.author?.trim()) missing.push('author')
   if (book.genresCount === 0) missing.push('genre')
   if (book.tagsCount === 0) missing.push('tag')
-  if (!book.cover?.imageUrl) {
-    missing.push('stored cover')
-  }
+  if (!book.cover?.imageUrl) missing.push('stored cover')
   return missing
 }
 
@@ -518,7 +533,7 @@ function ManageRow({
   readOnlyLabel = 'Managed by admin',
   onEdit,
 }: {
-  children: React.ReactNode
+  children: ReactNode
   editable?: boolean
   label: string
   readOnlyLabel?: string
@@ -526,14 +541,14 @@ function ManageRow({
 }) {
   // Double-click is a pointer shortcut; keyboard users edit through the row's Edit button.
   return (
-    <div className="manage-item" role="group" onDoubleClick={editable ? onEdit : undefined}>
+    <div className={rowClass} role="group" onDoubleClick={editable ? onEdit : undefined}>
       {children}
       {editable ? (
-        <button aria-label={label} className={buttonVariants.ghost} type="button" onClick={onEdit}>
+        <Button aria-label={label} size="row" variant="ghost" onClick={onEdit}>
           Edit
-        </button>
+        </Button>
       ) : (
-        <span className="text-xs text-[var(--qs-subtle)]">{readOnlyLabel}</span>
+        <span className="shrink-0 text-xs text-ink-3">{readOnlyLabel}</span>
       )}
     </div>
   )
@@ -541,7 +556,7 @@ function ManageRow({
 
 function ManageDialog({ item, onClose }: { item: ManagedItem; onClose: () => void }) {
   const queryClient = useQueryClient()
-  const titleId = useId()
+  const formId = useId()
   const nameFieldRef = useRef<HTMLInputElement>(null)
   const firstFieldRef = useRef<HTMLTextAreaElement>(null)
   // The dialog is mounted per edited item (keyed by the parent), so initial state comes from props.
@@ -557,7 +572,6 @@ function ManageDialog({ item, onClose }: { item: ManagedItem; onClose: () => voi
   )
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  useBodyScrollLock(true)
 
   const hasExistingValue = item.value !== null
   useEffect(() => {
@@ -566,17 +580,6 @@ function ManageDialog({ item, onClose }: { item: ManagedItem; onClose: () => voi
       0,
     )
   }, [hasExistingValue])
-
-  useEffect(() => {
-    function closeOnEscape(event: globalThis.KeyboardEvent) {
-      if (event.key === 'Escape' && !saving) {
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', closeOnEscape)
-    return () => window.removeEventListener('keydown', closeOnEscape)
-  }, [onClose, saving])
 
   const isCreate = item.value === null
   const name = item.value
@@ -596,20 +599,18 @@ function ManageDialog({ item, onClose }: { item: ManagedItem; onClose: () => voi
       } else if (item.kind === 'tag') {
         await api.createTag({ name: nameValue.trim(), description: value.trim() || null })
         toast.success(`Tag “${nameValue.trim()}” created.`)
-      } else if (item.value) {
-        const otherNames = value
-          .split('\n')
-          .map((alias) => alias.trim())
-          .filter(Boolean)
-        await api.updateAuthor(item.value.id, { otherNames })
-        toast.success(`Author “${item.value.primaryName}” updated.`)
       } else {
         const otherNames = value
           .split('\n')
           .map((alias) => alias.trim())
           .filter(Boolean)
-        await api.createAuthor({ primaryName: nameValue.trim(), otherNames })
-        toast.success(`Author “${nameValue.trim()}” created.`)
+        if (item.value) {
+          await api.updateAuthor(item.value.id, { otherNames })
+          toast.success(`Author “${item.value.primaryName}” updated.`)
+        } else {
+          await api.createAuthor({ primaryName: nameValue.trim(), otherNames })
+          toast.success(`Author “${nameValue.trim()}” created.`)
+        }
       }
       await queryClient.invalidateQueries({ queryKey: ['manage-metadata', section] })
       onClose()
@@ -645,9 +646,7 @@ function ManageDialog({ item, onClose }: { item: ManagedItem; onClose: () => voi
   }
 
   async function handleVisibilityChange() {
-    if (item.kind !== 'author' || !item.value) {
-      return
-    }
+    if (item.kind !== 'author' || !item.value) return
 
     const isPublic = !item.value.isPublic
     setSaving(true)
@@ -664,148 +663,118 @@ function ManageDialog({ item, onClose }: { item: ManagedItem; onClose: () => voi
   }
 
   return (
-    <div className="manage-dialog" role="presentation" onMouseDown={onClose}>
-      <DialogPanel
-        aria-labelledby={titleId}
-        aria-modal="true"
-        className="manage-dialog__panel"
-        role="dialog"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="manage-dialog__header">
-          <div>
-            <div className="ui-eyebrow">
-              {isCreate ? 'Create' : 'Edit'} {item.kind}
-            </div>
-            <h2 id={titleId}>{isCreate ? `New ${item.kind}` : name}</h2>
-          </div>
-          <button
-            aria-label="Close dialog"
-            className={`${buttonVariants.ghost} ui-icon-button`}
-            disabled={saving}
-            type="button"
-            onClick={onClose}
+    <Dialog
+      open
+      description={isCreate ? undefined : `Edit ${item.kind}`}
+      dismissible={!saving}
+      footer={
+        <>
+          {!isCreate ? (
+            <Button disabled={saving} variant="danger" onClick={() => void handleDelete()}>
+              <Trash2 aria-hidden="true" className="size-4" />
+              {confirmDelete ? 'Confirm delete' : `Delete ${item.kind}`}
+            </Button>
+          ) : null}
+          <span className="flex-1" />
+          <Button disabled={saving} variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            disabled={saving || (isCreate && !nameValue.trim())}
+            form={formId}
+            type="submit"
+            variant="primary"
           >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+            {saving ? 'Saving…' : isCreate ? `Create ${item.kind}` : 'Save changes'}
+          </Button>
+        </>
+      }
+      title={isCreate ? `New ${item.kind}` : name}
+      widthClassName="max-w-[560px]"
+      onClose={onClose}
+    >
+      <form
+        className="flex flex-col gap-4 px-6 pt-4 pb-6"
+        id={formId}
+        onSubmit={(event) => void handleSave(event)}
+      >
+        {isCreate ? (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-ink-2">
+              {item.kind === 'tag' ? 'Tag name' : 'Primary name'}
+            </span>
+            <input
+              ref={nameFieldRef}
+              aria-label={item.kind === 'tag' ? 'Tag name' : 'Primary name'}
+              className={fieldClass}
+              maxLength={item.kind === 'tag' ? 100 : 300}
+              required
+              value={nameValue}
+              onChange={(event) => setNameValue(event.target.value)}
+            />
+          </label>
+        ) : null}
+        {item.kind === 'tag' ? (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-ink-2">Description</span>
+            <textarea
+              aria-label="Description"
+              ref={firstFieldRef}
+              className={textareaClass}
+              maxLength={500}
+              placeholder="What does this tag mean in your library?"
+              rows={6}
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+            />
+            <small className="text-xs text-ink-3 tabular-nums">{value.length}/500 characters</small>
+          </label>
+        ) : (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-ink-2">Alternative names</span>
+            <textarea
+              aria-label="Alternative names"
+              ref={firstFieldRef}
+              className={textareaClass}
+              placeholder={'One alternative name per line\nExample: Cuttlefish That Loves Diving'}
+              rows={8}
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+            />
+            <small className="text-xs text-ink-3">
+              One name per line. The primary name stays unchanged.
+              {isCreate ? ' New authors start private.' : ''}
+            </small>
+          </label>
+        )}
 
-        <form className="manage-dialog__form" onSubmit={(event) => void handleSave(event)}>
-          {isCreate ? (
-            <label>
-              <span>{item.kind === 'tag' ? 'Tag name' : 'Primary name'}</span>
-              <input
-                ref={nameFieldRef}
-                aria-label={item.kind === 'tag' ? 'Tag name' : 'Primary name'}
-                className={controlClass}
-                maxLength={item.kind === 'tag' ? 100 : 300}
-                required
-                value={nameValue}
-                onChange={(event) => setNameValue(event.target.value)}
-              />
-            </label>
-          ) : null}
-          {item.kind === 'tag' ? (
-            <label>
-              <span>Description</span>
-              <textarea
-                aria-label="Description"
-                ref={firstFieldRef}
-                className={controlClass}
-                maxLength={500}
-                placeholder="What does this tag mean in your library?"
-                rows={6}
-                value={value}
-                onChange={(event) => setValue(event.target.value)}
-              />
-              <small>{value.length}/500 characters</small>
-            </label>
-          ) : (
-            <label>
-              <span>Alternative names</span>
-              <textarea
-                aria-label="Alternative names"
-                ref={firstFieldRef}
-                className={controlClass}
-                placeholder={'One alternative name per line\nExample: Cuttlefish That Loves Diving'}
-                rows={8}
-                value={value}
-                onChange={(event) => setValue(event.target.value)}
-              />
-              <small>
-                One name per line. The primary name stays unchanged.
-                {isCreate ? ' New authors start private.' : ''}
-              </small>
-            </label>
-          )}
-
-          {item.kind === 'author' && item.value ? (
-            <div className="rounded-xl border border-[var(--qs-line)] bg-[var(--qs-surface-muted)] p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="max-w-md">
-                  <strong className="text-sm text-[var(--qs-text)]">
-                    {item.value.isPublic ? 'Public author' : 'Private author'}
-                  </strong>
-                  <p className="mt-1 text-xs leading-5 text-[var(--qs-muted)]">
-                    {item.value.isPublic
-                      ? 'Other readers can use this identity. Making it private creates private copies for libraries already using it.'
-                      : 'Only you can find this identity. Publishing makes its primary and alternative names available to everyone.'}
-                  </p>
-                </div>
-                <button
-                  className={buttonVariants.secondary}
-                  disabled={saving}
-                  type="button"
-                  onClick={() => void handleVisibilityChange()}
-                >
-                  {item.value.isPublic ? 'Make private' : 'Make public'}
-                </button>
-              </div>
+        {item.kind === 'author' && item.value ? (
+          <div className="flex flex-wrap items-start justify-between gap-3 rounded-field border border-line bg-sunk p-4">
+            <div className="max-w-md">
+              <strong className="text-sm">
+                {item.value.isPublic ? 'Public author' : 'Private author'}
+              </strong>
+              <p className="m-0 mt-1 text-[13px] leading-5 text-ink-2">
+                {item.value.isPublic
+                  ? 'Other readers can use this identity. Making it private creates private copies for libraries already using it.'
+                  : 'Only you can find this identity. Publishing makes its primary and alternative names available to everyone.'}
+              </p>
             </div>
-          ) : null}
-
-          <div className="manage-dialog__actions">
-            {!isCreate ? (
-              <button
-                className={cn(
-                  buttonVariants.destructive,
-                  confirmDelete && 'manage-delete--confirm',
-                )}
-                disabled={saving}
-                type="button"
-                onClick={() => void handleDelete()}
-              >
-                <Trash2 className="h-4 w-4" />
-                {confirmDelete ? 'Confirm delete' : `Delete ${item.kind}`}
-              </button>
-            ) : null}
-            <span className="manage-dialog__action-spacer" />
-            <button
-              className={buttonVariants.secondary}
-              disabled={saving}
-              type="button"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-            <button
-              className={buttonVariants.primary}
-              disabled={saving || (isCreate && !nameValue.trim())}
-              type="submit"
-            >
-              {saving ? 'Saving…' : isCreate ? `Create ${item.kind}` : 'Save changes'}
-            </button>
+            <Button disabled={saving} size="sm" onClick={() => void handleVisibilityChange()}>
+              {item.value.isPublic ? 'Make private' : 'Make public'}
+            </Button>
           </div>
-          {confirmDelete ? (
-            <p className="manage-delete-note">
-              {item.kind === 'author' && item.value?.isPublic
-                ? 'Your own books must stop using this author first. Other readers keep private copies.'
-                : 'This cannot be undone. Items still used by books cannot be deleted.'}
-            </p>
-          ) : null}
-        </form>
-      </DialogPanel>
-    </div>
+        ) : null}
+
+        {confirmDelete ? (
+          <p className="m-0 text-[13px] text-danger-ink" role="alert">
+            {item.kind === 'author' && item.value?.isPublic
+              ? 'Your own books must stop using this author first. Other readers keep private copies.'
+              : 'This cannot be undone. Items still used by books cannot be deleted.'}
+          </p>
+        ) : null}
+      </form>
+    </Dialog>
   )
 }
 

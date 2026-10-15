@@ -160,6 +160,31 @@ export const invalidImportSession = {
   }),
 }
 
+const extraSnapshots = [
+  ['Shadow Slave', 'Guiltythree', 'Novel', 2400, ['Action', 'Fantasy'], ['Dark', 'Survival'], 3],
+  ['Omniscient Reader', 'Sing Shong', 'Novel', 551, ['Fantasy'], ['Apocalypse', 'Meta', 'Webnovel Reader'], 0],
+  ['Solo Leveling', 'Chugong', 'Manhwa', 200, ['Action'], ['Dungeons', 'System'], 0],
+  ['The Beginning After the End', 'TurtleMe', 'Novel', null, ['Fantasy', 'Adventure'], ['Reincarnation'], 2],
+  ['Frieren', 'Kanehito Yamada', 'Manga', 140, ['Fantasy', 'Slice of Life'], ['Elves', 'Journey'], 0],
+  ['A Title Long Enough To Need Two Lines In The Card Without Breaking The Layout', null, 'Novel', 12, [], [], 0],
+].map(([title, author, type, chapters, genres, tags, files], index) => ({
+  id: `snapshot-extra-${String(index)}`,
+  sourceBookId: `source-${String(index)}`,
+  primaryTitle: title,
+  description: index % 2 ? 'A shared book with a short description.' : null,
+  alternativeTitles: [],
+  author,
+  authorOtherNames: [],
+  contentType: type,
+  totalChapters: chapters,
+  genres: (genres as string[]).map((name) => ({ name, description: null })),
+  tags: (tags as string[]).map((name) => ({ name, description: null })),
+  coverUrl: null,
+  snapshotAt: '2026-09-0' + String(index + 1) + 'T12:00:00Z',
+  isOwner: index === 2,
+  filesCount: files,
+}))
+
 export const analytics = {
   generatedAt: '2026-07-15T12:00:00Z',
   scope: {
@@ -451,8 +476,9 @@ export async function installLayoutApiMocks(page: Page) {
         json: {
           skip: 0,
           take: 40,
-          total: 1,
+          total: 7,
           data: [
+            ...extraSnapshots,
             {
               id: 'snapshot-layout',
               sourceBookId: layoutBooks[0]!.id,
@@ -486,7 +512,14 @@ export async function installLayoutApiMocks(page: Page) {
     }
 
     if (path === 'book/manage') {
-      await route.fulfill({ json: { skip: 0, take: 25, total: 0, data: [] } })
+      const data = layoutBooks.map((book, index) => ({
+        book,
+        listing:
+          index === 0
+            ? { id: 'listing-layout', snapshotAt: '2026-07-18T12:00:00Z' }
+            : null,
+      }))
+      await route.fulfill({ json: { skip: 0, take: 50, total: data.length, data } })
       return
     }
 
