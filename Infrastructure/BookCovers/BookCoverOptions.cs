@@ -2,7 +2,7 @@ namespace Infrastructure.BookCovers;
 
 public sealed class BookCoverOptions
 {
-    public const string DefaultUserAgent = "NovelkiBackend/1.0";
+    public const string DefaultUserAgent = "Tsundoku/1.0";
 
     public string StorageRoot { get; set; } = "storage/covers";
     public long MaxBytes { get; set; } = 10 * 1024 * 1024;

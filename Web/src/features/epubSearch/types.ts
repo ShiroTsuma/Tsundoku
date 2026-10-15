@@ -2,7 +2,7 @@
  * Contract between the EPUB search UI and whatever finds and downloads EPUBs.
  *
  * Today the implementation is a mock (mockClient.ts + mockData.ts). The real
- * implementation will talk to the Novelki API, which proxies a
+ * implementation will talk to the Tsundoku API, which proxies a
  * lightnovel-crawler (lncrawl) service. Keep these types stable: the UI only
  * depends on them, never on the mock.
  */

@@ -1,9 +1,9 @@
 apiVersion: 1
 
 providers:
-  - name: Novelki
+  - name: Tsundoku
     orgId: 1
-    folder: Novelki
+    folder: Tsundoku
     type: file
     disableDeletion: false
     editable: true

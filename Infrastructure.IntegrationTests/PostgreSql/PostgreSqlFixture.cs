@@ -19,7 +19,7 @@ public sealed class PostgreSqlCollection : ICollectionFixture<PostgreSqlFixture>
 public sealed class PostgreSqlFixture : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:17-alpine")
-        .WithDatabase("novelki_tests")
+        .WithDatabase("tsundoku_tests")
         .WithUsername("postgres")
         .WithPassword("postgres")
         .Build();

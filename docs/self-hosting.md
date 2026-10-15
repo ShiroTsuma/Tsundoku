@@ -1,6 +1,6 @@
-# Self-hosting Novelki
+# Self-hosting Tsundoku
 
-Run Novelki with Docker Compose and an external PostgreSQL database. The stack builds the API and web application and starts Grafana, Prometheus, Loki, Tempo, and the OpenTelemetry Collector.
+Run Tsundoku with Docker Compose and an external PostgreSQL database. The stack builds the API and web application and starts Grafana, Prometheus, Loki, Tempo, and the OpenTelemetry Collector.
 
 ## Prerequisites
 
@@ -121,7 +121,7 @@ Keep `storage/epub-staging` across restarts so the API can recover active jobs. 
 
 ## Monitoring and diagnostics
 
-The API sends logs, metrics, and traces through OTLP to the OpenTelemetry Collector. Grafana includes provisioned Prometheus, Loki, and Tempo data sources and the **Novelki overview** dashboard.
+The API sends logs, metrics, and traces through OTLP to the OpenTelemetry Collector. Grafana includes provisioned Prometheus, Loki, and Tempo data sources and the **Tsundoku overview** dashboard.
 
 - `/health/live` checks that the API process responds.
 - `/health/ready` checks readiness, including database connectivity.

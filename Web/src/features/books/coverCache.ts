@@ -1,6 +1,6 @@
 import { API_BASE_URL, apiBlobRequest, getStoredSession, getStoredSessionUserId } from '@/api/http'
 
-const COVER_CACHE_PREFIX = 'novelki.covers.v1::'
+const COVER_CACHE_PREFIX = 'tsundoku.covers.v1::'
 
 export async function loadCoverBlobUrl(imageUrl: string) {
   const absoluteUrl = toAbsoluteUrl(imageUrl)

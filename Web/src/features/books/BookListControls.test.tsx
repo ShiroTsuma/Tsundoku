@@ -105,7 +105,7 @@ describe('QueryBar', () => {
 
 describe('saved views', () => {
   it('saves the current query, applies it and deletes it', async () => {
-    window.localStorage.removeItem('novelki.books.saved-views.v1')
+    window.localStorage.removeItem('tsundoku.books.saved-views.v1')
     const onQueryChange = vi.fn()
     const { rerender } = render(
       <QuickFilters query="genre:fantasy rating:>=8" onQueryChange={onQueryChange} />,
@@ -117,7 +117,7 @@ describe('saved views', () => {
     rerender(<QuickFilters query="" onQueryChange={onQueryChange} />)
     await userEvent.click(screen.getByRole('button', { name: 'Good fantasy' }))
     expect(onQueryChange).toHaveBeenLastCalledWith('genre:fantasy rating:>=8')
-    expect(window.localStorage.getItem('novelki.books.saved-views.v1')).toContain('Good fantasy')
+    expect(window.localStorage.getItem('tsundoku.books.saved-views.v1')).toContain('Good fantasy')
 
     await userEvent.click(screen.getByRole('button', { name: 'Delete saved view Good fantasy' }))
     expect(screen.queryByRole('button', { name: 'Good fantasy' })).not.toBeInTheDocument()

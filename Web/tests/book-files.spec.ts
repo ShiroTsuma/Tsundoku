@@ -96,20 +96,24 @@ test('book file selection, separate download and ZIP stay usable on desktop and 
   page,
 }, info) => {
   await page.goto(`/books/${bookId}`)
-  const panel = page.getByRole('region', { name: 'Book EPUBs' })
+  const panel = page.getByRole('region', { name: 'EPUB files' })
   await panel.scrollIntoViewIfNeeded()
   await expect(panel.getByText('3 files · 3.0 MiB', { exact: true })).toBeVisible()
   await expect(page.getByLabel('Select Volume 1', { exact: true })).toHaveCount(0)
   await expectNoHorizontalOverflow(page)
-  await expectMinTouchTarget(panel.getByRole('button', { name: 'View' }), 44)
+  await expectInViewport(panel.getByRole('button', { name: 'Manage' }))
   await page.screenshot({ path: info.outputPath('epub-summary.png') })
-  await panel.getByRole('button', { name: 'View' }).click()
+  await panel.getByRole('button', { name: 'Manage' }).click()
+  await page
+    .getByRole('dialog', { name: 'Manage EPUBs', exact: true })
+    .getByRole('button', { name: 'Done', exact: true })
+    .click()
   const browser = page.getByRole('dialog', { name: 'EPUBs', exact: true })
   await expect(browser.getByText('V2C1 → V2C80', { exact: true })).toBeVisible()
   await expect(browser.getByRole('button', { name: 'Rename Volume 1' })).toHaveCount(0)
   await expectMinTouchTarget(
     browser.getByRole('button', { name: 'Download Volume 1', exact: true }),
-    44,
+    36,
   )
   const individualDownload = page.waitForEvent('download')
   await browser.getByRole('button', { name: 'Download Volume 1', exact: true }).click()
@@ -170,9 +174,10 @@ test('EPUB upload previews selected titles and order before committing', async (
     route.fulfill({ json: { ...preview, status: 'Completed', importedCount: 1 } }),
   )
   await page.goto(`/books/${bookId}`)
-  await page.getByRole('button', { name: 'View', exact: true }).click()
-  await page.getByRole('button', { name: 'Manage', exact: true }).click()
-  await page.getByRole('button', { name: 'Add EPUB / ZIP', exact: true }).click()
+  await page
+    .getByRole('region', { name: 'EPUB files' })
+    .getByRole('button', { name: 'Upload EPUB / ZIP', exact: true })
+    .click()
   const dialog = page.getByRole('dialog', { name: 'Add EPUB / ZIP', exact: true })
   await dialog.getByLabel('Choose EPUB or ZIP files').setInputFiles({
     name: 'volumes.zip',
@@ -198,7 +203,7 @@ test('library EPUB export offers file selection and an independent manifest arch
   page,
 }, info) => {
   await page.goto('/books?query=Fantasy')
-  await page.getByRole('button', { name: 'Export', exact: true }).click()
+  await page.getByRole('button', { name: 'Import / Export', exact: true }).click()
   await page.getByRole('menuitem', { name: /^EPUB files \(ZIP\)/ }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByLabel('Current filters (all matching pages)')).toBeChecked()

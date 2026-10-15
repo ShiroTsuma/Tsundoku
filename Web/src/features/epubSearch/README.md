@@ -2,7 +2,7 @@
 
 This flow finds a book on external sources through a crawler service, lets the user pick a source and a chapter range, and downloads the result as EPUB files that are added to the book.
 
-The UI works today against a **mock**. The real backend (a Novelki API in front of a lightnovel-crawler service) does not exist yet.
+The UI works today against a **mock**. The real backend (a Tsundoku API in front of a lightnovel-crawler service) does not exist yet.
 
 ## Files
 

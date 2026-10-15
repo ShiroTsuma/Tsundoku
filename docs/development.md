@@ -1,4 +1,4 @@
-# Developing Novelki
+# Developing Tsundoku
 
 Run the ASP.NET Core API and Vite frontend as separate processes during development. Use PostgreSQL for the application database; Redis and S3-compatible storage are optional.
 
@@ -18,13 +18,13 @@ Prepare a JSON configuration with your database credentials and a long random JW
 ```json
 {
   "ConnectionStrings": {
-    "DB": "Host=localhost;Port=5432;Database=novelki;Username=novelki;Password=<database-password>",
+    "DB": "Host=localhost;Port=5432;Database=tsundoku;Username=tsundoku;Password=<database-password>",
     "Redis": ""
   },
   "Jwt": {
     "Key": "<replace-with-a-long-random-secret>",
-    "Issuer": "NovelkiBackend",
-    "Audience": "NovelkiBackend"
+    "Issuer": "Tsundoku",
+    "Audience": "Tsundoku"
   },
   "BookCovers": {
     "S3": {
@@ -37,16 +37,16 @@ Prepare a JSON configuration with your database credentials and a long random JW
 }
 ```
 
-Save the JSON outside the checkout as `../novelki-secrets.json`, then import it into the API's user secrets:
+Save the JSON outside the checkout as `../tsundoku-secrets.json`, then import it into the API's user secrets:
 
 ```powershell
-Get-Content ../novelki-secrets.json -Raw | dotnet user-secrets set --project Api
+Get-Content ../tsundoku-secrets.json -Raw | dotnet user-secrets set --project Api
 ```
 
 On Linux or macOS:
 
 ```sh
-dotnet user-secrets set --project Api < ../novelki-secrets.json
+dotnet user-secrets set --project Api < ../tsundoku-secrets.json
 ```
 
 The empty Redis value selects in-memory caching. The empty S3 endpoint selects local cover and EPUB storage. To use S3, configure the endpoint, region, access key, secret key, and bucket under `BookCovers:S3`.
@@ -62,7 +62,7 @@ dotnet tool install --global dotnet-ef --version 10.0.10
 Restore dependencies, apply database migrations, and start the HTTPS launch profile:
 
 ```sh
-dotnet restore NovelkiBackend.sln
+dotnet restore Tsundoku.sln
 dotnet dev-certs https --trust
 dotnet ef database update --project Infrastructure --startup-project Api -- --environment Development
 dotnet run --project Api --launch-profile https
@@ -106,8 +106,8 @@ The API uses the `/api/v1` prefix. Endpoint groups include accounts, books, book
 With Docker running for the PostgreSQL integration tests:
 
 ```sh
-dotnet build NovelkiBackend.sln
-dotnet test NovelkiBackend.sln --no-build
+dotnet build Tsundoku.sln
+dotnet test Tsundoku.sln --no-build
 ```
 
 ### Frontend
@@ -122,6 +122,8 @@ npm run build
 ```
 
 `test:all` runs TypeScript checks, ESLint, Prettier, Vitest, and Playwright layout tests for desktop, mobile, and tablet viewports. For a narrower check, use `npm run check`, `npm run test:run`, or `npm run test:layout`.
+
+Playwright screenshots and visual baselines are local and ignored by Git. On a fresh checkout, generate baselines with `npm run test:layout -- --update-snapshots`, inspect them, then run `npm run test:layout` to compare against them. Regenerate them only after reviewing an intentional layout change.
 
 Use existing fixtures for tests where possible. New examples should use realistic book titles, authors, chapter data, and source metadata.
 

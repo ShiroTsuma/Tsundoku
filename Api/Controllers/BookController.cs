@@ -47,10 +47,10 @@ public partial class BookController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Create([FromBody] CreateBookCommand command)
     {
-        using var activity = NovelkiTelemetry.ActivitySource.StartActivity("Book.Create", ActivityKind.Internal);
+        using var activity = TsundokuTelemetry.ActivitySource.StartActivity("Book.Create", ActivityKind.Internal);
         var bookId = await _mediator.Send(command);
         activity?.SetTag("book.id", bookId);
-        NovelkiTelemetry.BooksCreated.Add(1);
+        TsundokuTelemetry.BooksCreated.Add(1);
         _logger.LogInformation("Book created. BookId={BookId}", bookId);
 
         return CreatedAtAction(nameof(GetById), new { id = bookId }, new { Id = bookId });
@@ -62,13 +62,13 @@ public partial class BookController : ControllerBase
         [FromQuery] GetAllBooksQuery getAllBooks,
         CancellationToken cancellationToken)
     {
-        using var activity = NovelkiTelemetry.ActivitySource.StartActivity("Book.Search", ActivityKind.Internal);
-        activity?.SetTag(NovelkiTelemetryTags.BookQuery, getAllBooks.Query);
-        activity?.SetTag(NovelkiTelemetryTags.BookSortBy, getAllBooks.SortBy);
-        activity?.SetTag(NovelkiTelemetryTags.BookSortDirection, getAllBooks.SortDirection);
-        NovelkiTelemetry.BookSearchRequests.Add(1);
+        using var activity = TsundokuTelemetry.ActivitySource.StartActivity("Book.Search", ActivityKind.Internal);
+        activity?.SetTag(TsundokuTelemetryTags.BookQuery, getAllBooks.Query);
+        activity?.SetTag(TsundokuTelemetryTags.BookSortBy, getAllBooks.SortBy);
+        activity?.SetTag(TsundokuTelemetryTags.BookSortDirection, getAllBooks.SortDirection);
+        TsundokuTelemetry.BookSearchRequests.Add(1);
         var books = await _mediator.Send(getAllBooks, cancellationToken);
-        activity?.SetTag(NovelkiTelemetryTags.BookResultCount, books.Data.Count);
+        activity?.SetTag(TsundokuTelemetryTags.BookResultCount, books.Data.Count);
 
         return Ok(books);
     }
@@ -180,7 +180,7 @@ public partial class BookController : ControllerBase
             model.RawImportedLine,
             model.Links);
         await _mediator.Send(command);
-        NovelkiTelemetry.BooksUpdated.Add(1);
+        TsundokuTelemetry.BooksUpdated.Add(1);
         _logger.LogInformation("Book updated. BookId={BookId}", id);
 
         return NoContent();
@@ -396,7 +396,7 @@ public partial class BookController : ControllerBase
         var command =
             new UpdateBookProgressCommand(id, model.CurrentChapterNumber, model.CurrentChapterLabel, model.Comment);
         await _mediator.Send(command);
-        NovelkiTelemetry.BookProgressUpdated.Add(1);
+        TsundokuTelemetry.BookProgressUpdated.Add(1);
         _logger.LogInformation("Book progress updated. BookId={BookId}", id);
 
         return NoContent();

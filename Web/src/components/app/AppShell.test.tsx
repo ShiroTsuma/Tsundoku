@@ -33,7 +33,7 @@ describe('AppShell', () => {
     expect(primaryNav()).toBeInTheDocument()
     expect(mobileNav()).toBeInTheDocument()
     expect(screen.getByRole('main')).toHaveAttribute('id', 'main-content')
-    expect(screen.getByRole('link', { name: 'Novelki' })).toHaveAttribute('href', '/books')
+    expect(screen.getByRole('link', { name: 'Tsundoku' })).toHaveAttribute('href', '/books')
     expect(screen.getByRole('link', { name: /skip to content/i })).toHaveAttribute(
       'href',
       '#main-content',

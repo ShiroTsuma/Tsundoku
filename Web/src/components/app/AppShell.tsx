@@ -1,7 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import {
   BarChart3,
-  BookOpen,
   Compass,
   Eye,
   EyeOff,
@@ -85,9 +84,9 @@ export function AppShell() {
             className="flex items-center gap-2.5 font-display text-xl font-bold text-ink hover:text-ink"
           >
             <span className="flex size-8 items-center justify-center rounded-control bg-accent text-accent-ink">
-              <BookOpen aria-hidden="true" className="size-[18px]" />
+              <LibraryBig aria-hidden="true" className="size-[18px]" />
             </span>
-            Novelki
+            Tsundoku
           </Link>
           <nav aria-label="Primary navigation" className="hidden gap-1 md:flex">
             {items.map((item) => (

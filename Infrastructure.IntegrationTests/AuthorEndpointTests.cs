@@ -72,8 +72,8 @@ public sealed class AuthorEndpointTests
                 {
                     ["ConnectionStrings:DB"] = "Host=localhost;Database=test;Username=test;Password=test",
                     ["Jwt:Key"] = "test-test-test-test-test-test-test-test-test-test-test-test",
-                    ["Jwt:Issuer"] = "NovelkiBackend.Tests",
-                    ["Jwt:Audience"] = "NovelkiBackend.Tests",
+                    ["Jwt:Issuer"] = "Tsundoku.Tests",
+                    ["Jwt:Audience"] = "Tsundoku.Tests",
                     ["Database:AutoMigrate"] = "false"
                 });
             });

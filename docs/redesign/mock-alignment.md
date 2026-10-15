@@ -1,6 +1,6 @@
 # Mock alignment
 
-Every element of the mock ([Novelki Redesign Mock](https://claude.ai/artifact/5dKnWe32vY5JN3p9rV17Xr)), with one decision each:
+Every element of the mock ([Tsundoku Redesign Mock](https://claude.ai/artifact/5dKnWe32vY5JN3p9rV17Xr)), with one decision each:
 
 - **do**: built as in the mock
 - **deviate**: built differently, for the reason given
@@ -163,7 +163,7 @@ No mock board; built from the system.
 
 | Element | Decision |
 | --- | --- |
-| Frame | Centered 400px panel on the grained page with the header's brand mark (book icon + serif "Novelki") above it |
+| Frame | Centered 400px panel on the grained page with the header's brand mark (book icon + serif "Tsundoku") above it |
 | Title | Serif "Log in" / "Create account" with one line under it; no eyebrow |
 | Fields | Visible labels (they were placeholders only), the form field style, `autocomplete` values so password managers fill them, a show/hide toggle on passwords |
 | Errors | Under the field and linked to it (`aria-describedby`); the password checklist uses check icons and stays visible while the password is invalid |

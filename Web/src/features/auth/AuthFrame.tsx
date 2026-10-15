@@ -1,4 +1,4 @@
-import { BookOpen, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, LibraryBig } from 'lucide-react'
 import { forwardRef, useId, useState, type InputHTMLAttributes, type ReactNode } from 'react'
 import { fieldClass } from '@/components/ui/fieldStyles'
 import { cn } from '@/lib/utils'
@@ -18,9 +18,9 @@ export function AuthFrame({
     <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-4 py-10 text-ink">
       <div className="flex items-center gap-2.5 font-display text-xl font-bold">
         <span className="flex size-8 items-center justify-center rounded-control bg-accent text-accent-ink">
-          <BookOpen aria-hidden="true" className="size-[18px]" />
+          <LibraryBig aria-hidden="true" className="size-[18px]" />
         </span>
-        Novelki
+        Tsundoku
       </div>
       <div className="w-full max-w-[400px] rounded-dialog border border-line bg-surface p-6 sm:p-8">
         <h1 className="m-0 font-display text-[28px] leading-tight font-bold">{title}</h1>

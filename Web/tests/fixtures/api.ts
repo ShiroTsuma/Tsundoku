@@ -162,11 +162,43 @@ export const invalidImportSession = {
 
 const extraSnapshots = [
   ['Shadow Slave', 'Guiltythree', 'Novel', 2400, ['Action', 'Fantasy'], ['Dark', 'Survival'], 3],
-  ['Omniscient Reader', 'Sing Shong', 'Novel', 551, ['Fantasy'], ['Apocalypse', 'Meta', 'Webnovel Reader'], 0],
+  [
+    'Omniscient Reader',
+    'Sing Shong',
+    'Novel',
+    551,
+    ['Fantasy'],
+    ['Apocalypse', 'Meta', 'Webnovel Reader'],
+    0,
+  ],
   ['Solo Leveling', 'Chugong', 'Manhwa', 200, ['Action'], ['Dungeons', 'System'], 0],
-  ['The Beginning After the End', 'TurtleMe', 'Novel', null, ['Fantasy', 'Adventure'], ['Reincarnation'], 2],
-  ['Frieren', 'Kanehito Yamada', 'Manga', 140, ['Fantasy', 'Slice of Life'], ['Elves', 'Journey'], 0],
-  ['A Title Long Enough To Need Two Lines In The Card Without Breaking The Layout', null, 'Novel', 12, [], [], 0],
+  [
+    'The Beginning After the End',
+    'TurtleMe',
+    'Novel',
+    null,
+    ['Fantasy', 'Adventure'],
+    ['Reincarnation'],
+    2,
+  ],
+  [
+    'Frieren',
+    'Kanehito Yamada',
+    'Manga',
+    140,
+    ['Fantasy', 'Slice of Life'],
+    ['Elves', 'Journey'],
+    0,
+  ],
+  [
+    'A Title Long Enough To Need Two Lines In The Card Without Breaking The Layout',
+    null,
+    'Novel',
+    12,
+    [],
+    [],
+    0,
+  ],
 ].map(([title, author, type, chapters, genres, tags, files], index) => ({
   id: `snapshot-extra-${String(index)}`,
   sourceBookId: `source-${String(index)}`,
@@ -288,7 +320,7 @@ export const analytics = {
 
 export async function seedAuthenticatedSession(page: Page) {
   await page.addInitScript(() => {
-    window.localStorage.removeItem('novelki.session')
+    window.localStorage.removeItem('tsundoku.session')
   })
 }
 
@@ -514,10 +546,7 @@ export async function installLayoutApiMocks(page: Page) {
     if (path === 'book/manage') {
       const data = layoutBooks.map((book, index) => ({
         book,
-        listing:
-          index === 0
-            ? { id: 'listing-layout', snapshotAt: '2026-07-18T12:00:00Z' }
-            : null,
+        listing: index === 0 ? { id: 'listing-layout', snapshotAt: '2026-07-18T12:00:00Z' } : null,
       }))
       await route.fulfill({ json: { skip: 0, take: 50, total: data.length, data } })
       return

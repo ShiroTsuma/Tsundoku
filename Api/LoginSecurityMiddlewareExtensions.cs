@@ -6,7 +6,7 @@ using System.Text.Json;
 
 public static class LoginSecurityMiddlewareExtensions
 {
-    internal const string LoginIdentifierItemKey = "Novelki.LoginIdentifier";
+    internal const string LoginIdentifierItemKey = "Tsundoku.LoginIdentifier";
     private const string LoginPath = "/api/v1/account/login";
 
     public static IApplicationBuilder UseLoginSecurity(this IApplicationBuilder app)

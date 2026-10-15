@@ -8,9 +8,9 @@ using Microsoft.Extensions.Options;
 
 public static class BookFileTelemetry
 {
-    public static readonly Meter Meter = new("NovelkiBackend.BookFiles");
-    public static readonly Counter<long> Operations = Meter.CreateCounter<long>("novelki.epub.operations");
-    public static readonly Histogram<long> StagingBytes = Meter.CreateHistogram<long>("novelki.epub.staging.bytes");
+    public static readonly Meter Meter = new("Tsundoku.BookFiles");
+    public static readonly Counter<long> Operations = Meter.CreateCounter<long>("tsundoku.epub.operations");
+    public static readonly Histogram<long> StagingBytes = Meter.CreateHistogram<long>("tsundoku.epub.staging.bytes");
 }
 
 public sealed class BookFileBackgroundService(

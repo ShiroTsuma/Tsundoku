@@ -22,7 +22,7 @@ public sealed class TypesenseSearchComparisonPostgreSqlTests(PostgreSqlFixture f
     private const int FullSetAnalysisOperations = 1_000;
     private const int DefaultParallelism = 8;
     private const int PageSize = 250;
-    private const string CollectionName = "novelki_search_comparison";
+    private const string CollectionName = "tsundoku_search_comparison";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     [Fact]

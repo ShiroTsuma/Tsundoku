@@ -888,7 +888,7 @@ public class BookCoverTests
 
     private static string CreateTempStorageRoot()
     {
-        var root = Path.Combine(Path.GetTempPath(), "novelki-cover-tests", Guid.NewGuid().ToString("N"));
+        var root = Path.Combine(Path.GetTempPath(), "tsundoku-cover-tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         return root;
     }

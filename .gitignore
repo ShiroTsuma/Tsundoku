@@ -140,3 +140,8 @@ _NCrunch*
 /tools/books-export.csv
 /tools/__pycache__/
 /BenchmarkDotNet.Artifacts/
+
+# Local Playwright screenshots and reports
+/Web/tests/*-snapshots/
+/Web/test-results/
+/Web/playwright-report/

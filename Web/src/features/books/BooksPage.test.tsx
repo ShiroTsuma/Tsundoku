@@ -53,7 +53,7 @@ function getSearchInput() {
 
 describe('BooksPage', () => {
   beforeEach(() => {
-    window.localStorage.removeItem('novelki.books.page-size.v1')
+    window.localStorage.removeItem('tsundoku.books.page-size.v1')
     window.sessionStorage.clear()
     vi.mocked(api.getBooks).mockReset()
     vi.mocked(api.getBooksSummary).mockReset()
@@ -104,7 +104,7 @@ describe('BooksPage', () => {
 
   it('keeps all enabled table columns inside a symmetric scroll container', async () => {
     window.localStorage.setItem(
-      'novelki.books.columns.v1',
+      'tsundoku.books.columns.v1',
       JSON.stringify([
         { id: 'title', visible: true },
         { id: 'author', visible: true },
@@ -388,7 +388,7 @@ describe('BooksPage', () => {
     await screen.findByText('Lord of Mysteries')
     await user.click(screen.getByRole('button', { name: /cards/i }))
 
-    expect(window.localStorage.getItem('novelki.books.layout.v1')).toBe('cards')
+    expect(window.localStorage.getItem('tsundoku.books.layout.v1')).toBe('cards')
     expect(screen.getByRole('heading', { name: /A Very Long Book Title/ })).toHaveAttribute(
       'title',
       'A Very Long Book Title That Should Stay Inside Its Card Container Without Pushing Actions Away',
@@ -406,7 +406,7 @@ describe('BooksPage', () => {
 
     expect(
       window.sessionStorage.getItem(
-        'novelki.books.scroll-position.v1:/books?take=50&query=Fantasy',
+        'tsundoku.books.scroll-position.v1:/books?take=50&query=Fantasy',
       ),
     ).toBe('731')
   })
@@ -425,7 +425,7 @@ describe('BooksPage', () => {
 
     expect(
       window.sessionStorage.getItem(
-        'novelki.books.scroll-position.v1:/books?take=50&query=Fantasy',
+        'tsundoku.books.scroll-position.v1:/books?take=50&query=Fantasy',
       ),
     ).toBe('731')
   })
@@ -433,7 +433,7 @@ describe('BooksPage', () => {
   it('restores and consumes the saved scroll position after the book list loads', async () => {
     vi.mocked(api.getBooks).mockResolvedValue(paginated(bookListItems))
     const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined)
-    const storageKey = 'novelki.books.scroll-position.v1:/books?take=50'
+    const storageKey = 'tsundoku.books.scroll-position.v1:/books?take=50'
     window.sessionStorage.setItem(storageKey, '684')
 
     renderWithProviders(<BooksPage />, { route: '/books?take=50' })
@@ -471,7 +471,7 @@ describe('BooksPage', () => {
       ]),
     )
     window.localStorage.setItem(
-      'novelki.books.columns.v1',
+      'tsundoku.books.columns.v1',
       JSON.stringify([{ id: 'tags', visible: true }]),
     )
 
@@ -661,7 +661,7 @@ describe('BooksPage', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Small cards' }))
 
-    expect(window.localStorage.getItem('novelki.books.card-size.v1')).toBe('small')
+    expect(window.localStorage.getItem('tsundoku.books.card-size.v1')).toBe('small')
     expect(
       container
         .querySelector<HTMLElement>('.book-card-grid')
@@ -807,7 +807,7 @@ describe('BooksPage', () => {
     expect(screen.queryByText('Cuttlefish')).not.toBeInTheDocument()
     expect(screen.getByText('LOTM')).toBeInTheDocument()
     expect(screen.getAllByText('Novel').at(-1)).toHaveClass('truncate', 'text-ink-3')
-    expect(window.localStorage.getItem('novelki.books.card-fields.v1')).toContain(
+    expect(window.localStorage.getItem('tsundoku.books.card-fields.v1')).toContain(
       '"alternativeTitles"',
     )
   })
@@ -836,7 +836,7 @@ describe('BooksPage', () => {
 
   it('sorts by total chapters from the table column', async () => {
     window.localStorage.setItem(
-      'novelki.books.columns.v1',
+      'tsundoku.books.columns.v1',
       JSON.stringify([{ id: 'totalChapters', visible: true }]),
     )
     vi.mocked(api.getBooks).mockResolvedValue(paginated(books))
@@ -862,7 +862,7 @@ describe('BooksPage', () => {
 
   it('renders the total chapters column label in the shared column settings', async () => {
     window.localStorage.setItem(
-      'novelki.books.columns.v1',
+      'tsundoku.books.columns.v1',
       JSON.stringify([{ id: 'totalChapters', visible: true }]),
     )
     vi.mocked(api.getBooks).mockResolvedValue(paginated(books))
@@ -1285,18 +1285,18 @@ describe('BooksPage', () => {
   })
 
   it('reads the card size, mapping an older cards-per-row choice', () => {
-    window.localStorage.removeItem('novelki.books.card-size.v1')
-    window.localStorage.setItem('novelki.books.cards-per-row.v1', '8')
-    expect(readCardSize('novelki.books.card-size.v1', 'novelki.books.cards-per-row.v1')).toBe(
+    window.localStorage.removeItem('tsundoku.books.card-size.v1')
+    window.localStorage.setItem('tsundoku.books.cards-per-row.v1', '8')
+    expect(readCardSize('tsundoku.books.card-size.v1', 'tsundoku.books.cards-per-row.v1')).toBe(
       'small',
     )
-    window.localStorage.setItem('novelki.books.cards-per-row.v1', '4')
-    expect(readCardSize('novelki.books.card-size.v1', 'novelki.books.cards-per-row.v1')).toBe(
+    window.localStorage.setItem('tsundoku.books.cards-per-row.v1', '4')
+    expect(readCardSize('tsundoku.books.card-size.v1', 'tsundoku.books.cards-per-row.v1')).toBe(
       'large',
     )
-    window.localStorage.setItem('novelki.books.card-size.v1', 'nonsense')
-    window.localStorage.removeItem('novelki.books.cards-per-row.v1')
-    expect(readCardSize('novelki.books.card-size.v1', 'novelki.books.cards-per-row.v1')).toBe(
+    window.localStorage.setItem('tsundoku.books.card-size.v1', 'nonsense')
+    window.localStorage.removeItem('tsundoku.books.cards-per-row.v1')
+    expect(readCardSize('tsundoku.books.card-size.v1', 'tsundoku.books.cards-per-row.v1')).toBe(
       'medium',
     )
   })

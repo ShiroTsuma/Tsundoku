@@ -21,7 +21,7 @@ public sealed class BookImportSessionStore : IDisposable
     {
         _options = options.Value;
         _logger = logger;
-        var baseRoot = Path.Combine(Path.GetTempPath(), "novelki-book-imports");
+        var baseRoot = Path.Combine(Path.GetTempPath(), "tsundoku-book-imports");
         Directory.CreateDirectory(baseRoot);
         RemoveOldInstanceDirectories(baseRoot, _options.SessionAbsoluteLifetime);
         _instanceRoot = Path.Combine(baseRoot, $"{Environment.ProcessId}-{Guid.NewGuid():N}");

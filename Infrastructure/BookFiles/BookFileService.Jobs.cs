@@ -413,7 +413,7 @@ public sealed partial class BookFileService
                 }
 
                 var manifest = JsonSerializer.Deserialize<BookFileManifest>(json.ToArray(), JsonOptions);
-                if (manifest == null || manifest.Format != "novelki-epubs" || manifest.Version != 1 ||
+                if (manifest == null || manifest.Format != "tsundoku-epubs" || manifest.Version != 1 ||
                     manifest.Books == null || manifest.Books.Count > _options.MaxLibraryArchiveEntries)
                 {
                     throw new ValidationException("Unsupported EPUB archive manifest.");

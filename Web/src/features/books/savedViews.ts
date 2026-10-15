@@ -3,7 +3,7 @@ import { useState } from 'react'
 /** A named search query the user saved from the library list. */
 export type SavedView = { name: string; query: string }
 
-export const savedViewsStorageKey = 'novelki.books.saved-views.v1'
+export const savedViewsStorageKey = 'tsundoku.books.saved-views.v1'
 
 function readSavedViews(): SavedView[] {
   try {

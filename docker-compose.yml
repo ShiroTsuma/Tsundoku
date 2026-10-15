@@ -37,7 +37,7 @@ services:
       BookFiles__MaxOwnerStorageBytes: ${BOOK_FILES_OWNER_STORAGE_BYTES:-10737418240}
       BookFiles__MaxLibraryArchiveBytes: ${BOOK_FILES_LIBRARY_ARCHIVE_BYTES:-12884901888}
       BookFiles__MaxStagingBytes: ${BOOK_FILES_STAGING_BYTES:-25769803776}
-      OTEL_SERVICE_NAME: novelki-api
+      OTEL_SERVICE_NAME: tsundoku-api
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
     volumes:

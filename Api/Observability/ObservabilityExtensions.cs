@@ -31,7 +31,7 @@ public static class ObservabilityExtensions
                 .ReadFrom.Configuration(context.Configuration)
                 .ReadFrom.Services(services)
                 .Enrich.FromLogContext()
-                .Enrich.WithProperty("Application", "NovelkiBackend")
+                .Enrich.WithProperty("Application", "Tsundoku")
                 .Enrich.WithProperty("ServiceName", GetServiceName(context.Configuration));
 
             var endpoint = context.Configuration[OtlpEndpointVariable];
@@ -61,7 +61,7 @@ public static class ObservabilityExtensions
             .WithTracing(tracing =>
             {
                 tracing
-                    .AddSource(NovelkiTelemetry.ActivitySourceName)
+                    .AddSource(TsundokuTelemetry.ActivitySourceName)
                     .AddSource(InfrastructureTelemetry.ActivitySourceName)
                     .AddAspNetCoreInstrumentation(options =>
                     {
@@ -98,7 +98,7 @@ public static class ObservabilityExtensions
             .WithMetrics(metrics =>
             {
                 metrics
-                    .AddMeter(NovelkiTelemetry.MeterName, BookFileTelemetry.Meter.Name)
+                    .AddMeter(TsundokuTelemetry.MeterName, BookFileTelemetry.Meter.Name)
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation();
@@ -176,7 +176,7 @@ public static class ObservabilityExtensions
 
     private static string GetServiceName(IConfiguration configuration)
     {
-        return configuration["OTEL_SERVICE_NAME"] ?? "novelki-api";
+        return configuration["OTEL_SERVICE_NAME"] ?? "tsundoku-api";
     }
 
     public static bool IsHealthCheckPath(PathString path)

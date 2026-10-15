@@ -239,7 +239,7 @@ describe('AdminPage', () => {
 
   it('sorts by total chapters from the admin table column', async () => {
     window.localStorage.setItem(
-      'novelki.adminBooks.columns.v1',
+      'tsundoku.adminBooks.columns.v1',
       JSON.stringify([{ id: 'totalChapters', visible: true }]),
     )
     vi.mocked(api.getAdminBooks).mockResolvedValue(paginated([createAdminBook()]))

@@ -1,6 +1,6 @@
 namespace Api.Observability;
 
-internal static class NovelkiTelemetryTags
+internal static class TsundokuTelemetryTags
 {
     public const string BookQuery = "book.query";
     public const string BookSortBy = "book.sort_by";

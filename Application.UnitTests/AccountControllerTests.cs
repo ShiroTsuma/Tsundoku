@@ -36,7 +36,7 @@ public class AccountControllerTests
         mediator.Setup(mock => mock.Send(loginCommand, It.IsAny<CancellationToken>())).ReturnsAsync(tokenResponse);
         mediator.Setup(mock => mock.Send(refreshCommand, It.IsAny<CancellationToken>())).ReturnsAsync(tokenResponse);
         var httpContext = new DefaultHttpContext();
-        httpContext.Request.Headers.Cookie = "__Host-novelki.refresh=refresh";
+        httpContext.Request.Headers.Cookie = "__Host-tsundoku.refresh=refresh";
         var controller = new AccountController(mediator.Object, NullLogger<AccountController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }

@@ -1,4 +1,4 @@
-const scrollPositionKeyPrefix = 'novelki.books.scroll-position.v1:'
+const scrollPositionKeyPrefix = 'tsundoku.books.scroll-position.v1:'
 
 export type BookListNavigationState = {
   bookListReturnTo?: string

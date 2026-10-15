@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="Web/public/favicon.svg" width="72" height="72" alt="Novelki">
+  <img src="Web/public/favicon.svg" width="72" height="72" alt="Tsundoku">
 </p>
 
-<h1 align="center">Novelki</h1>
+<h1 align="center">Tsundoku</h1>
 
 <p align="center">
   <strong>Your reading list, chapter history, and EPUB collection. On your own server.</strong><br>
@@ -20,12 +20,12 @@
   <a href="#features">Features</a> &middot;
   <a href="#quick-start">Quick start</a> &middot;
   <a href="#documentation">Documentation</a> &middot;
-  <a href="https://github.com/ShiroTsuma/NovelkiBackend/issues">Report an issue</a>
+  <a href="https://github.com/ShiroTsuma-github/Tsundoku/issues">Report an issue</a>
 </p>
 
 ---
 
-Novelki brings series from different reading sites into one personal catalog. Track the chapter you reached, keep alternate titles and source links together, and attach EPUBs to the books they belong to. Browse your collection as a table or cover grid, with the same library available on desktop, tablet, and phone.
+Tsundoku brings series from different reading sites into one personal catalog. Track the chapter you reached, keep alternate titles and source links together, and attach EPUBs to the books they belong to. Browse your collection as a table or cover grid, with the same library available on desktop, tablet, and phone.
 
 Run it on your own infrastructure with PostgreSQL and local file storage or an S3-compatible bucket. Each account has a private library; you choose which books and files to share with other users of your instance.
 
@@ -76,15 +76,15 @@ Use quotes for values with spaces, `-` to exclude a match, and `none` to find mi
 
 Publish a snapshot of a book to make it discoverable on your instance. Other users can copy its catalog information into their own libraries. EPUBs stay private until you select files to share; downloading shared files requires an account. Copying a book does not copy its attachments.
 
-**Development status:** Novelki is under active development. The **Find EPUB** crawler interface currently uses simulated search results and download jobs. Uploading, managing, and downloading your own EPUB files uses the implemented storage API. See the [crawler integration notes](Web/src/features/epubSearch/README.md) for the remaining work.
+**Development status:** Tsundoku is under active development. The **Find EPUB** crawler interface currently uses simulated search results and download jobs. Uploading, managing, and downloading your own EPUB files uses the implemented storage API. See the [crawler integration notes](Web/src/features/epubSearch/README.md) for the remaining work.
 
 ## Quick start
 
 **Requirements:** Docker with Compose and a PostgreSQL instance reachable from the API container. The committed Compose stack includes the application and monitoring services; provision PostgreSQL separately. Redis is optional.
 
 ```sh
-git clone https://github.com/ShiroTsuma/NovelkiBackend.git
-cd NovelkiBackend
+git clone https://github.com/ShiroTsuma-github/Tsundoku.git tsundoku
+cd tsundoku
 cp .env.example .env
 ```
 
@@ -139,7 +139,7 @@ To work on the project, install the .NET SDK specified in [`global.json`](global
 
 ## Feedback and contributions
 
-Use [GitHub Issues](https://github.com/ShiroTsuma/NovelkiBackend/issues) for bug reports and feature proposals. For a bug, include the commit or branch, deployment method, steps to reproduce, and relevant logs with credentials removed. For changes to an import or parser, include a representative input where possible.
+Use [GitHub Issues](https://github.com/ShiroTsuma-github/Tsundoku/issues) for bug reports and feature proposals. For a bug, include the commit or branch, deployment method, steps to reproduce, and relevant logs with credentials removed. For changes to an import or parser, include a representative input where possible.
 
 ## License
 

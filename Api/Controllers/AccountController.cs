@@ -11,7 +11,7 @@ using FluentValidation;
 [Route(ApiRoutes.Account)]
 public class AccountController : ControllerBase
 {
-    internal const string RefreshTokenCookieName = "__Host-novelki.refresh";
+    internal const string RefreshTokenCookieName = "__Host-tsundoku.refresh";
 
     private readonly ILogger<AccountController> _logger;
     private readonly IMediator _mediator;

@@ -72,7 +72,7 @@ public sealed record BookFileLimitsDto(
 
 public sealed record BookFileManifest
 {
-    public string Format { get; init; } = "novelki-epubs";
+    public string Format { get; init; } = "tsundoku-epubs";
     public int Version { get; init; } = 1;
     public List<BookFileManifestBook> Books { get; init; } = [];
 }

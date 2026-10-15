@@ -3,7 +3,7 @@ import type { TokenResponse } from './types'
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 
-export const sessionStorageKey = 'novelki.session'
+export const sessionStorageKey = 'tsundoku.session'
 
 type StoredSession = TokenResponse
 

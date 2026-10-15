@@ -91,7 +91,7 @@ def generate_queries(filepath, output_file, total_queries, general_search_count,
 
 if __name__ == "__main__":
     default_input = Path(__file__).with_name("books-export.csv")
-    parser = argparse.ArgumentParser(description="Generator zapytań dla NovelkiBackend.")
+    parser = argparse.ArgumentParser(description="Generator zapytań dla Tsundoku.")
     parser.add_argument("--count", type=int, default=20, help="Łączna liczba zapytań do wygenerowania")
     parser.add_argument("--general", type=int, default=5, help="Ilość zapytań zawierających General Search (<= count)")
     parser.add_argument("--output", type=str, default="queries.txt", help="Nazwa pliku wyjściowego")

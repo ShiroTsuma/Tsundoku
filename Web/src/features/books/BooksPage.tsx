@@ -69,12 +69,12 @@ import { FileImportDialog } from './files/FileImportDialog'
 import { FileExportDialog } from './files/FileExportDialog'
 import { DescribedMetadataPills, MetadataSummary } from './MetadataBadges'
 
-const bookColumnsStorageKey = 'novelki.books.columns.v1'
-const bookCardFieldsStorageKey = 'novelki.books.card-fields.v1'
-const bookLayoutStorageKey = 'novelki.books.layout.v1'
-const cardsPerRowStorageKey = 'novelki.books.cards-per-row.v1'
-const cardSizeStorageKey = 'novelki.books.card-size.v1'
-const pageSizeStorageKey = 'novelki.books.page-size.v1'
+const bookColumnsStorageKey = 'tsundoku.books.columns.v1'
+const bookCardFieldsStorageKey = 'tsundoku.books.card-fields.v1'
+const bookLayoutStorageKey = 'tsundoku.books.layout.v1'
+const cardsPerRowStorageKey = 'tsundoku.books.cards-per-row.v1'
+const cardSizeStorageKey = 'tsundoku.books.card-size.v1'
+const pageSizeStorageKey = 'tsundoku.books.page-size.v1'
 const bookSearchDelayMs = 220
 
 const bookColumns: ColumnDefinition<BookListItemDto>[] = [

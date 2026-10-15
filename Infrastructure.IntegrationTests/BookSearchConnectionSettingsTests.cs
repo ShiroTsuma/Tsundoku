@@ -9,7 +9,7 @@ public sealed class BookSearchConnectionSettingsTests
     public void Apply_ShouldConfigureTheCandidatePrefilterThreshold()
     {
         var connectionString = BookSearchConnectionSettings.Apply(
-            "Host=localhost;Port=5432;Database=novelki;Username=postgres;Password=postgres");
+            "Host=localhost;Port=5432;Database=tsundoku;Username=postgres;Password=postgres");
         var builder = new NpgsqlConnectionStringBuilder(connectionString);
 
         Assert.Equal(0.4, BookSearchConnectionSettings.WordSimilarityThreshold);

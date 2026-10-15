@@ -43,8 +43,8 @@ public class JwtTokenGeneratorTests
         return new JwtTokenGenerator(Options.Create(new JwtSettings
         {
             Key = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-            Issuer = "NovelkiTests",
-            Audience = "NovelkiTests"
+            Issuer = "TsundokuTests",
+            Audience = "TsundokuTests"
         }));
     }
 

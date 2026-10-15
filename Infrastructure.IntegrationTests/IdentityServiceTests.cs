@@ -235,8 +235,8 @@ public class IdentityServiceTests
             services.AddSingleton<IOptions<JwtSettings>>(Options.Create(new JwtSettings
             {
                 Key = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-                Issuer = "NovelkiTests",
-                Audience = "NovelkiTests"
+                Issuer = "TsundokuTests",
+                Audience = "TsundokuTests"
             }));
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
             services.AddScoped<IdentityService>();

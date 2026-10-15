@@ -31,7 +31,7 @@ metrics_generator:
   registry:
     external_labels:
       source: tempo
-      cluster: novelki-compose
+      cluster: tsundoku-compose
   storage:
     path: /var/tempo/generator/wal
     remote_write:

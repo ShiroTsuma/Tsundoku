@@ -26,7 +26,7 @@ import {
   useBookListUrlState,
 } from '@/features/books/bookListState'
 
-const adminColumnsStorageKey = 'novelki.adminBooks.columns.v1'
+const adminColumnsStorageKey = 'tsundoku.adminBooks.columns.v1'
 
 const adminBookColumns: ColumnDefinition<AdminBookListItemDto>[] = [
   {

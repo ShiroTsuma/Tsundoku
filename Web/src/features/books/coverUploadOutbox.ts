@@ -1,9 +1,9 @@
 import { api } from '@/api/client'
 import { getStoredSessionUserId, HttpError } from '@/api/http'
 
-const databaseName = 'novelki-cover-upload-outbox'
+const databaseName = 'tsundoku-cover-upload-outbox'
 const storeName = 'uploads'
-const changedEventName = 'novelki:cover-upload-outbox-changed'
+const changedEventName = 'tsundoku:cover-upload-outbox-changed'
 const databaseVersion = 1
 
 export type PendingCoverUpload = {

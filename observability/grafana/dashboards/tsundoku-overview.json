@@ -665,7 +665,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(novelki_book_created_total[$__rate_interval])) > 0",
+          "expr": "sum(rate(tsundoku_book_created_total[$__rate_interval])) > 0",
           "instant": false,
           "legendFormat": "Books Created",
           "range": true,
@@ -677,7 +677,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(novelki_book_updated_total[$__rate_interval])) > 0",
+          "expr": "sum(rate(tsundoku_book_updated_total[$__rate_interval])) > 0",
           "instant": false,
           "legendFormat": "Books Updated",
           "range": true,
@@ -689,7 +689,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(novelki_search_requests_total[$__rate_interval])) > 0",
+          "expr": "sum(rate(tsundoku_search_requests_total[$__rate_interval])) > 0",
           "instant": false,
           "legendFormat": "Search Operations",
           "range": true,
@@ -748,7 +748,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{service_name=\"novelki-api\"} !~ `RequestPath=/health(?:/|$)` | severity_text=~\"${level:raw}\" |~ `${search:raw}`",
+          "expr": "{service_name=\"tsundoku-api\"} !~ `RequestPath=/health(?:/|$)` | severity_text=~\"${level:raw}\" |~ `${search:raw}`",
           "maxLines": 5000,
           "queryType": "range",
           "refId": "A"
@@ -762,7 +762,7 @@
   "refresh": "10s",
   "schemaVersion": 42,
   "tags": [
-    "novelki",
+    "tsundoku",
     "api",
     "production"
   ],
@@ -855,7 +855,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Novelki Overview",
-  "uid": "novelki-overview",
+  "title": "Tsundoku Overview",
+  "uid": "tsundoku-overview",
   "version": 3
 }

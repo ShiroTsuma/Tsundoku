@@ -34,13 +34,13 @@ public class AdminController : ControllerBase
     {
         var request = new GetAllAdminBooksQuery(skip, take, query, sortBy, sortDirection);
         using var activity =
-            NovelkiTelemetry.ActivitySource.StartActivity("Admin.Book.Search", ActivityKind.Internal);
-        activity?.SetTag(NovelkiTelemetryTags.BookQuery, request.Query);
-        activity?.SetTag(NovelkiTelemetryTags.BookSortBy, request.SortBy);
-        activity?.SetTag(NovelkiTelemetryTags.BookSortDirection, request.SortDirection);
-        NovelkiTelemetry.BookSearchRequests.Add(1);
+            TsundokuTelemetry.ActivitySource.StartActivity("Admin.Book.Search", ActivityKind.Internal);
+        activity?.SetTag(TsundokuTelemetryTags.BookQuery, request.Query);
+        activity?.SetTag(TsundokuTelemetryTags.BookSortBy, request.SortBy);
+        activity?.SetTag(TsundokuTelemetryTags.BookSortDirection, request.SortDirection);
+        TsundokuTelemetry.BookSearchRequests.Add(1);
         var books = await _mediator.Send(request, cancellationToken);
-        activity?.SetTag(NovelkiTelemetryTags.BookResultCount, books.Data.Count);
+        activity?.SetTag(TsundokuTelemetryTags.BookResultCount, books.Data.Count);
 
         return Ok(books);
     }
@@ -77,7 +77,7 @@ public class AdminController : ControllerBase
             model.Links) { AdminScope = true };
 
         await _mediator.Send(command);
-        NovelkiTelemetry.BooksUpdated.Add(1);
+        TsundokuTelemetry.BooksUpdated.Add(1);
         _logger.LogInformation("Admin updated book. BookId={BookId}", id);
 
         return NoContent();
@@ -87,8 +87,8 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> CreateStatus([FromBody] CreateStatusCommand command)
     {
         var status = await _mediator.Send(command);
-        NovelkiTelemetry.AdminDictionaryCreated.Add(1,
-            new KeyValuePair<string, object?>(NovelkiTelemetryTags.DictionaryType, "status"));
+        TsundokuTelemetry.AdminDictionaryCreated.Add(1,
+            new KeyValuePair<string, object?>(TsundokuTelemetryTags.DictionaryType, "status"));
         _logger.LogInformation("Admin created status. StatusId={StatusId}", status.Id);
 
         return Created(ApiRoutes.StatusById(status.Id), status);
@@ -98,8 +98,8 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> CreateType([FromBody] CreateTypeCommand command)
     {
         var type = await _mediator.Send(command);
-        NovelkiTelemetry.AdminDictionaryCreated.Add(1,
-            new KeyValuePair<string, object?>(NovelkiTelemetryTags.DictionaryType, "type"));
+        TsundokuTelemetry.AdminDictionaryCreated.Add(1,
+            new KeyValuePair<string, object?>(TsundokuTelemetryTags.DictionaryType, "type"));
         _logger.LogInformation("Admin created type. TypeId={TypeId}", type.Id);
 
         return Created(ApiRoutes.TypeById(type.Id), type);
@@ -109,8 +109,8 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> CreateGenre([FromBody] CreateGenreCommand command)
     {
         var genre = await _mediator.Send(command);
-        NovelkiTelemetry.AdminDictionaryCreated.Add(1,
-            new KeyValuePair<string, object?>(NovelkiTelemetryTags.DictionaryType, "genre"));
+        TsundokuTelemetry.AdminDictionaryCreated.Add(1,
+            new KeyValuePair<string, object?>(TsundokuTelemetryTags.DictionaryType, "genre"));
         _logger.LogInformation("Admin created genre. GenreId={GenreId}", genre.Id);
 
         return Created(ApiRoutes.GenreById(genre.Id), genre);

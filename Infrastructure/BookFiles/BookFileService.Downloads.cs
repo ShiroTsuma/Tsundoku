@@ -109,7 +109,7 @@ public sealed partial class BookFileService
         var payload = Payload(job);
         await AuthorizedFilesAsync(payload.FileIds, ticket.OwnerId, payload.SnapshotId, ct);
         return new BookFileDownloadResult(File.OpenRead(JobPath(job.Id, "export.zip")), "application/zip",
-            payload.IncludeManifest ? "novelki-epubs.zip" : "book-epubs.zip");
+            payload.IncludeManifest ? "tsundoku-epubs.zip" : "book-epubs.zip");
     }
 
     private async Task<List<BookFile>> AuthorizedFilesAsync(IReadOnlyList<Guid> ids, Guid actorId, Guid? snapshotId,

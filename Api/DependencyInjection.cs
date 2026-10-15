@@ -145,7 +145,7 @@ internal static class DependencyInjection
                     context.HttpContext.Request.Path,
                     detail,
                     context.HttpContext.TraceIdentifier);
-                NovelkiTelemetry.RateLimitRejections.Add(1);
+                TsundokuTelemetry.RateLimitRejections.Add(1);
 
                 await context.HttpContext.Response.WriteAsJsonAsync(
                     new

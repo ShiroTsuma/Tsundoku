@@ -1,4 +1,4 @@
-export const nsfwPreferenceStorageKey = 'novelki.nsfw-enabled.v1'
+export const nsfwPreferenceStorageKey = 'tsundoku.nsfw-enabled.v1'
 export const nsfwBookExclusions = [
   {
     query: '-tag:h-manhwa',

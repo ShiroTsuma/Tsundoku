@@ -231,7 +231,7 @@ export function EpubSearchDialog({
             </ChoicePill>
           </fieldset>
           <p className="m-0 text-[13px] text-ink-3">
-            Novelki only lists what the crawler finds. Nothing is downloaded until you choose a
+            Tsundoku only lists what the crawler finds. Nothing is downloaded until you choose a
             source and confirm.
           </p>
         </form>

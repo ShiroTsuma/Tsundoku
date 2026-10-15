@@ -255,7 +255,7 @@ public sealed class BookFileServiceTests
         var replacement = await h.AddBook("Restore me");
         saved.Position = 0;
         var import =
-            await h.Service.CreateImportAsync(null, Uploads(new BookFileUpload(saved, "novelki-epubs.zip")), default,
+            await h.Service.CreateImportAsync(null, Uploads(new BookFileUpload(saved, "tsundoku-epubs.zip")), default,
                 saved.Length);
         await h.Service.ProcessNextAsync(default);
         var preview = await h.Service.GetJobAsync(import.Id, default);
@@ -458,7 +458,7 @@ public sealed class BookFileServiceTests
         private readonly IOptions<BookFileOptions> _options;
 
         private readonly string _root =
-            Path.Combine(Path.GetTempPath(), "novelki-epub-tests", Guid.NewGuid().ToString("N"));
+            Path.Combine(Path.GetTempPath(), "tsundoku-epub-tests", Guid.NewGuid().ToString("N"));
 
         private readonly IOptions<BookImportSecurityOptions> _security =
             Options.Create(new BookImportSecurityOptions { SuspiciousCompressionMinimumBytes = 128 * 1024 });

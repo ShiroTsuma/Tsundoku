@@ -1,5 +1,5 @@
 /*
- * Novelki design tokens: graphite + paper.
+ * Tsundoku design tokens: graphite + paper.
  * Every colour, radius, shadow and font used by the UI must come from here.
  * Tailwind v4 reads @theme, so each token is also a utility
  * (bg-surface, text-ink-2, border-line, rounded-control, font-display, …).

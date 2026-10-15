@@ -173,7 +173,7 @@ describe('BookCoverSection', () => {
     })
 
     expect(fetch).toHaveBeenCalledTimes(1)
-    expect(cacheNames).toContain('novelki.covers.v1::user-123')
+    expect(cacheNames).toContain('tsundoku.covers.v1::user-123')
     expect(screen.getByRole('img', { name: 'Book cover' })).toHaveAttribute(
       'src',
       'blob:cover-from-cache',
