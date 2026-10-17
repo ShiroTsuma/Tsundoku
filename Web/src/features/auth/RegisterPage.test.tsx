@@ -141,17 +141,16 @@ describe('RegisterPage', () => {
     expect(toast.error).toHaveBeenCalledWith('One or more validation errors occurred.')
   })
 
-  it('maps username conflict to the username field', async () => {
+  it('shows a helpful registration conflict without identifying an existing account field', async () => {
+    const message =
+      'Unable to create an account with these details. Try different details or sign in.'
     vi.mocked(api.register).mockRejectedValue(
       new HttpError({
-        type: 'UsernameTakenException',
+        type: 'Conflict',
         title: 'Conflict',
         status: 409,
-        detail: "Account with username 'reader' already exists.",
+        detail: message,
         instance: '/account/register',
-        errors: {
-          Username: ["Account with username 'reader' already exists."],
-        },
       }),
     )
     const user = userEvent.setup()
@@ -162,8 +161,12 @@ describe('RegisterPage', () => {
     await user.type(screen.getByLabelText('Password'), 'Password123!')
     await user.click(screen.getByRole('button', { name: /create account/i }))
 
+    expect(await screen.findByText(message)).toBeInTheDocument()
+    expect(screen.getByLabelText('Username')).not.toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('Email')).not.toHaveAttribute('aria-invalid', 'true')
+    expect(toast.error).toHaveBeenCalledWith(message)
     expect(
-      await screen.findByText("Account with username 'reader' already exists."),
-    ).toBeInTheDocument()
+      screen.queryByText('The request conflicts with the current resource state.'),
+    ).not.toBeInTheDocument()
   })
 })

@@ -1,0 +1,140 @@
+# Standalone localhost setup. Do not combine with docker-compose.yml.
+# Credentials below are public development credentials for this isolated stack only.
+name: tsundoku-local
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: tsundoku_local
+      POSTGRES_USER: tsundoku_local
+      POSTGRES_PASSWORD: tsundoku-local-db-only
+    volumes:
+      - local-db:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U tsundoku_local -d tsundoku_local]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: Api/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+      crawler:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5232
+      ConnectionStrings__DB: Host=db;Port=5432;Database=tsundoku_local;Username=tsundoku_local;Password=tsundoku-local-db-only
+      ConnectionStrings__Redis: ""
+      Database__AutoMigrate: "true"
+      Jwt__Key: tsundoku-local-development-key-never-use-in-production-2026
+      Jwt__Issuer: Tsundoku.Local
+      Jwt__Audience: Tsundoku.Local
+      Admin__Emails__0: dev@local.test
+      Cors__AllowedOrigins__0: https://localhost:18443
+      Cors__AllowedOrigins__1: http://localhost:5173
+      BookCovers__S3__Endpoint: ""
+      BookCovers__S3__Region: ""
+      BookCovers__S3__AccessKey: ""
+      BookCovers__S3__SecretKey: ""
+      BookCovers__S3__Bucket: ""
+      Crawler__Enabled: "true"
+      Crawler__BaseUrl: http://crawler:8181
+      Crawler__ApiKey: tsundoku-local-crawler-key-development-only-2026
+      OTEL_SDK_DISABLED: "true"
+    volumes:
+      - local-covers:/app/storage/covers
+      - local-epubs:/app/storage/epubs
+      - local-staging:/app/storage/epub-staging
+    ports:
+      - "127.0.0.1:15232:5232"
+    networks: [default, crawler-internal]
+    healthcheck:
+      test: [CMD-SHELL, "curl -fsS http://localhost:5232/health/ready || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  crawler:
+    image: tsundoku-crawler:4.14.0
+    build:
+      context: ./tools/lncrawl
+    depends_on:
+      crawler-egress:
+        condition: service_healthy
+    environment:
+      CRAWLER_API_KEY: tsundoku-local-crawler-key-development-only-2026
+      LNCRAWL_DATA_PATH: /data
+      TZ: Europe/Warsaw
+      HTTP_PROXY: http://crawler-egress:3128
+      HTTPS_PROXY: http://crawler-egress:3128
+      http_proxy: http://crawler-egress:3128
+      https_proxy: http://crawler-egress:3128
+      NO_PROXY: localhost,127.0.0.1
+      PROXY_URLS: http://crawler-egress:3128
+    volumes:
+      - crawler-data:/data
+    networks: [crawler-internal]
+    mem_limit: 2g
+    cpus: 2
+    pids_limit: 256
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
+  crawler-egress:
+    image: tsundoku-crawler:4.14.0
+    pull_policy: never
+    command: [python, /app/egress.py]
+    volumes:
+      - crawler-data:/data:ro
+    healthcheck:
+      test: [CMD, python, -c, "import socket; socket.create_connection(('127.0.0.1', 3128), timeout=3).close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [default, crawler-internal]
+    mem_limit: 128m
+    pids_limit: 128
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
+  web:
+    build:
+      context: .
+      dockerfile: Web/Dockerfile
+      args:
+        VITE_API_BASE_URL: /api/v1
+        VITE_PUBLIC_ORIGIN: https://localhost:18443
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NGINX_ENVSUBST_FILTER: PUBLIC_DOMAIN|PUBLIC_HTTPS_AUTHORITY|BOOK_FILES_ARCHIVE_UPLOAD_LIMIT
+      BOOK_FILES_ARCHIVE_UPLOAD_LIMIT: 12289m
+      PUBLIC_DOMAIN: localhost
+      PUBLIC_HTTPS_AUTHORITY: localhost:18443
+      ACME_ENABLED: "false"
+      ACME_EMAIL: ""
+    volumes:
+      - local-certs:/etc/nginx/certs
+    ports:
+      - "127.0.0.1:18443:443"
+      - "127.0.0.1:18080:80"
+
+volumes:
+  local-db:
+  local-covers:
+  local-epubs:
+  local-staging:
+  local-certs:
+  crawler-data:
+
+networks:
+  crawler-internal:
+    internal: true

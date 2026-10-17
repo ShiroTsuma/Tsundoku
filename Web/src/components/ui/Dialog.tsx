@@ -1,5 +1,6 @@
 import { X } from 'lucide-react'
 import { useEffect, useEffectEvent, useId, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useBodyScrollLock } from '@/components/app/useBodyScrollLock'
 import { cn } from '@/lib/utils'
 import { Button } from './Button'
@@ -60,7 +61,7 @@ export function Dialog({
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-overlay px-4 py-10">
       <div
         ref={panelRef}
@@ -102,6 +103,7 @@ export function Dialog({
           </div>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

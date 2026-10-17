@@ -53,12 +53,15 @@ export function Menu({
     const spaceBelow = window.innerHeight - bounds.bottom - gap
     const spaceAbove = bounds.top - gap
     const menuHeight = menuRef.current?.offsetHeight ?? 0
+    const menuWidth = menuRef.current?.offsetWidth ?? 0
+    const preferredLeft = align === 'start' ? bounds.left : bounds.right - menuWidth
+    const viewportLeft = Math.max(8, Math.min(preferredLeft, window.innerWidth - menuWidth - 8))
     const below = spaceBelow >= menuHeight || spaceBelow >= spaceAbove
     setPosition({
       top: below ? bounds.bottom + gap : undefined,
       bottom: below ? undefined : window.innerHeight - bounds.top + gap,
-      left: align === 'start' ? bounds.left : undefined,
-      right: align === 'end' ? window.innerWidth - bounds.right : undefined,
+      left: menuWidth ? viewportLeft : align === 'start' ? bounds.left : undefined,
+      right: menuWidth ? undefined : align === 'end' ? window.innerWidth - bounds.right : undefined,
       maxHeight: Math.max(120, (below ? spaceBelow : spaceAbove) - 12),
     })
   }
@@ -68,6 +71,9 @@ export function Menu({
   useEffect(() => {
     if (!open) return undefined
     onViewportChange()
+    // The portal exists after the first position update; measure its actual width
+    // then keep the dropdown inside the viewport even near the left edge.
+    const frame = window.requestAnimationFrame(() => onViewportChange())
     function onPointerDown(event: PointerEvent) {
       const target = event.target
       if (
@@ -87,6 +93,7 @@ export function Menu({
     window.addEventListener('resize', reposition)
     window.addEventListener('scroll', reposition, true)
     return () => {
+      window.cancelAnimationFrame(frame)
       document.removeEventListener('pointerdown', onPointerDown)
       document.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('resize', reposition)

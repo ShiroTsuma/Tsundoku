@@ -8,6 +8,7 @@ import { ProgressCell, RatingCell, StatusCell } from '@/features/books/BookListC
 import { cn } from '@/lib/utils'
 import { AdminMetadataManager } from './AdminMetadataManager'
 import { AdminAccountsManager } from './AdminAccountsManager'
+import { AdminCrawlerPanel } from './AdminCrawlerPanel'
 import { BookDataTable } from '@/features/books/BookDataTable'
 import { DescribedMetadataPills } from '@/features/books/MetadataBadges'
 import { ColumnSettingsPopup, TotalChaptersColumnLabel } from '@/features/books/bookListColumns'
@@ -284,6 +285,7 @@ export function AdminPage() {
       <section className="flex min-w-0 flex-col gap-4" id="admin-panel" role="tabpanel">
         {tab === 'accounts' ? <AdminAccountsManager /> : null}
         {tab === 'dictionaries' ? <AdminMetadataManager /> : null}
+        {tab === 'crawler' ? <AdminCrawlerPanel /> : null}
         {tab === 'books' ? (
           <>
             <BookSearchInput
@@ -356,15 +358,16 @@ export function AdminPage() {
   )
 }
 
-type AdminTab = 'books' | 'accounts' | 'dictionaries'
+type AdminTab = 'books' | 'accounts' | 'dictionaries' | 'crawler'
 const adminTabs: { id: AdminTab; label: string }[] = [
   { id: 'books', label: 'Books' },
   { id: 'accounts', label: 'Accounts' },
   { id: 'dictionaries', label: 'Dictionaries' },
+  { id: 'crawler', label: 'Crawler' },
 ]
 
 function normalizeTab(value: string | null): AdminTab {
-  return value === 'accounts' || value === 'dictionaries' ? value : 'books'
+  return value === 'accounts' || value === 'dictionaries' || value === 'crawler' ? value : 'books'
 }
 
 function TruncatedCellText({ value }: { value?: string | null | undefined }) {

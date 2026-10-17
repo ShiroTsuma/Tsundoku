@@ -5,16 +5,19 @@ public sealed class GlobalTagService(
     IBookListCacheInvalidator cacheInvalidator) : IGlobalTagService
 {
     public async Task<IReadOnlyCollection<Tag>> SearchAsync(string? search, int take,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, int skip = 0)
     {
         var query = context.Tags.Where(tag => tag.IsGlobal);
         if (!string.IsNullOrWhiteSpace(search))
         {
             var normalized = MappingExtensions.NormalizeName(search);
-            query = query.Where(tag => tag.NormalizedName.Contains(normalized));
+            var descriptionSearch = search.Trim().ToLowerInvariant();
+            query = query.Where(tag => tag.NormalizedName.Contains(normalized) ||
+                tag.Description != null && tag.Description.ToLower().Contains(descriptionSearch));
         }
 
-        return await query.OrderBy(tag => tag.Name).Take(Math.Clamp(take, 1, 100)).ToListAsync(cancellationToken);
+        return await query.OrderBy(tag => tag.Name).ThenBy(tag => tag.Id).Skip(Math.Max(0, skip))
+            .Take(Math.Clamp(take, 1, 100)).ToListAsync(cancellationToken);
     }
 
     public async Task<Tag> CreateAsync(string name, string? description, CancellationToken cancellationToken)

@@ -11,6 +11,7 @@ public record BookDto
     public Guid? AuthorId { get; set; }
     public string? Author { get; set; }
     public required string ContentType { get; set; }
+    public string? ContentTypeSlug { get; set; }
     public required string Status { get; set; }
     public decimal? CurrentChapterNumber { get; set; }
     public string? CurrentChapterLabel { get; set; }

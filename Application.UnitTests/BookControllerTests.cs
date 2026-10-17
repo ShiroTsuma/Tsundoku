@@ -667,14 +667,14 @@ public class BookControllerTests
         var controller = CreateController(mediator.Object);
 
         var progress =
-            await controller.UpdateProgress(bookId, new UpdateBookProgressCommand(Guid.Empty, 12, "12", "done"));
+            await controller.UpdateProgress(bookId, new UpdateBookProgressCommand(Guid.Empty, 12, "12", "done", true));
         var delete = await controller.Delete(bookId);
 
         Assert.IsType<NoContentResult>(progress);
         Assert.IsType<NoContentResult>(delete);
         mediator.Verify(mock => mock.Send(
             It.Is<UpdateBookProgressCommand>(command =>
-                command.Id == bookId && command.CurrentChapterNumber == 12 && command.Comment == "done"),
+                command.Id == bookId && command.CurrentChapterNumber == 12 && command.Comment == "done" && command.Completed),
             It.IsAny<CancellationToken>()), Times.Once);
         mediator.Verify(mock => mock.Send(new DeleteBookCommand(bookId), It.IsAny<CancellationToken>()), Times.Once);
     }

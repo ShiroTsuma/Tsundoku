@@ -8,6 +8,7 @@ using BookFiles;
 using BookMetadata;
 using BookSearch;
 using Caching;
+using Crawler;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -190,6 +191,21 @@ public static class DependencyInjection
         builder.Services.AddScoped<BookFileService>();
         builder.Services.AddScoped<IBookFileService>(p => p.GetRequiredService<BookFileService>());
         builder.Services.AddHostedService<BookFileBackgroundService>();
+        builder.Services.AddOptions<CrawlerOptions>().Bind(builder.Configuration.GetSection("Crawler"))
+            .Validate(o => !o.Enabled || o.ApiKey.Length >= 32 && Uri.TryCreate(o.BaseUrl, UriKind.Absolute, out _) &&
+                o.MaxConcurrentDownloads > 0 && o.MaxActiveJobsPerOwner > 0 && o.JobLifetime > TimeSpan.Zero &&
+                o.MinScanHours >= 1 && o.MaxScanHours >= o.MinScanHours, "Crawler configuration is invalid.")
+            .ValidateOnStart();
+        builder.Services.AddHttpClient<ICrawlerClient, CrawlerClient>((sp, client) =>
+        {
+            client.BaseAddress = new Uri(sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CrawlerOptions>>().Value.BaseUrl.TrimEnd('/') + "/");
+            client.Timeout = TimeSpan.FromSeconds(60);
+        });
+        builder.Services.AddScoped<IEpubCrawlerService, EpubCrawlerService>();
+        builder.Services.AddScoped<ICrawlerMonitorService, CrawlerMonitorService>();
+        builder.Services.AddScoped<ICrawlerSourceAdminService, CrawlerSourceAdminService>();
+        builder.Services.AddScoped<CrawlerWorker>();
+        builder.Services.AddHostedService<CrawlerBackgroundService>();
 
         builder.Services.AddScoped<IBookCoverRemoteImageService, BookCoverRemoteImageService>();
         builder.Services.AddSingleton<IBookCoverOperationGate, BookCoverOperationGate>();

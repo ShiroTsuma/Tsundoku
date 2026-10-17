@@ -76,7 +76,7 @@ Use quotes for values with spaces, `-` to exclude a match, and `none` to find mi
 
 Publish a snapshot of a book to make it discoverable on your instance. Other users can copy its catalog information into their own libraries. EPUBs stay private until you select files to share; downloading shared files requires an account. Copying a book does not copy its attachments.
 
-**Development status:** Tsundoku is under active development. The **Find EPUB** crawler interface currently uses simulated search results and download jobs. Uploading, managing, and downloading your own EPUB files uses the implemented storage API. See the [crawler integration notes](Web/src/features/epubSearch/README.md) for the remaining work.
+**Development status:** Tsundoku is under active development. **Find EPUB** integrates with an optional private Lightnovel Crawler service for manual chapter downloads and EPUB generation. Tracked sources are checked every 60–72 hours without automatic downloads. Enable the service using the [crawler integration guide](docs/crawler-integration.md).
 
 ## Quick start
 
@@ -130,6 +130,12 @@ For an instance backup, preserve the PostgreSQL database and file storage togeth
 | [Crawler integration](Web/src/features/epubSearch/README.md) | The EPUB search prototype, client contracts, and backend integration work.           |
 
 ## Development
+
+For a complete isolated UX test environment (including PostgreSQL and the real
+crawler), run `docker compose -f compose.local.yml up -d --build` and open
+[https://localhost:18443](https://localhost:18443). Accept the local certificate
+and register an account. Let's Encrypt is disabled. See
+[local UX testing](docs/development.md#local-ux-testing-with-docker) for details.
 
 The backend uses **ASP.NET Core on .NET 10**, **Entity Framework Core**, and **PostgreSQL**. The frontend uses **React 19**, **TypeScript**, **Vite**, **Tailwind CSS**, and **TanStack Query**. Authentication uses ASP.NET Core Identity with JWT access and refresh tokens.
 

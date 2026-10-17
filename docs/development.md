@@ -2,6 +2,42 @@
 
 Run the ASP.NET Core API and Vite frontend as separate processes during development. Use PostgreSQL for the application database; Redis and S3-compatible storage are optional.
 
+## Local UX testing with Docker
+
+From the repository root, run the standalone local configuration:
+
+```powershell
+docker compose -f compose.local.yml up -d --build
+```
+
+Open [https://localhost:18443](https://localhost:18443), accept the local
+self-signed certificate and register an account. This runs the real frontend,
+API, PostgreSQL and crawler, including search progress and EPUB downloads.
+The API is also available at `http://localhost:15232`.
+
+This configuration binds ports to loopback, uses a separate `tsundoku-local`
+Compose project with its own database/file volumes, and explicitly disables
+Let's Encrypt. Its fixed credentials are for local development only. It does
+not use the database, JWT or storage settings from `.env`. Do not combine this
+file with the production Compose file using multiple `-f` arguments.
+
+To test with your own catalog, export CSV from your usual instance and import it
+into this local account. The new library will queue metadata discovery.
+
+After code changes, rerun the same command to rebuild. To stop the local stack
+while preserving test accounts, books and EPUBs:
+
+```powershell
+docker compose -f compose.local.yml down
+```
+
+Logs and service status:
+
+```powershell
+docker compose -f compose.local.yml ps
+docker compose -f compose.local.yml logs --tail 100 -f api crawler
+```
+
 ## Requirements
 
 - .NET SDK matching [`global.json`](../global.json): .NET 10, with feature-band roll-forward enabled.

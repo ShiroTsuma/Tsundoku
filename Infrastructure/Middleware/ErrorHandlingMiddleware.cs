@@ -61,7 +61,6 @@ public class ErrorHandlingMiddleware
         else
         {
             _logger.LogWarning(
-                exception,
                 "Handled API error for {Method} {Path}. ErrorType={ErrorType} Detail={ErrorDetail} TraceId={TraceId}",
                 context.Request.Method,
                 context.Request.Path,
@@ -164,6 +163,8 @@ public class ErrorHandlingMiddleware
 
     private static string PublicDetail(ErrorCategory category, Exception exception)
     {
+        if (exception is UsernameTakenException or EmailInUseException)
+            return "Unable to create an account with these details. Try different details or sign in.";
         if (exception is AuthenticationFailedException or WrongPasswordException
             or EntityNotFoundException<User, string>)
         {

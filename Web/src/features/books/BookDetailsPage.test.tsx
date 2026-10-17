@@ -38,6 +38,23 @@ vi.mock('./ProgressDialog', () => ({
 }))
 
 describe('BookDetailsPage', () => {
+  it.each(['manga', 'manhwa', 'manhua', 'other'])('hides EPUB actions for %s', async (slug) => {
+    vi.mocked(api.getBook).mockResolvedValue({
+      ...books[0]!,
+      contentType: slug,
+      contentTypeSlug: slug,
+    })
+    renderWithProviders(
+      <Routes>
+        <Route element={<BookDetailsPage />} path="/books/:id" />
+      </Routes>,
+      { route: `/books/${books[0]!.id}` },
+    )
+    await screen.findByRole('link', { name: /library/i })
+    expect(screen.queryByRole('button', { name: /find epub/i })).not.toBeInTheDocument()
+    expect(screen.queryByText('EPUB files')).not.toBeInTheDocument()
+  })
+
   it('preserves parsed line breaks in the description', async () => {
     vi.mocked(api.getBook).mockResolvedValue({
       ...books[0]!,

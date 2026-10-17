@@ -329,6 +329,30 @@ export async function installLayoutApiMocks(page: Page) {
     const url = new URL(route.request().url())
     const path = url.pathname.replace('/api/v1/', '')
 
+    if (path === 'book/crawler-status') {
+      await route.fulfill({
+        json: {
+          enabled: true,
+          observedAtUtc: new Date().toISOString(),
+          totalBooks: layoutBooks.length,
+          checkedBooks: layoutBooks.length,
+          pendingBooks: 0,
+          runningJobs: 0,
+          waitingJobs: 0,
+          trackedSources: 0,
+          totalJobs: 0,
+          skip: 0,
+          take: 10,
+          jobs: [],
+        },
+      })
+      return
+    }
+    if (path === 'book/epub-downloads') {
+      await route.fulfill({ json: [] })
+      return
+    }
+
     if (path === 'book/files/limits') {
       await route.fulfill({
         json: {
@@ -549,6 +573,11 @@ export async function installLayoutApiMocks(page: Page) {
         listing: index === 0 ? { id: 'listing-layout', snapshotAt: '2026-07-18T12:00:00Z' } : null,
       }))
       await route.fulfill({ json: { skip: 0, take: 50, total: data.length, data } })
+      return
+    }
+
+    if (/^book\/[^/]+\/epub-downloads$/.test(path)) {
+      await route.fulfill({ json: [] })
       return
     }
 

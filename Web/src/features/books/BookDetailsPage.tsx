@@ -249,7 +249,7 @@ export function BookDetailsPage() {
                   <span className="text-ink-disabled">—</span>
                 )}
                 <span className="block text-[13px] font-normal text-ink-3">
-                  {book.priority != null ? '1 is next up' : 'not set'}
+                  {book.priority != null ? '1 low · 5 high' : 'not set'}
                 </span>
               </StatCard>
             </div>
@@ -264,10 +264,12 @@ export function BookDetailsPage() {
                 <Pencil aria-hidden="true" className="size-4" />
                 Edit
               </Link>
-              <Button variant="secondary" onClick={() => setEpubSearchOpen(true)}>
-                <Search aria-hidden="true" className="size-4" />
-                Find EPUB
-              </Button>
+              {(book.contentTypeSlug ?? book.contentType.toLowerCase()) === 'novel' ? (
+                <Button variant="secondary" onClick={() => setEpubSearchOpen(true)}>
+                  <Search aria-hidden="true" className="size-4" />
+                  Find EPUB
+                </Button>
+              ) : null}
               <Menu
                 align="start"
                 label="More actions"
@@ -381,18 +383,20 @@ export function BookDetailsPage() {
           </div>
 
           <aside className="flex max-w-full flex-[1_1_360px] flex-col gap-4 lg:max-w-[460px]">
-            <BookFilesPanel
-              bookId={book.id}
-              searchOpen={epubSearchOpen}
-              onSearchOpenChange={setEpubSearchOpen}
-              searchBook={{
-                id: book.id,
-                title: book.primaryTitle,
-                alternativeTitles: book.alternativeTitles,
-                chaptersRead: book.currentChapterNumber ?? null,
-                chapterLabel: book.currentChapterLabel ?? null,
-              }}
-            />
+            {(book.contentTypeSlug ?? book.contentType.toLowerCase()) === 'novel' ? (
+              <BookFilesPanel
+                bookId={book.id}
+                searchOpen={epubSearchOpen}
+                onSearchOpenChange={setEpubSearchOpen}
+                searchBook={{
+                  id: book.id,
+                  title: book.primaryTitle,
+                  alternativeTitles: book.alternativeTitles,
+                  chaptersRead: book.currentChapterNumber ?? null,
+                  chapterLabel: book.currentChapterLabel ?? null,
+                }}
+              />
+            ) : null}
             <SidePanel title="Links">
               {book.links.length ? (
                 book.links.map((link) => (

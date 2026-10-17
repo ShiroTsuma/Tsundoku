@@ -55,7 +55,7 @@ export function createMockEpubSearchClient(options: MockClientOptions = {}): Epu
   }
 
   function snapshot(job: StoredJob): EpubDownloadJob {
-    const range = resolveRange(job.request.range, job.source.chapterCount)
+    const range = resolveRange(job.request.range, job.source.chapterCount ?? 0)
     const planned = planFiles(
       range,
       job.request.splitEvery,
@@ -74,8 +74,10 @@ export function createMockEpubSearchClient(options: MockClientOptions = {}): Epu
       let status: EpubDownloadFile['status'] = 'waiting'
       if (done >= size) {
         status =
-          elapsed >= crawlEndMs + buildMs && job.request.addToBookAutomatically
-            ? 'added'
+          elapsed >= crawlEndMs + buildMs
+            ? job.request.addToBookAutomatically
+              ? 'added'
+              : 'ready'
             : 'building'
       } else if (done > 0) {
         status = 'crawling'
@@ -153,7 +155,7 @@ function overallStatus(
 ): EpubDownloadStatus {
   if (job.cancelledAtMs !== null) return 'cancelled'
   if (sinceStartMs < queueMs) return 'queued'
-  if (files.every((file) => file.status === 'added')) return 'completed'
+  if (files.every((file) => file.status === 'added' || file.status === 'ready')) return 'completed'
   if (files.some((file) => file.status === 'crawling' || file.status === 'waiting'))
     return 'crawling'
   return job.request.addToBookAutomatically ? 'adding' : 'building'

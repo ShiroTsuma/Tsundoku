@@ -166,6 +166,28 @@ public class ErrorHandlingMiddlewareTests
 
         Assert.Equal(StatusCodes.Status409Conflict, context.Response.StatusCode);
         Assert.DoesNotContain(username ?? email!, response);
+        Assert.DoesNotContain(exception.GetType().Name, response);
+        var detail = document.RootElement.GetProperty("detail").GetString();
+        Assert.Equal("Unable to create an account with these details. Try different details or sign in.", detail);
+        Assert.False(document.RootElement.TryGetProperty("errors", out _));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvokeAsync_LogsStackOnlyForUnexpectedFailures(bool unexpected)
+    {
+        var exception = unexpected ? (Exception)new InvalidOperationException("Internal failure") : new UsernameTakenException("reader");
+        var logger = new Mock<ILogger<ErrorHandlingMiddleware>>();
+        var context = new DefaultHttpContext();
+        context.Response.Body = new MemoryStream();
+        await new ErrorHandlingMiddleware(_ => throw exception, logger.Object).InvokeAsync(context);
+        logger.Verify(candidate => candidate.Log(
+            unexpected ? LogLevel.Error : LogLevel.Warning,
+            It.IsAny<EventId>(),
+            It.IsAny<It.IsAnyType>(),
+            unexpected ? exception : null,
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
     }
 
     private static async Task<string?> ReadDetailAsync(DefaultHttpContext context)

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowDown, ArrowUp, Download, Pencil, RotateCcw, Search, Trash2 } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   bookFilesApi,
@@ -12,7 +12,7 @@ import {
 } from '@/api/bookFiles'
 import { Button } from '@/components/ui/Button'
 import { EpubSearchDialog, type EpubSearchBook } from '@/features/epubSearch/EpubSearchDialog'
-import { useEpubDownload } from '@/features/epubSearch/queries'
+import { useEpubDownload, useEpubDownloads } from '@/features/epubSearch/queries'
 import { isDownloadFinished, type EpubDownloadJob } from '@/features/epubSearch/types'
 import { FileModal } from './files/FileDialogs'
 import { fileError } from './files/fileJobs'
@@ -64,7 +64,16 @@ export function BookFilesPanel({
   // (and reports back) after "Run in background".
   const [searchMounted, setSearchMounted] = useState(false)
   const [downloadJobId, setDownloadJobId] = useState<string | null>(null)
-  const job = useEpubDownload(downloadJobId).data ?? null
+  const downloads = useEpubDownloads(bookId)
+  const restoredJob = downloads.data?.find((item) => !isDownloadFinished(item.status))
+  const job = useEpubDownload(downloadJobId ?? restoredJob?.id ?? null).data ?? restoredJob ?? null
+  const filesRevision = JSON.stringify(job?.files.map((file) => [file.status, file.attachmentId]))
+  useEffect(() => {
+    if (filesRevision) {
+      void queryClient.invalidateQueries({ queryKey: ['book-files', bookId] })
+      void queryClient.invalidateQueries({ queryKey: ['epub-jobs'] })
+    }
+  }, [filesRevision, queryClient, bookId])
   const [downloading, setDownloading] = useState<string>()
   const [error, setError] = useState('')
   const list = query.data && 'files' in query.data ? query.data : undefined
@@ -247,6 +256,7 @@ export function BookFilesPanel({
           onClose={() => setSearchOpen(false)}
           onDownloadStarted={setDownloadJobId}
           onDownloadFinished={refreshFiles}
+          initialJobId={downloadJobId ?? restoredJob?.id ?? null}
         />
       ) : null}
     </>

@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2 } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -10,6 +10,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { fieldClass, textareaClass } from '@/components/ui/fieldStyles'
 import { listRowClass, ListBox, SearchField, StateBox } from '@/components/ui/ListParts'
 import { SegmentButton } from '@/features/books/BookListControls'
+import { useDebouncedValue } from '@/lib/useDebouncedValue'
 
 type MetadataKind = 'statuses' | 'types' | 'genres' | 'tags'
 type MetadataItem = { id: string; name: string; description?: string | null | undefined }
@@ -36,18 +37,38 @@ export function AdminMetadataManager() {
   const [kind, setKind] = useState<MetadataKind>('statuses')
   const [search, setSearch] = useState('')
   const [editor, setEditor] = useState<MetadataItem | 'create' | null>(null)
-  const query = useQuery({
+  const dictionaryQuery = useQuery({
     queryKey: ['admin-metadata', kind],
     queryFn: () => loadItems(kind),
+    enabled: kind !== 'tags',
   })
+  const tagSearch = useDebouncedValue(search.trim(), 220)
+  const tagsQuery = useInfiniteQuery({
+    queryKey: ['admin-metadata', 'tags', tagSearch],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => api.searchAdminGlobalTags(tagSearch, 50, pageParam),
+    getNextPageParam: (last, pages) => (last.length === 50 ? pages.length * 50 : undefined),
+    enabled: kind === 'tags',
+    retry: false,
+  })
+  const query = kind === 'tags' ? tagsQuery : dictionaryQuery
   const section = sectionsByKind[kind]
   const normalizedSearch = search.trim().toLocaleLowerCase()
-  const items = (query.data ?? []).filter(
-    (item) =>
-      !normalizedSearch ||
-      item.name.toLocaleLowerCase().includes(normalizedSearch) ||
-      item.description?.toLocaleLowerCase().includes(normalizedSearch),
-  )
+  const items =
+    kind === 'tags'
+      ? [
+          ...new Map(
+            tagsQuery.data?.pages
+              .flatMap((page) => page.map(fromTag))
+              .map((item) => [item.id, item]) ?? [],
+          ).values(),
+        ]
+      : (dictionaryQuery.data ?? []).filter(
+          (item) =>
+            !normalizedSearch ||
+            item.name.toLocaleLowerCase().includes(normalizedSearch) ||
+            item.description?.toLocaleLowerCase().includes(normalizedSearch),
+        )
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -90,12 +111,27 @@ export function AdminMetadataManager() {
 
       {query.isPending ? (
         <StateBox>Loading {section.label.toLocaleLowerCase()}…</StateBox>
-      ) : query.isError ? (
+      ) : query.isError && !items.length ? (
         <StateBox tone="error">Could not load metadata.</StateBox>
       ) : items.length === 0 ? (
         <StateBox>No matching items.</StateBox>
       ) : (
-        <ListBox label={section.label}>
+        <ListBox
+          key={kind + (kind === 'tags' ? tagSearch : '')}
+          label={section.label}
+          busy={kind === 'tags' && tagsQuery.isFetchingNextPage}
+          onScroll={(event) => {
+            const element = event.currentTarget
+            if (
+              kind === 'tags' &&
+              element.scrollHeight - element.scrollTop - element.clientHeight < 300 &&
+              tagsQuery.hasNextPage &&
+              !tagsQuery.isFetchingNextPage &&
+              !tagsQuery.isFetchNextPageError
+            )
+              void tagsQuery.fetchNextPage()
+          }}
+        >
           {items.map((item) => (
             <div
               className={listRowClass}
@@ -119,6 +155,25 @@ export function AdminMetadataManager() {
               </Button>
             </div>
           ))}
+          {kind === 'tags' && tagsQuery.isFetchingNextPage ? (
+            <p role="status" className="m-0 px-4 py-3 text-sm text-ink-3">
+              Loading more tags…
+            </p>
+          ) : null}
+          {kind === 'tags' && tagsQuery.isFetchNextPageError ? (
+            <div className="flex items-center gap-3 px-4 py-3 text-sm text-danger-ink">
+              Could not load more tags.
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  void tagsQuery.fetchNextPage()
+                }}
+              >
+                Retry
+              </Button>
+            </div>
+          ) : null}
         </ListBox>
       )}
       {editor ? (

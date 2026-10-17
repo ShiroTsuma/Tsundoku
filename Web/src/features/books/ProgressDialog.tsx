@@ -19,7 +19,12 @@ const fieldClass =
 /** The fields the dialog needs; both the full book and a list item provide them. */
 export type ProgressBook = Pick<
   BookDto,
-  'id' | 'primaryTitle' | 'currentChapterNumber' | 'currentChapterLabel' | 'totalChapters'
+  | 'id'
+  | 'primaryTitle'
+  | 'currentChapterNumber'
+  | 'currentChapterLabel'
+  | 'totalChapters'
+  | 'status'
 >
 
 export function ProgressDialog({
@@ -56,6 +61,7 @@ function ProgressForm({ book, onClose }: { book: ProgressBook; onClose: () => vo
   )
   const [currentChapterLabel, setCurrentChapterLabel] = useState(book.currentChapterLabel ?? '')
   const [comment, setComment] = useState('')
+  const [completed, setCompleted] = useState(book.status.toLowerCase() === 'completed')
   const queryClient = useQueryClient()
   const totalChapters = typeof book.totalChapters === 'number' ? book.totalChapters : null
   const previous = typeof book.currentChapterNumber === 'number' ? book.currentChapterNumber : null
@@ -65,7 +71,11 @@ function ProgressForm({ book, onClose }: { book: ProgressBook; onClose: () => vo
   const numericCurrent =
     chapterNumberText && !chapterNumberInvalid ? Number(chapterNumberText) : null
   const exceedsTotal =
-    numericCurrent != null && totalChapters != null && numericCurrent > totalChapters
+    !completed &&
+    numericCurrent != null &&
+    totalChapters != null &&
+    totalChapters > 0 &&
+    numericCurrent > totalChapters
   const chapterNumberError = chapterNumberInvalid
     ? 'Chapter number must be a non-negative number without exponent notation.'
     : exceedsTotal
@@ -79,11 +89,15 @@ function ProgressForm({ book, onClose }: { book: ProgressBook; onClose: () => vo
         currentChapterNumber: numericCurrent,
         currentChapterLabel: currentChapterLabel || null,
         comment: comment || null,
+        completed,
       }),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['book', book.id] }),
         queryClient.invalidateQueries({ queryKey: ['books'] }),
+        queryClient.invalidateQueries({ queryKey: ['books-summary'] }),
+        queryClient.invalidateQueries({ queryKey: ['book-analytics'] }),
+        queryClient.invalidateQueries({ queryKey: ['crawler-monitor'] }),
       ])
       toast.success('Progress saved.')
       onClose()
@@ -192,6 +206,35 @@ function ProgressForm({ book, onClose }: { book: ProgressBook; onClose: () => vo
             <p className="m-0 text-xs text-ink-3">For example v5c34, 32.2 or ex4.</p>
           </div>
         </div>
+
+        <label className="flex cursor-pointer items-start gap-3 rounded-field border border-line bg-sunk px-3.5 py-3">
+          <input
+            type="checkbox"
+            checked={completed}
+            className="mt-1 size-4 accent-accent"
+            onChange={(event) => {
+              setCompleted(event.target.checked)
+              if (
+                event.target.checked &&
+                totalChapters != null &&
+                totalChapters > 0 &&
+                currentChapterNumber === (book.currentChapterNumber?.toString() ?? '')
+              ) {
+                setCurrentChapterNumber(totalChapters.toString())
+              }
+            }}
+          />
+          <span>
+            <span className="block font-medium">Completed</span>
+            <span className="block text-[13px] text-ink-3">
+              {completed
+                ? numericCurrent != null
+                  ? `Sets status to Completed and total chapters to ${numberFormat.format(numericCurrent)}.`
+                  : 'Sets status to Completed. Enter the final chapter count above to update total chapters.'
+                : 'Saving progress sets the status to Reading.'}
+            </span>
+          </span>
+        </label>
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor={ids.comment} className="font-medium">

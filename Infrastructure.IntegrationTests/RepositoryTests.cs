@@ -27,6 +27,31 @@ public class RepositoryTests
         _output = output;
     }
 
+    [Theory]
+    [InlineData("plan-to-read")]
+    [InlineData("on-hold")]
+    [InlineData("dropped")]
+    [InlineData("completed")]
+    public async Task Progress_SetsReading_AndCompletionUpdatesTotalAtomically(string initialStatus)
+    {
+        using var database = new SqliteTestDatabase();
+        await using var context = database.CreateContext();
+        var book = TestData.Book(database.UserId, "Progress status");
+        book.StatusId = await context.Statuses.Where(s => s.Slug == initialStatus).Select(s => s.Id).SingleAsync();
+        book.TotalChapters = 300;
+        context.Books.Add(book);
+        await context.SaveChangesAsync();
+        var repository = new BookRepository(context);
+        await repository.UpdateProgressAsync(book.Id, database.UserId, 10, "10", null, default);
+        Assert.Equal("reading", (await context.Statuses.SingleAsync(s => s.Id == book.StatusId)).Slug);
+        Assert.Equal(300, book.TotalChapters);
+        await repository.UpdateProgressAsync(book.Id, database.UserId, 312, "312", "Finished", default, true);
+        Assert.Equal("completed", (await context.Statuses.SingleAsync(s => s.Id == book.StatusId)).Slug);
+        Assert.Equal(312, book.TotalChapters);
+        Assert.Equal(312, book.CurrentChapterNumber);
+        Assert.Contains(await context.BookProgressHistory.Where(h => h.BookId == book.Id).ToListAsync(), h => h.Comment == "Finished");
+    }
+
     private static BookReadQueryService CreateReadQueryService(ApplicationDbContext context)
     {
         var criteriaApplier = new BookSearchCriteriaApplier(context);

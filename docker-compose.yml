@@ -6,6 +6,8 @@ services:
     depends_on:
       otel-collector:
         condition: service_started
+      crawler:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ASPNETCORE_URLS: http://+:5232
@@ -37,6 +39,10 @@ services:
       BookFiles__MaxOwnerStorageBytes: ${BOOK_FILES_OWNER_STORAGE_BYTES:-10737418240}
       BookFiles__MaxLibraryArchiveBytes: ${BOOK_FILES_LIBRARY_ARCHIVE_BYTES:-12884901888}
       BookFiles__MaxStagingBytes: ${BOOK_FILES_STAGING_BYTES:-25769803776}
+      Crawler__Enabled: ${CRAWLER_ENABLED:-true}
+      Crawler__RunJobs: ${CRAWLER_RUN_JOBS:-true}
+      Crawler__BaseUrl: http://crawler:8181
+      Crawler__ApiKey: ${CRAWLER_API_KEY:?Set CRAWLER_API_KEY to a random secret of at least 32 characters}
       OTEL_SERVICE_NAME: tsundoku-api
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
@@ -45,6 +51,9 @@ services:
       - ./storage/epubs:/app/storage/epubs
       - ./storage/epub-staging:/app/storage/epub-staging
     restart: unless-stopped
+    networks:
+      - default
+      - crawler-internal
     ports:
       - "127.0.0.1:${API_PORT:-5232}:5232"
     healthcheck:
@@ -53,6 +62,60 @@ services:
       timeout: 5s
       retries: 20
       start_period: 20s
+
+  crawler:
+    image: tsundoku-crawler:4.14.0
+    build:
+      context: ./tools/lncrawl
+    environment:
+      CRAWLER_API_KEY: ${CRAWLER_API_KEY:?Set CRAWLER_API_KEY to a random secret of at least 32 characters}
+      LNCRAWL_DATA_PATH: /data
+      CRAWLER_RUN_JOBS: ${CRAWLER_RUN_JOBS:-true}
+      CRAWLER_VERIFICATION_PAUSE_SECONDS: ${CRAWLER_VERIFICATION_PAUSE_SECONDS:-900}
+      TZ: Europe/Warsaw
+      HTTP_PROXY: http://crawler-egress:3128
+      HTTPS_PROXY: http://crawler-egress:3128
+      http_proxy: http://crawler-egress:3128
+      https_proxy: http://crawler-egress:3128
+      NO_PROXY: localhost,127.0.0.1
+      PROXY_URLS: http://crawler-egress:3128
+    volumes:
+      - crawler-data:/data
+    networks:
+      - crawler-internal
+    depends_on:
+      crawler-egress:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 2g
+    cpus: 2
+    pids_limit: 256
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+
+  crawler-egress:
+    image: tsundoku-crawler:4.14.0
+    pull_policy: never
+    environment:
+      CRAWLER_RUN_JOBS: ${CRAWLER_RUN_JOBS:-true}
+    command: [python, /app/egress.py]
+    volumes:
+      - crawler-data:/data:ro
+    healthcheck:
+      test: [CMD, python, -c, "import socket; socket.create_connection(('127.0.0.1', 3128), timeout=3).close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - default
+      - crawler-internal
+    restart: unless-stopped
+    mem_limit: 128m
+    pids_limit: 128
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
 
   web:
     build:
@@ -154,6 +217,7 @@ services:
       - prometheus
 
 volumes:
+  crawler-data:
   web-cert-data:
   letsencrypt-data:
   certbot-webroot:
@@ -161,3 +225,7 @@ volumes:
   tempo-data:
   prometheus-data:
   grafana-data:
+
+networks:
+  crawler-internal:
+    internal: true

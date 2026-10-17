@@ -15,6 +15,7 @@ import { CoverUploadOutbox } from '@/features/books/CoverUploadOutboxWorker'
 import { BooksPage } from '@/features/books/BooksPage'
 import { ManagePage } from '@/features/manage/ManagePage'
 import { DiscoverPage } from '@/features/discover/DiscoverPage'
+import { EpubDownloadNotifications } from '@/features/epubSearch/EpubDownloadNotifications'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -92,6 +93,7 @@ function ProtectedLayout() {
   return (
     <>
       <CoverUploadOutbox />
+      <EpubDownloadNotifications />
       <AppShell />
     </>
   )

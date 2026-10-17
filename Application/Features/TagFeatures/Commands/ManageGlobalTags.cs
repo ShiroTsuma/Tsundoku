@@ -2,7 +2,7 @@ namespace Application.Features.TagFeatures.Commands;
 
 using Common.DTOs.Tag;
 
-public sealed record SearchGlobalTagsQuery(string? Search = null, int Take = 100)
+public sealed record SearchGlobalTagsQuery(string? Search = null, int Take = 100, int Skip = 0)
     : IRequest<IReadOnlyCollection<TagDto>>;
 
 public sealed class SearchGlobalTagsQueryHandler(IGlobalTagService service)
@@ -11,7 +11,7 @@ public sealed class SearchGlobalTagsQueryHandler(IGlobalTagService service)
     public async Task<IReadOnlyCollection<TagDto>> Handle(SearchGlobalTagsQuery request,
         CancellationToken cancellationToken)
     {
-        return (await service.SearchAsync(request.Search, request.Take, cancellationToken)).Select(tag => tag.ToDto())
+        return (await service.SearchAsync(request.Search, request.Take, cancellationToken, request.Skip)).Select(tag => tag.ToDto())
             .ToList();
     }
 }

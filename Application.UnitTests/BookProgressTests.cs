@@ -129,7 +129,7 @@ public class BookProgressTests
         }
 
         public Task<bool> UpdateProgressAsync(Guid id, Guid ownerId, decimal? currentChapterNumber,
-            string? currentChapterLabel, string? comment, CancellationToken cancellationToken)
+            string? currentChapterLabel, string? comment, CancellationToken cancellationToken, bool completed = false)
         {
             if (_book == null || _book.OwnerId != ownerId)
             {
