@@ -280,3 +280,8 @@ SQLite stores. A later poll routed to another empty crawler can resubmit that jo
 Multiple API instances must target the same crawler service/store. Running independent
 local and remote crawler stacks against the same PostgreSQL queue is unsupported;
 keep processing paused in the local stack while production processes jobs.
+
+
+On Docker hosts that reject every container exec with `no-new-privileges`, set
+`CRAWLER_NO_NEW_PRIVILEGES=false` in the host .env. The default remains true;
+capability dropping, the private crawler network and validated egress still apply.

@@ -84,7 +84,7 @@ services:
     mem_limit: 2g
     cpus: 2
     pids_limit: 256
-    security_opt: [no-new-privileges:true]
+    security_opt: [no-new-privileges:${CRAWLER_NO_NEW_PRIVILEGES:-true}]
     cap_drop: [ALL]
 
   crawler-egress:
@@ -101,7 +101,7 @@ services:
     networks: [default, crawler-internal]
     mem_limit: 128m
     pids_limit: 128
-    security_opt: [no-new-privileges:true]
+    security_opt: [no-new-privileges:${CRAWLER_NO_NEW_PRIVILEGES:-true}]
     cap_drop: [ALL]
 
   web:
