@@ -19,7 +19,7 @@ public interface IBookFileService
 
     public Task<BookFileJobDto> CreateImportAsync(Guid? bookId, IAsyncEnumerable<BookFileUpload> uploads,
         CancellationToken ct,
-        long? requestBytes = null);
+        long? requestBytes = null, Guid? operationId = null);
 
     public Task<BookFileJobDto> GetJobAsync(Guid id, CancellationToken ct);
     public Task<IReadOnlyList<BookFileJobDto>> ListJobsAsync(CancellationToken ct);

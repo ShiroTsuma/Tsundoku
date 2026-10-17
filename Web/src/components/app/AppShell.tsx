@@ -20,6 +20,7 @@ import { getTokenDisplayName } from '@/features/auth/tokenIdentity'
 import { useAuth } from '@/features/auth/useAuth'
 import { isNsfwEnabled, setNsfwEnabled } from '@/lib/nsfwPreference'
 import { cn } from '@/lib/utils'
+import { CrawlerActivity } from '@/features/epubSearch/CrawlerActivity'
 
 type NavItem = {
   to: string
@@ -78,15 +79,16 @@ export function AppShell() {
         Skip to content
       </a>
       <header className="sticky top-0 z-40 border-b border-line bg-ground/95 backdrop-blur-md">
-        <div className="mx-auto flex min-h-16 w-full max-w-(--page-max-width) items-center gap-x-7 gap-y-3 px-4 md:px-8">
+        <div className="mx-auto flex min-h-16 w-full max-w-(--page-max-width) items-center gap-x-4 gap-y-3 px-4 md:px-8 lg:gap-x-7">
           <Link
             to="/books"
+            aria-label="Tsundoku library"
             className="flex items-center gap-2.5 font-display text-xl font-bold text-ink hover:text-ink"
           >
             <span className="flex size-8 items-center justify-center rounded-control bg-accent text-accent-ink">
               <LibraryBig aria-hidden="true" className="size-[18px]" />
             </span>
-            Tsundoku
+            <span className="hidden sm:inline">Tsundoku</span>
           </Link>
           <nav aria-label="Primary navigation" className="hidden gap-1 md:flex">
             {items.map((item) => (
@@ -109,6 +111,7 @@ export function AppShell() {
           </nav>
           <div className="flex-1" />
           <div className="flex items-center gap-2">
+            <CrawlerActivity />
             <button
               type="button"
               aria-label="Jump to book or page"

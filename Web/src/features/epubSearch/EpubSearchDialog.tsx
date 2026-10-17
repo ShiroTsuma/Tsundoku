@@ -20,6 +20,7 @@ import type {
   EpubSourceScope,
 } from './types'
 import { isDownloadFinished } from './types'
+import { SearchFeedback } from './SearchFeedback'
 
 export type EpubSearchBook = {
   id: string
@@ -49,6 +50,7 @@ export function EpubSearchDialog({
   onClose,
   onDownloadStarted,
   onDownloadFinished,
+  initialJobId = null,
 }: {
   book: EpubSearchBook
   open: boolean
@@ -56,9 +58,10 @@ export function EpubSearchDialog({
   /** Called with the job id when a download starts (the panel shows its progress). */
   onDownloadStarted?: ((jobId: string) => void) | undefined
   onDownloadFinished?: ((job: EpubDownloadJob) => void) | undefined
+  initialJobId?: string | null
 }) {
   const read = book.chaptersRead ?? 0
-  const [step, setStep] = useState<Step>('search')
+  const [step, setStep] = useState<Step>(initialJobId ? 'download' : 'search')
   const [query, setQuery] = useState(book.title)
   const [scope, setScope] = useState<EpubSourceScope>('english')
   const [request, setRequest] = useState<EpubSearchRequest | null>(null)
@@ -69,10 +72,10 @@ export function EpubSearchDialog({
   const [splitEvery, setSplitEvery] = useState('100')
   const [titleTemplate, setTitleTemplate] = useState('Volume {n}')
   const [addAutomatically, setAddAutomatically] = useState(true)
-  const [jobId, setJobId] = useState<string | null>(null)
+  const [jobId, setJobId] = useState<string | null>(initialJobId)
   const [reportedJobId, setReportedJobId] = useState<string | null>(null)
 
-  const search = useEpubSearch(request)
+  const search = useEpubSearch(open ? request : null)
   const start = useStartEpubDownload()
   const cancel = useCancelEpubDownload()
   const download = useEpubDownload(jobId)
@@ -84,7 +87,7 @@ export function EpubSearchDialog({
   }
 
   const range = buildRange(rangeKind, read, customFrom, customTo)
-  const resolved = source ? resolveRange(range, source.chapterCount) : null
+  const resolved = source ? resolveRange(range, source.chapterCount ?? 0) : null
   const planned =
     resolved && source
       ? planFiles(resolved, Number(splitEvery), titleTemplate, book.existingFileCount + 1)
@@ -99,8 +102,14 @@ export function EpubSearchDialog({
     setStep('source')
   }
 
+  function refreshSources() {
+    if (!request) return
+    setSource(null)
+    setRequest({ ...request, forceRefresh: true, refreshId: crypto.randomUUID() })
+  }
+
   function startDownload() {
-    if (!source) return
+    if (!source?.chapterCount) return
     start.mutate(
       {
         bookId: book.id,
@@ -247,11 +256,9 @@ export function EpubSearchDialog({
           ) : null}
           {search.data ? (
             <>
-              <div className="flex flex-wrap items-center gap-2 text-ink-2">
-                {search.data.candidates.length} novels · {countSources(search.data.candidates)}{' '}
-                sources · searched {search.data.searchedSourceCount} sources
-              </div>
-              {search.data.candidates.length === 0 ? (
+              <SearchFeedback result={search.data} onRefresh={refreshSources} />
+              {search.data.candidates.length === 0 &&
+              ['completed', 'failed', 'cancelled'].includes(search.data.status ?? '') ? (
                 <p className="m-0 text-ink-2">No matches. Try one of the alternative titles.</p>
               ) : null}
               {search.data.candidates.map((novel) => (
@@ -260,7 +267,20 @@ export function EpubSearchDialog({
                   className="overflow-hidden rounded-field border border-line"
                 >
                   <div className="flex flex-wrap items-center gap-2.5 bg-sunk px-4 py-3">
-                    <h3 className="m-0 flex-1 font-display text-[17px] font-bold">{novel.title}</h3>
+                    <h3 className="m-0 flex-1 font-display text-[17px] font-bold">
+                      {novel.sources[0] ? (
+                        <a
+                          href={novel.sources[0].url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-ink underline decoration-line-strong underline-offset-4 hover:text-accent"
+                        >
+                          {novel.title}
+                        </a>
+                      ) : (
+                        novel.title
+                      )}
+                    </h3>
                     <span
                       className={cn(
                         'rounded-full px-2 py-0.5 text-xs font-semibold',
@@ -299,8 +319,11 @@ export function EpubSearchDialog({
               </span>
               <strong>{source.sourceName}</strong>{' '}
               <span className="text-ink-3 tabular-nums">
-                · {numberFormat.format(source.chapterCount)} chapters · latest{' '}
-                {source.latestChapterLabel}
+                ·{' '}
+                {source.chapterCount === null
+                  ? 'Unknown'
+                  : numberFormat.format(source.chapterCount)}{' '}
+                chapters · latest {source.latestChapterLabel ?? 'Unknown'}
               </span>
             </span>
             <Button variant="outline" size="sm" onClick={() => setStep('source')}>
@@ -314,7 +337,7 @@ export function EpubSearchDialog({
               selected={rangeKind === 'all'}
               onSelect={() => setRangeKind('all')}
               label="Everything"
-              hint={`Chapters 1–${source.chapterCount} · ${numberFormat.format(source.chapterCount)} chapters`}
+              hint={`Chapters 1–${source.chapterCount} · ${source.chapterCount === null ? 'Unknown' : numberFormat.format(source.chapterCount)} chapters`}
             />
             {read > 0 ? (
               <RangeOption
@@ -322,7 +345,7 @@ export function EpubSearchDialog({
                 onSelect={() => setRangeKind('fromProgress')}
                 label="Continue from my progress"
                 hint={rangeHint(
-                  resolveRange({ kind: 'fromProgress', from: read + 1 }, source.chapterCount),
+                  resolveRange({ kind: 'fromProgress', from: read + 1 }, source.chapterCount ?? 0),
                   book.chapterLabel,
                 )}
                 suggested
@@ -351,7 +374,7 @@ export function EpubSearchDialog({
                   <input
                     type="number"
                     min={1}
-                    placeholder={String(source.chapterCount)}
+                    placeholder={String(source.chapterCount ?? 0)}
                     value={customTo}
                     onChange={(event) => setCustomTo(event.target.value)}
                     className="h-10 w-24 rounded-control border border-line-strong bg-ground px-3 tabular-nums"
@@ -517,7 +540,7 @@ function SourceRow({
   selected: boolean
   onSelect: () => void
 }) {
-  const ahead = source.chapterCount > chaptersRead
+  const ahead = (source.chapterCount ?? 0) > chaptersRead
   return (
     <button
       type="button"
@@ -538,12 +561,17 @@ function SourceRow({
       </span>
       <span className="w-[150px] tabular-nums">
         <span className="block font-semibold">
-          {numberFormat.format(source.chapterCount)} chapters
+          {source.chapterCount === null ? 'Unknown' : numberFormat.format(source.chapterCount)}{' '}
+          chapters
         </span>
-        <span className="block text-xs text-ink-3">latest {source.latestChapterLabel}</span>
+        <span className="block text-xs text-ink-3">
+          latest {source.latestChapterLabel ?? 'Unknown'}
+        </span>
       </span>
       <span className="w-[130px] text-[13px] text-ink-2">
-        updated {formatDistanceToNowStrict(new Date(source.updatedAt), { addSuffix: true })}
+        {source.fetchedAt || source.updatedAt
+          ? `updated ${formatDistanceToNowStrict(new Date(source.fetchedAt ?? source.updatedAt ?? ''), { addSuffix: true })}`
+          : 'Update date unknown'}
       </span>
       <span
         className={cn(
@@ -607,6 +635,7 @@ const fileStatusLabels: Record<EpubDownloadFile['status'], string> = {
   crawling: 'Crawling',
   building: 'Building',
   added: 'Added',
+  ready: 'Ready for review',
 }
 
 function DownloadProgress({ job }: { job: EpubDownloadJob }) {
@@ -721,6 +750,8 @@ function stageOrder(status: EpubDownloadJob['status']): number {
 }
 
 function headline(job: EpubDownloadJob): string {
+  if (job.nextRetryAt && !isDownloadFinished(job.status))
+    return retryMessage(job.nextRetryAt, job.retryAttempt)
   switch (job.status) {
     case 'queued':
       return 'Waiting for the crawler'
@@ -731,12 +762,19 @@ function headline(job: EpubDownloadJob): string {
     case 'adding':
       return 'Adding files to the book'
     case 'completed':
-      return 'All files added to the book'
+      return job.files.some((file) => file.status === 'ready')
+        ? 'Files ready to review in Upload EPUB / ZIP'
+        : 'All files added to the book'
     case 'failed':
       return 'Download failed'
     case 'cancelled':
       return 'Download cancelled'
   }
+}
+
+function retryMessage(nextRetryAt: string, retryAttempt = 1): string {
+  const remaining = Math.max(0, Math.ceil((Date.parse(nextRetryAt) - Date.now()) / 1000))
+  return `Source temporarily unavailable. Retry ${retryAttempt}/5 in ${remaining >= 60 ? `${Math.ceil(remaining / 60)} min` : `${remaining} sec`}`
 }
 
 function footerHint(step: Step, job: EpubDownloadJob | null): string {
@@ -771,8 +809,4 @@ function rangeHint(range: { from: number; to: number }, label: string | null): s
   const count = Math.max(0, range.to - range.from + 1)
   const position = label ? ` · you are at Ch. ${label}` : ''
   return `Chapters ${range.from}–${range.to} · ${numberFormat.format(count)} chapters${position}`
-}
-
-function countSources(candidates: { sources: unknown[] }[]): number {
-  return candidates.reduce((total, novel) => total + novel.sources.length, 0)
 }

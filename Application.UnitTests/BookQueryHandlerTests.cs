@@ -444,7 +444,7 @@ public class BookQueryHandlerTests
         }
 
         public Task<bool> UpdateProgressAsync(Guid id, Guid ownerId, decimal? currentChapterNumber,
-            string? currentChapterLabel, string? comment, CancellationToken cancellationToken)
+            string? currentChapterLabel, string? comment, CancellationToken cancellationToken, bool completed = false)
         {
             return Task.FromResult(false);
         }

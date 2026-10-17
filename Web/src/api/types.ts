@@ -51,6 +51,7 @@ export type BookDto = {
   authorId?: string | null
   author?: string | null
   contentType: string
+  contentTypeSlug?: string | null
   status: string
   currentChapterNumber?: number | null
   currentChapterLabel?: string | null
@@ -521,6 +522,7 @@ export type UpdateProgressRequest = {
   currentChapterNumber?: number | null
   currentChapterLabel?: string | null
   comment?: string | null
+  completed?: boolean
 }
 
 export type DictionaryDto = {

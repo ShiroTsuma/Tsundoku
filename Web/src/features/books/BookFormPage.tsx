@@ -949,7 +949,7 @@ export function BookFormPage({ mode, admin = false }: BookFormPageProps) {
               <fieldset className="m-0 min-w-0 flex-[1_1_240px] border-0 p-0">
                 <legend className="mb-2 p-0 font-medium">
                   Priority{' '}
-                  <span className="text-[13px] font-normal text-ink-3">· 1 is next up</span>
+                  <span className="text-[13px] font-normal text-ink-3">· 1 low · 5 high</span>
                 </legend>
                 <div className="flex gap-1" role="group" aria-label="Priority">
                   {[1, 2, 3, 4, 5].map((value) => (

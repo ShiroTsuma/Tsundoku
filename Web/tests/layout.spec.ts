@@ -133,6 +133,31 @@ test('search suggestions support keyboard navigation and stay within the viewpor
   await expectNoHorizontalOverflow(page)
 })
 
+test('table progress dialog covers actions in every row', async ({ page }) => {
+  test.skip(page.viewportSize()!.width < 640, 'Small screens use compact book rows.')
+  await page.goto('/books')
+  const cells = page.locator('.book-table-actions-cell')
+  await expect(cells).toHaveCount(layoutBooks.length)
+  await cells
+    .first()
+    .getByRole('button', { name: /log progress/i })
+    .click()
+  const dialog = page.getByRole('dialog', { name: 'Log progress' })
+  await expect(dialog).toBeVisible()
+  const covered = await page.evaluate(() => {
+    const panel = document.querySelector('[role="dialog"]')
+    const overlay = panel?.parentElement
+    return Array.from(document.querySelectorAll('.book-table-actions-cell')).every((cell) => {
+      const box = cell.getBoundingClientRect()
+      const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+      return top != null && overlay?.contains(top)
+    })
+  })
+  expect(covered).toBe(true)
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(cells.first().getByRole('button', { name: /log progress/i })).toBeFocused()
+})
+
 test('progress dialog stays inside the viewport and prevents invalid chapter submissions', async ({
   page,
 }) => {
@@ -214,7 +239,10 @@ test('cards and progress dialog match the redesigned baselines', async ({ page }
   await page.goto(`/books/${layoutBooks[0]!.id}`)
   await page.getByRole('button', { name: /log progress/i }).click()
   await expect(page.getByRole('dialog', { name: 'Log progress' })).toBeVisible()
-  await expect(page).toHaveScreenshot('tsundoku-progress.png', { animations: 'disabled' })
+  await expect(page.getByRole('dialog', { name: 'Log progress' })).toHaveScreenshot(
+    'tsundoku-progress.png',
+    { animations: 'disabled' },
+  )
 })
 
 test('CSV validation rows remain editable within the import dialog', async ({ page }) => {

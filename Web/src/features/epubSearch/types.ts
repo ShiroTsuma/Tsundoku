@@ -13,6 +13,8 @@ export type EpubSearchRequest = {
   bookId: string
   query: string
   scope: EpubSourceScope
+  forceRefresh?: boolean
+  refreshId?: string
 }
 
 /** One site that hosts a novel, as returned by the crawler's search. */
@@ -20,10 +22,11 @@ export type EpubCandidateSource = {
   id: string
   sourceName: string
   url: string
-  chapterCount: number
-  latestChapterLabel: string
+  chapterCount: number | null
+  latestChapterLabel: string | null
   /** ISO 8601 timestamp of the source's latest chapter. */
-  updatedAt: string
+  updatedAt: string | null
+  fetchedAt?: string | null
   language: string
 }
 
@@ -38,9 +41,18 @@ export type EpubCandidateNovel = {
 }
 
 export type EpubSearchResult = {
+  skippedSourceCount?: number
   candidates: EpubCandidateNovel[]
   searchedSourceCount: number
   durationMs: number
+  status?: string
+  warnings?: string[]
+  totalSourceCount?: number
+  checkedLinkCount?: number
+  totalLinkCount?: number
+  currentSource?: string | null
+  nextRetryAt?: string | null
+  retryAttempt?: number
 }
 
 export type EpubChapterRange =
@@ -64,7 +76,7 @@ export type EpubDownloadRequest = {
 export type EpubDownloadStatus =
   'queued' | 'crawling' | 'building' | 'adding' | 'completed' | 'failed' | 'cancelled'
 
-export type EpubDownloadFileStatus = 'waiting' | 'crawling' | 'building' | 'added'
+export type EpubDownloadFileStatus = 'waiting' | 'crawling' | 'building' | 'ready' | 'added'
 
 export type EpubDownloadFile = {
   title: string
@@ -72,18 +84,23 @@ export type EpubDownloadFile = {
   lastChapter: number
   chaptersDone: number
   status: EpubDownloadFileStatus
+  importSessionId?: string | null
+  attachmentId?: string | null
 }
 
 export type EpubDownloadJob = {
   id: string
   bookId: string
   sourceName: string
+  bookTitle?: string | null
   status: EpubDownloadStatus
   chaptersDone: number
   chaptersTotal: number
   files: EpubDownloadFile[]
   startedAt: string
   error: string | null
+  nextRetryAt?: string | null
+  retryAttempt?: number
 }
 
 export type EpubSearchClient = {
@@ -91,6 +108,8 @@ export type EpubSearchClient = {
   startDownload: (request: EpubDownloadRequest) => Promise<EpubDownloadJob>
   getDownload: (jobId: string) => Promise<EpubDownloadJob>
   cancelDownload: (jobId: string) => Promise<EpubDownloadJob>
+  listDownloads?: (bookId: string) => Promise<EpubDownloadJob[]>
+  listOwnerDownloads?: () => Promise<EpubDownloadJob[]>
 }
 
 export const terminalDownloadStatuses: readonly EpubDownloadStatus[] = [

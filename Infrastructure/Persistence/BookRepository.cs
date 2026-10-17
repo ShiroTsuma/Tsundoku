@@ -101,7 +101,8 @@ public class BookRepository : IBookRepository
         decimal? currentChapterNumber,
         string? currentChapterLabel,
         string? comment,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool completed = false)
     {
         var book = await _context.Books
             .FirstOrDefaultAsync(book => book.Id == id && book.OwnerId == ownerId, cancellationToken);
@@ -113,7 +114,7 @@ public class BookRepository : IBookRepository
         var progressChanged = book.CurrentChapterNumber != currentChapterNumber ||
                               book.CurrentChapterLabel != currentChapterLabel;
         var hasComment = !string.IsNullOrWhiteSpace(comment);
-        if (book.TotalChapters.HasValue && book.TotalChapters > 0 && currentChapterNumber.HasValue &&
+        if (!completed && book.TotalChapters.HasValue && book.TotalChapters > 0 && currentChapterNumber.HasValue &&
             currentChapterNumber > book.TotalChapters)
         {
             throw new ValidationException(BookValidationMessages.CurrentChapterCannotExceedTotal);
@@ -121,6 +122,10 @@ public class BookRepository : IBookRepository
 
         book.CurrentChapterNumber = currentChapterNumber;
         book.CurrentChapterLabel = currentChapterLabel;
+        var statusSlug = completed ? "completed" : "reading";
+        var status = await _context.Statuses.SingleAsync(s => s.Slug == statusSlug, cancellationToken);
+        book.StatusId = status.Id;
+        if (completed && currentChapterNumber.HasValue) book.TotalChapters = currentChapterNumber;
 
         if (progressChanged)
         {

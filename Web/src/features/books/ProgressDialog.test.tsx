@@ -20,6 +20,30 @@ vi.mock('sonner', () => ({
 }))
 
 describe('ProgressDialog', () => {
+  it('completes a book with a corrected final chapter count in one save', async () => {
+    vi.mocked(api.updateProgress).mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    renderWithProviders(<ProgressDialog book={{ ...books[0]!, totalChapters: 300 }} />)
+    await user.click(screen.getByRole('button', { name: /progress/i }))
+    fireEvent.change(screen.getByPlaceholderText('Chapter number'), { target: { value: '312' } })
+    await user.click(screen.getByRole('checkbox', { name: /completed/i }))
+    await user.click(screen.getByRole('button', { name: 'Save progress' }))
+    await waitFor(() =>
+      expect(api.updateProgress).toHaveBeenCalledWith(
+        books[0]!.id,
+        expect.objectContaining({ currentChapterNumber: 312, completed: true }),
+      ),
+    )
+  })
+
+  it('fills the known total when marking unchanged progress as completed', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ProgressDialog book={{ ...books[0]!, totalChapters: 300 }} />)
+    await user.click(screen.getByRole('button', { name: /progress/i }))
+    await user.click(screen.getByRole('checkbox', { name: /completed/i }))
+    expect(screen.getByPlaceholderText('Chapter number')).toHaveValue('300')
+  })
+
   it.each(['e', '-1', '1e9'])('rejects invalid chapter value %s before submit', async (value) => {
     const user = userEvent.setup()
     renderWithProviders(<ProgressDialog book={books[0]!} />)
@@ -86,6 +110,7 @@ describe('ProgressDialog', () => {
         currentChapterNumber: books[0]!.currentChapterNumber,
         currentChapterLabel: books[0]!.currentChapterLabel,
         comment: 'same chapter note',
+        completed: false,
       },
     ])
   })

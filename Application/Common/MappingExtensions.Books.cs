@@ -11,6 +11,7 @@ public static partial class MappingExtensions
             {
                 PrimaryTitle = source.PrimaryTitle,
                 ContentType = source.ContentType.Name,
+                ContentTypeSlug = source.ContentType.Slug,
                 Status = source.Status.Name
             });
     }

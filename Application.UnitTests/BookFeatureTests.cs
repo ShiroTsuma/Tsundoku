@@ -838,7 +838,8 @@ public class BookFeatureTests
             decimal? currentChapterNumber,
             string? currentChapterLabel,
             string? comment,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            bool completed = false)
         {
             if (LastBook == null || LastBook.Id != id || LastBook.OwnerId != ownerId)
             {

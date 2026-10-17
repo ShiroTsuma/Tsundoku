@@ -10,7 +10,7 @@ using Services;
 public sealed partial class BookFileService
 {
     public async Task<BookFileJobDto> CreateImportAsync(Guid? bookId, IAsyncEnumerable<BookFileUpload> uploads,
-        CancellationToken ct, long? requestBytes = null)
+        CancellationToken ct, long? requestBytes = null, Guid? operationId = null)
     {
         if (bookId.HasValue)
         {
@@ -21,7 +21,12 @@ public sealed partial class BookFileService
         var reservation = bookId.HasValue
             ? _options.MaxUploadBytes + _options.MaxExtractedBytes
             : Math.Min(requestBytes ?? maxUpload, maxUpload) + _options.MaxLibraryArchiveBytes;
-        var job = await ReserveJobAsync(bookId.HasValue ? "BookImport" : "LibraryImport", bookId, reservation, ct);
+        if (operationId.HasValue)
+        {
+            var existing = await context.BookFileJobs.SingleOrDefaultAsync(j => j.Id == operationId && j.OwnerId == user.RequiredId, ct);
+            if (existing != null && existing.Status != "Uploading") return JobDto(existing);
+        }
+        var job = await ReserveJobAsync(bookId.HasValue ? "BookImport" : "LibraryImport", bookId, reservation, ct, operationId);
         var payload = new BookFileJobPayload();
         var budget = new ArchiveReadBudget(maxUpload);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -45,7 +50,7 @@ public sealed partial class BookFileService
                 }
 
                 var name = $"upload-{payload.Uploads.Count:D5}{extension}";
-                await using (var target = new FileStream(JobPath(job.Id, name), FileMode.CreateNew, FileAccess.Write,
+                await using (var target = new FileStream(JobPath(job.Id, name), operationId.HasValue ? FileMode.Create : FileMode.CreateNew, FileAccess.Write,
                                  FileShare.None, 65536, true))
                 {
                     await ArchiveSafety.CopyAsync(upload.Content, target,
@@ -207,10 +212,15 @@ public sealed partial class BookFileService
         return JobDto(job);
     }
 
-    private async Task<BookFileJob> ReserveJobAsync(string kind, Guid? bookId, long bytes, CancellationToken ct)
+    private async Task<BookFileJob> ReserveJobAsync(string kind, Guid? bookId, long bytes, CancellationToken ct, Guid? operationId = null)
     {
         await abuseGuard.ThrowIfBlockedAsync(user, ct);
         await using var transaction = await LockAsync(user.RequiredId, ct, true);
+        if (operationId.HasValue)
+        {
+            var existing = await context.BookFileJobs.SingleOrDefaultAsync(j => j.Id == operationId && j.OwnerId == user.RequiredId, ct);
+            if (existing != null) return existing;
+        }
         var now = DateTime.UtcNow;
         var active = context.BookFileJobs.Where(j => j.ExpiresAtUtc > now && !TerminalStatuses.Contains(j.Status));
         if (await active.CountAsync(j => j.OwnerId == user.RequiredId, ct) >= _options.MaxActiveJobsPerOwner)
@@ -235,6 +245,7 @@ public sealed partial class BookFileService
 
         var job = new BookFileJob
         {
+            Id = operationId ?? Guid.NewGuid(),
             OwnerId = user.RequiredId,
             BookId = bookId,
             Kind = kind,

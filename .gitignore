@@ -139,6 +139,7 @@ _NCrunch*
 # Local search benchmark source export; regenerated for query-quality and performance checks.
 /tools/books-export.csv
 /tools/__pycache__/
+/tools/lncrawl/__pycache__/
 /BenchmarkDotNet.Artifacts/
 
 # Local Playwright screenshots and reports

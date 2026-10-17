@@ -240,8 +240,8 @@ export const api = {
   updateAdminGenre: (id: string, request: DictionaryMutationRequest) =>
     apiRequest<DictionaryDto>(`/genre/${id}`, { method: 'PUT', body: request }),
   deleteAdminGenre: (id: string) => apiRequest<undefined>(`/genre/${id}`, { method: 'DELETE' }),
-  searchAdminGlobalTags: (search = '', take = 100) =>
-    apiRequest<TagDto[]>(`/admin/tags${toQueryString({ search, take })}`),
+  searchAdminGlobalTags: (search = '', take = 100, skip = 0) =>
+    apiRequest<TagDto[]>(`/admin/tags${toQueryString({ search, take, skip })}`),
   createAdminGlobalTag: (request: DictionaryMutationRequest) =>
     apiRequest<TagDto>('/admin/tags', { method: 'POST', body: request }),
   updateAdminGlobalTag: (id: string, request: DictionaryMutationRequest) =>

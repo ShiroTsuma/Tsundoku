@@ -144,7 +144,8 @@ public record UpdateBookProgressCommand(
     Guid Id,
     decimal? CurrentChapterNumber,
     string? CurrentChapterLabel,
-    string? Comment) : IRequest;
+    string? Comment,
+    bool Completed = false) : IRequest;
 
 public class UpdateBookProgressHandler : IRequestHandler<UpdateBookProgressCommand>
 {
@@ -163,7 +164,7 @@ public class UpdateBookProgressHandler : IRequestHandler<UpdateBookProgressComma
     {
         var book = await _repository.GetByIdAsync(request.Id, _user.RequiredId, cancellationToken)
                    ?? throw new EntityNotFoundException<Book, Guid>(request.Id);
-        if (book.TotalChapters.HasValue && book.TotalChapters > 0 && request.CurrentChapterNumber.HasValue &&
+        if (!request.Completed && book.TotalChapters.HasValue && book.TotalChapters > 0 && request.CurrentChapterNumber.HasValue &&
             request.CurrentChapterNumber > book.TotalChapters)
         {
             throw new ValidationException(BookValidationMessages.CurrentChapterCannotExceedTotal);
@@ -175,7 +176,7 @@ public class UpdateBookProgressHandler : IRequestHandler<UpdateBookProgressComma
             request.CurrentChapterNumber,
             request.CurrentChapterLabel,
             request.Comment,
-            cancellationToken);
+            cancellationToken, request.Completed);
         if (!updated)
         {
             throw new EntityNotFoundException<Book, Guid>(request.Id);

@@ -394,10 +394,10 @@ public partial class BookController : ControllerBase
     public async Task<IActionResult> UpdateProgress(Guid id, UpdateBookProgressCommand model)
     {
         var command =
-            new UpdateBookProgressCommand(id, model.CurrentChapterNumber, model.CurrentChapterLabel, model.Comment);
+            new UpdateBookProgressCommand(id, model.CurrentChapterNumber, model.CurrentChapterLabel, model.Comment, model.Completed);
         await _mediator.Send(command);
         TsundokuTelemetry.BookProgressUpdated.Add(1);
-        _logger.LogInformation("Book progress updated. BookId={BookId}", id);
+        _logger.LogInformation("Book progress updated. BookId={BookId} Completed={Completed}", id, model.Completed);
 
         return NoContent();
     }

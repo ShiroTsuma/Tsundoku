@@ -16,6 +16,9 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
 
     public DbSet<Book> Books { get; set; }
     public DbSet<BookFile> BookFiles { get; set; }
+    public DbSet<CrawlerJob> CrawlerJobs { get; set; }
+    public DbSet<BookCrawlerSource> BookCrawlerSources { get; set; }
+    public DbSet<BookCrawlerDiscovery> BookCrawlerDiscoveries { get; set; }
     public DbSet<PublicBookFile> PublicBookFiles { get; set; }
     public DbSet<BookFileJob> BookFileJobs { get; set; }
     public DbSet<BookFileDownloadTicket> BookFileDownloadTickets { get; set; }
@@ -72,6 +75,29 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
 
         ConfigureBook(modelBuilder, Database.IsNpgsql());
         ConfigureBookFiles(modelBuilder);
+        modelBuilder.Entity<CrawlerJob>(e =>
+        {
+            e.HasOne<Book>().WithMany().HasForeignKey(j => j.BookId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(j => j.Kind).HasMaxLength(20);
+            e.Property(j => j.Status).HasMaxLength(20);
+            e.Property(j => j.RequestKey).HasMaxLength(100);
+            e.HasIndex(j => new { j.OwnerId, j.Kind, j.RequestKey }).IsUnique();
+            e.HasIndex(j => new { j.Status, j.NextAttemptAtUtc });
+            e.Property(j => j.ResultJson).IsConcurrencyToken();
+        });
+        modelBuilder.Entity<BookCrawlerSource>(e =>
+        {
+            e.HasOne<Book>().WithMany().HasForeignKey(s => s.BookId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(s => s.Url).HasMaxLength(2000);
+            e.HasIndex(s => new { s.BookId, s.Url }).IsUnique();
+            e.HasIndex(s => new { s.Tracked, s.NextScanAtUtc });
+        });
+        modelBuilder.Entity<BookCrawlerDiscovery>(e =>
+        {
+            e.HasOne<Book>().WithMany().HasForeignKey(s => s.BookId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(s => s.BookId).IsUnique();
+            e.HasIndex(s => s.NextCheckAtUtc);
+        });
         ConfigureAuthor(modelBuilder);
         ConfigureGenre(modelBuilder);
         ConfigureStatus(modelBuilder);

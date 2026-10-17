@@ -98,7 +98,7 @@ public static class ObservabilityExtensions
             .WithMetrics(metrics =>
             {
                 metrics
-                    .AddMeter(TsundokuTelemetry.MeterName, BookFileTelemetry.Meter.Name)
+                    .AddMeter(TsundokuTelemetry.MeterName, BookFileTelemetry.Meter.Name, Infrastructure.Crawler.CrawlerTelemetry.Meter.Name)
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation();
