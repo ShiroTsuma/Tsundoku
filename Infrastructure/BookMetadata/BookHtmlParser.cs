@@ -15,19 +15,22 @@ internal sealed class BookHtmlParser : IBookHtmlParser
     private readonly ITagRepository? _tagRepository;
     private readonly ITypeRepository _typeRepository;
     private readonly IUser? _user;
+    private readonly IMetadataPolicy? _metadataPolicy;
 
     public BookHtmlParser(
         IEnumerable<IBookHtmlResolver> resolvers,
         IGenreRepository genreRepository,
         ITypeRepository typeRepository,
         ITagRepository? tagRepository = null,
-        IUser? user = null)
+        IUser? user = null,
+        IMetadataPolicy? metadataPolicy = null)
     {
         _resolvers = resolvers.ToArray();
         _genreRepository = genreRepository;
         _typeRepository = typeRepository;
         _tagRepository = tagRepository;
         _user = user;
+        _metadataPolicy = metadataPolicy;
     }
 
     public async Task<BookHtmlParseResult> ParseAsync(string html, CancellationToken cancellationToken)
@@ -111,7 +114,18 @@ internal sealed class BookHtmlParser : IBookHtmlParser
             MaxTagLength,
             "tag",
             warnings);
-        safeTags = await UseExistingTagNamesAsync(safeTags, cancellationToken);
+        if (_metadataPolicy == null)
+            safeTags = await UseExistingTagNamesAsync(safeTags, cancellationToken);
+
+        if (_metadataPolicy != null)
+        {
+            var resolved = await _metadataPolicy.ResolveImportAsync(_user?.Id ?? Guid.Empty,
+                KeepItemsWithinLimit(metadata.Tags.Concat(metadata.GenreOrTagCandidates), MaxTagLength, "tag", warnings),
+                metadata.Genres, cancellationToken);
+            safeTags = resolved.Tags;
+            genres = (await _genreRepository.GetByIdsAsync(resolved.GenreIds, cancellationToken))
+                .Select(g => new BookHtmlDictionaryMatch(g.Id, g.Name)).ToList();
+        }
 
         return new BookHtmlParseResult(
             metadata.Source,

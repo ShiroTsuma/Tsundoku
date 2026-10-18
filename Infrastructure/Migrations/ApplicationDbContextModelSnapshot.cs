@@ -1027,6 +1027,110 @@ namespace Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Domain.Entities.MetadataAlias", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("GenreId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("LastModifiedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("SourceKind")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)");
+
+                    b.Property<Guid?>("TagId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GenreId");
+
+                    b.HasIndex("TagId");
+
+                    b.HasIndex("SourceKind", "NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("MetadataAlias", t =>
+                        {
+                            t.HasCheckConstraint("CK_MetadataAlias_Kind", "\"SourceKind\" IN ('tag', 'genre')");
+
+                            t.HasCheckConstraint("CK_MetadataAlias_Target", "(\"TagId\" IS NULL) <> (\"GenreId\" IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Domain.Entities.MetadataImplication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("LastModifiedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SourceGenreId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SourceTagId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TargetGenreId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TargetTagId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SourceGenreId");
+
+                    b.HasIndex("SourceTagId");
+
+                    b.HasIndex("TargetGenreId");
+
+                    b.HasIndex("TargetTagId");
+
+                    b.ToTable("MetadataImplication", t =>
+                        {
+                            t.HasCheckConstraint("CK_MetadataImplication_Source", "(\"SourceTagId\" IS NULL) <> (\"SourceGenreId\" IS NULL)");
+
+                            t.HasCheckConstraint("CK_MetadataImplication_Target", "(\"TargetTagId\" IS NULL) <> (\"TargetGenreId\" IS NULL)");
+                        });
+                });
+
             modelBuilder.Entity("Domain.Entities.PublicBookFile", b =>
                 {
                     b.Property<Guid>("SnapshotId")
@@ -1826,6 +1930,42 @@ namespace Infrastructure.Migrations
                         .HasForeignKey("BookId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.MetadataAlias", b =>
+                {
+                    b.HasOne("Domain.Entities.Genre", null)
+                        .WithMany()
+                        .HasForeignKey("GenreId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Domain.Entities.Tag", null)
+                        .WithMany()
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("Domain.Entities.MetadataImplication", b =>
+                {
+                    b.HasOne("Domain.Entities.Genre", null)
+                        .WithMany()
+                        .HasForeignKey("SourceGenreId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Domain.Entities.Tag", null)
+                        .WithMany()
+                        .HasForeignKey("SourceTagId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Domain.Entities.Genre", null)
+                        .WithMany()
+                        .HasForeignKey("TargetGenreId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Domain.Entities.Tag", null)
+                        .WithMany()
+                        .HasForeignKey("TargetTagId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("Domain.Entities.PublicBookFile", b =>

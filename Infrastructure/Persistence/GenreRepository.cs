@@ -17,6 +17,11 @@ public class GenreRepository : IGenreRepository
     public async Task<Genre?> GetByNameAsync(string name, CancellationToken cancellationToken)
     {
         var normalizedName = MappingExtensions.NormalizeName(name);
+        var aliasTarget = await _context.Set<MetadataAlias>()
+            .Where(a => a.SourceKind == "genre" && a.NormalizedName == normalizedName && a.GenreId != null)
+            .Select(a => a.GenreId).FirstOrDefaultAsync(cancellationToken);
+        if (aliasTarget != null)
+            return await _context.Genres.FirstOrDefaultAsync(g => g.Id == aliasTarget, cancellationToken);
         var exact = await _context.Genres
             .Where(genre => genre.NormalizedName == normalizedName)
             .FirstOrDefaultAsync(cancellationToken);

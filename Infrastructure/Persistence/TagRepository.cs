@@ -19,6 +19,11 @@ public class TagRepository : ITagRepository
     public async Task<Tag?> GetByNameAsync(Guid ownerId, string name, CancellationToken cancellationToken)
     {
         var normalizedName = MappingExtensions.NormalizeName(name);
+        var aliasTarget = await _context.Set<MetadataAlias>()
+            .Where(a => a.SourceKind == "tag" && a.NormalizedName == normalizedName && a.TagId != null)
+            .Select(a => a.TagId).FirstOrDefaultAsync(cancellationToken);
+        if (aliasTarget != null)
+            return await _context.Tags.FirstOrDefaultAsync(t => t.Id == aliasTarget && t.IsGlobal, cancellationToken);
         var visibleTags = _context.Tags.Where(t => t.IsGlobal || t.OwnerId == ownerId);
         var exact = await visibleTags
             .Where(t => t.NormalizedName == normalizedName)
@@ -78,7 +83,7 @@ public class TagRepository : ITagRepository
     }
 
     public async Task<IEnumerable<Tag>> SearchAsync(Guid ownerId, string? search, int take,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, int skip = 0)
     {
         var query = _context.Tags.Where(t => t.IsGlobal || t.OwnerId == ownerId);
         if (!string.IsNullOrWhiteSpace(search))
@@ -87,7 +92,7 @@ public class TagRepository : ITagRepository
             query = query.Where(t => t.NormalizedName.Contains(normalizedSearch));
         }
 
-        return await query.OrderBy(t => t.Name).Take(take).ToListAsync(cancellationToken);
+        return await query.OrderBy(t => t.Name).ThenBy(t => t.Id).Skip(Math.Max(0, skip)).Take(take).ToListAsync(cancellationToken);
     }
 
     public async Task AddAsync(Tag tag, CancellationToken cancellationToken)

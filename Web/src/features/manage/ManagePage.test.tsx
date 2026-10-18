@@ -143,19 +143,22 @@ describe('ManagePage', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
-  it('searches authors by alias and saves one alternative name per line', async () => {
+  it('searches authors by alias and edits alternative names in separate fields', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ManagePage />)
 
     await user.click(screen.getByRole('tab', { name: 'Authors' }))
     const search = screen.getByPlaceholderText('Search authors or aliases…')
     await user.type(search, 'Cuttlefish')
-    await waitFor(() => expect(api.searchAuthors).toHaveBeenCalledWith('Cuttlefish', 50))
+    await waitFor(() => expect(api.searchAuthors).toHaveBeenCalledWith('Cuttlefish', 50, false, 0))
 
     await user.click(await screen.findByRole('button', { name: 'Edit author Er Gen' }))
-    const aliases = screen.getByLabelText('Alternative names')
+    const aliases = screen.getByLabelText('Alternative name 1')
     await user.clear(aliases)
-    await user.type(aliases, '耳根{enter}Ergen')
+    await user.type(aliases, '耳根')
+    await user.click(screen.getByRole('button', { name: '+ Add alternative name' }))
+    expect(screen.getByLabelText('Alternative name 2')).toHaveFocus()
+    await user.type(screen.getByLabelText('Alternative name 2'), 'Ergen')
     await user.click(screen.getByRole('button', { name: 'Save changes' }))
 
     await waitFor(() =>
@@ -195,7 +198,12 @@ describe('ManagePage', () => {
     await user.click(screen.getByRole('tab', { name: 'Authors' }))
     await user.click(await screen.findByRole('button', { name: 'Add author' }))
     await user.type(screen.getByLabelText('Primary name'), 'New Author')
-    await user.type(screen.getByLabelText('Alternative names'), 'Pen Name')
+    await user.click(screen.getByRole('button', { name: '+ Add alternative name' }))
+    await user.type(screen.getByLabelText('Alternative name 1'), 'Pen Name')
+    await user.click(screen.getByRole('button', { name: '+ Add alternative name' }))
+    await user.type(screen.getByLabelText('Alternative name 2'), 'Remove me')
+    await user.click(screen.getByRole('button', { name: 'Remove alternative name Remove me' }))
+    expect(screen.queryByLabelText('Alternative name 2')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Create author' }))
     await waitFor(() =>
       expect(api.createAuthor).toHaveBeenCalledWith({
@@ -478,5 +486,37 @@ describe('ManagePage', () => {
       }),
     )
     expect(screen.getAllByText(repeated.book.primaryTitle)).toHaveLength(1)
+  })
+  it.each(['Tags', 'Authors'] as const)('loads more %s when scrolling', async (section) => {
+    const firstPage = Array.from({ length: 50 }, (_, index) =>
+      section === 'Tags'
+        ? { ...tag, id: `tag-${index}`, name: `Tag ${index}` }
+        : { ...author, id: `author-${index}`, primaryName: `Author ${index}` },
+    )
+    if (section === 'Tags') {
+      vi.mocked(api.searchTags)
+        .mockReset()
+        .mockResolvedValueOnce(firstPage as (typeof tag)[])
+        .mockResolvedValue([{ ...tag, id: 'later', name: 'Later tag' }])
+    } else {
+      vi.mocked(api.searchAuthors)
+        .mockReset()
+        .mockResolvedValueOnce(firstPage as (typeof author)[])
+        .mockResolvedValue([{ ...author, id: 'later', primaryName: 'Later author' }])
+    }
+    renderWithProviders(<ManagePage />)
+    if (section === 'Authors') await userEvent.click(screen.getByRole('tab', { name: section }))
+    const list = await screen.findByLabelText(section)
+    Object.defineProperties(list, {
+      scrollHeight: { configurable: true, value: 1000 },
+      scrollTop: { configurable: true, value: 850 },
+      clientHeight: { configurable: true, value: 100 },
+    })
+    fireEvent.scroll(list)
+    expect(
+      await screen.findByText(section === 'Tags' ? 'Later tag' : 'Later author'),
+    ).toBeInTheDocument()
+    if (section === 'Tags') expect(api.searchTags).toHaveBeenLastCalledWith('', 50, 50)
+    else expect(api.searchAuthors).toHaveBeenLastCalledWith('', 50, false, 50)
   })
 })

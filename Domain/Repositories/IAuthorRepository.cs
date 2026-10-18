@@ -7,10 +7,10 @@ public interface IAuthorRepository
     public Task<Author?> GetPublicByNameAsync(string name, CancellationToken cancellationToken);
 
     public Task<IEnumerable<Author>> SearchAsync(Guid ownerId, string? search, int take,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken, int skip = 0);
 
     public Task<IEnumerable<Author>> SearchOwnedAsync(Guid ownerId, string? search, int take,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken, int skip = 0);
 
     public Task AddAsync(Author author, CancellationToken cancellationToken);
     public void AddName(Author author, AuthorName name);

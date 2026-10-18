@@ -12,11 +12,13 @@ import type {
   ManagedBookListingDto,
   TagDto,
 } from '@/api/types'
+import { TextListEditor } from '@/components/ui/TextListEditor'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { fieldClass, textareaClass } from '@/components/ui/fieldStyles'
 import { listRowClass, ListBox, Pill, SearchField, StateBox } from '@/components/ui/ListParts'
 import { CoverThumb } from '@/features/books/BookListCells'
+import { useDebouncedValue } from '@/lib/useDebouncedValue'
 import { cn } from '@/lib/utils'
 
 type ManageSection = 'tags' | 'authors' | 'books'
@@ -55,14 +57,35 @@ export function ManagePage() {
     return () => window.clearTimeout(timeout)
   }, [search])
 
-  const results = useQuery<TagDto[] | AuthorDto[]>({
+  const results = useInfiniteQuery<TagDto[] | AuthorDto[]>({
     queryKey: ['manage-metadata', section, debouncedSearch],
-    queryFn: () =>
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
       section === 'tags'
-        ? api.searchTags(debouncedSearch, 50)
-        : api.searchAuthors(debouncedSearch, 50),
+        ? api.searchTags(debouncedSearch, 50, Number(pageParam))
+        : api.searchAuthors(debouncedSearch, 50, false, Number(pageParam)),
+    getNextPageParam: (lastPage, pages) =>
+      lastPage.length === 50 ? pages.reduce((count, page) => count + page.length, 0) : undefined,
     enabled: section !== 'books',
   })
+  const metadataItems = Array.from(
+    new Map(
+      (results.data?.pages.flatMap<TagDto | AuthorDto>((page) => page) ?? []).map((item) => [
+        item.id,
+        item,
+      ]),
+    ).values(),
+  )
+  function loadMoreMetadata(event: React.UIEvent<HTMLDivElement>) {
+    const list = event.currentTarget
+    if (
+      results.hasNextPage &&
+      !results.isFetching &&
+      list.scrollHeight - list.scrollTop - list.clientHeight < 96
+    ) {
+      void results.fetchNextPage()
+    }
+  }
 
   const libraryBooks = useInfiniteQuery({
     queryKey: ['manage-books', debouncedSearch],
@@ -92,8 +115,7 @@ export function ManagePage() {
       libraryBookPages.flatMap((page) => page.data).map((item) => [item.book.id, item] as const),
     ).values(),
   )
-  const itemCount =
-    section === 'books' ? (libraryBookPages[0]?.total ?? 0) : (results.data?.length ?? 0)
+  const itemCount = section === 'books' ? (libraryBookPages[0]?.total ?? 0) : metadataItems.length
   const fetching = section === 'books' ? libraryBooks.isFetching : results.isFetching
   const noun = section === 'tags' ? 'tag' : section === 'authors' ? 'author' : 'book'
 
@@ -207,7 +229,7 @@ export function ManagePage() {
               )
             }
           />
-        ) : results.isError ? (
+        ) : results.isError && !results.data ? (
           <StateBox tone="error">Could not load {section}. Try again.</StateBox>
         ) : results.isPending ? (
           <StateBox>Loading {section}…</StateBox>
@@ -220,12 +242,20 @@ export function ManagePage() {
           </StateBox>
         ) : section === 'tags' ? (
           <TagList
-            tags={results.data as TagDto[]}
+            tags={metadataItems as TagDto[]}
+            onScroll={loadMoreMetadata}
+            loadingMore={results.isFetchingNextPage}
+            loadError={results.isFetchNextPageError}
+            onRetry={() => void results.fetchNextPage()}
             onEdit={(tag) => setSelected({ kind: 'tag', value: tag })}
           />
         ) : (
           <AuthorList
-            authors={results.data as AuthorDto[]}
+            authors={metadataItems as AuthorDto[]}
+            onScroll={loadMoreMetadata}
+            loadingMore={results.isFetchingNextPage}
+            loadError={results.isFetchNextPageError}
+            onRetry={() => void results.fetchNextPage()}
             onEdit={(author) => setSelected({ kind: 'author', value: author })}
           />
         )}
@@ -236,6 +266,13 @@ export function ManagePage() {
           key={`${selected.kind}:${selected.value?.id ?? 'new'}`}
           item={selected}
           onClose={() => setSelected(null)}
+          onExistingAuthor={(author) => {
+            if (author.isOwned) setSelected({ kind: 'author', value: author })
+            else {
+              toast.info('This author already exists and is available in book forms.')
+              setSelected(null)
+            }
+          }}
         />
       ) : null}
     </div>
@@ -377,12 +414,36 @@ function ManagedBooks({
   )
 }
 
-function TagList({ tags, onEdit }: { tags: TagDto[]; onEdit: (tag: TagDto) => void }) {
+type MetadataListProps = {
+  onScroll: React.UIEventHandler<HTMLDivElement>
+  loadingMore: boolean
+  loadError: boolean
+  onRetry: () => void
+}
+
+function MetadataListFooter({
+  loadingMore,
+  loadError,
+  onRetry,
+}: Omit<MetadataListProps, 'onScroll'>) {
+  return loadingMore ? (
+    <StateBox>Loading more…</StateBox>
+  ) : loadError ? (
+    <Button onClick={onRetry}>Retry loading more</Button>
+  ) : null
+}
+
+function TagList({
+  tags,
+  onEdit,
+  onScroll,
+  ...pagination
+}: { tags: TagDto[]; onEdit: (tag: TagDto) => void } & MetadataListProps) {
   const sortedTags = [...tags].sort((left, right) =>
     left.name.localeCompare(right.name, undefined, { sensitivity: 'base', numeric: true }),
   )
   return (
-    <ListBox label="Tags">
+    <ListBox label="Tags" onScroll={onScroll} busy={pagination.loadingMore}>
       {sortedTags.map((tag) => (
         <ManageRow
           editable={!tag.isGlobal}
@@ -401,6 +462,7 @@ function TagList({ tags, onEdit }: { tags: TagDto[]; onEdit: (tag: TagDto) => vo
           {tag.isGlobal ? <Pill>Global</Pill> : null}
         </ManageRow>
       ))}
+      <MetadataListFooter {...pagination} />
     </ListBox>
   )
 }
@@ -408,10 +470,12 @@ function TagList({ tags, onEdit }: { tags: TagDto[]; onEdit: (tag: TagDto) => vo
 function AuthorList({
   authors,
   onEdit,
+  onScroll,
+  ...pagination
 }: {
   authors: AuthorDto[]
   onEdit: (author: AuthorDto) => void
-}) {
+} & MetadataListProps) {
   const sortedAuthors = [...authors].sort((left, right) =>
     left.primaryName.localeCompare(right.primaryName, undefined, {
       sensitivity: 'base',
@@ -419,7 +483,7 @@ function AuthorList({
     }),
   )
   return (
-    <ListBox label="Authors">
+    <ListBox label="Authors" onScroll={onScroll} busy={pagination.loadingMore}>
       {sortedAuthors.map((author) => (
         <ManageRow
           editable={author.isOwned}
@@ -445,6 +509,7 @@ function AuthorList({
           </Pill>
         </ManageRow>
       ))}
+      <MetadataListFooter {...pagination} />
     </ListBox>
   )
 }
@@ -487,29 +552,49 @@ function ManageRow({
   )
 }
 
-function ManageDialog({ item, onClose }: { item: ManagedItem; onClose: () => void }) {
+function ManageDialog({
+  item,
+  onClose,
+  onExistingAuthor,
+}: {
+  item: ManagedItem
+  onClose: () => void
+  onExistingAuthor: (author: AuthorDto) => void
+}) {
   const queryClient = useQueryClient()
   const formId = useId()
   const nameFieldRef = useRef<HTMLInputElement>(null)
   const firstFieldRef = useRef<HTMLTextAreaElement>(null)
+  const authorNamesRef = useRef<HTMLDivElement>(null)
   // The dialog is mounted per edited item (keyed by the parent), so initial state comes from props.
   const [nameValue, setNameValue] = useState(() =>
     item.value ? (item.kind === 'tag' ? item.value.name : item.value.primaryName) : '',
   )
   const [value, setValue] = useState(() =>
-    item.value
-      ? item.kind === 'tag'
-        ? (item.value.description ?? '')
-        : item.value.otherNames.join('\n')
-      : '',
+    item.kind === 'tag' ? (item.value?.description ?? '') : '',
   )
+  const [alternativeNames, setAlternativeNames] = useState<string[]>(() =>
+    item.kind === 'author' ? (item.value?.otherNames.slice() ?? []) : [],
+  )
+  const authorSearch = useDebouncedValue(nameValue.trim(), 200)
+  const [authorSuggestionsOpen, setAuthorSuggestionsOpen] = useState(false)
+  const authorSuggestions = useQuery({
+    queryKey: ['authorSuggestions', authorSearch],
+    queryFn: () => api.searchAuthors(authorSearch, 8),
+    enabled: item.kind === 'author' && item.value === null && authorSearch.length >= 2,
+  })
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const hasExistingValue = item.value !== null
   useEffect(() => {
     window.setTimeout(
-      () => (hasExistingValue ? firstFieldRef.current : nameFieldRef.current)?.focus(),
+      () =>
+        (hasExistingValue
+          ? (firstFieldRef.current ??
+            authorNamesRef.current?.querySelector<HTMLElement>('input, button'))
+          : nameFieldRef.current
+        )?.focus(),
       0,
     )
   }, [hasExistingValue])
@@ -533,10 +618,7 @@ function ManageDialog({ item, onClose }: { item: ManagedItem; onClose: () => voi
         await api.createTag({ name: nameValue.trim(), description: value.trim() || null })
         toast.success(`Tag “${nameValue.trim()}” created.`)
       } else {
-        const otherNames = value
-          .split('\n')
-          .map((alias) => alias.trim())
-          .filter(Boolean)
+        const otherNames = alternativeNames.map((alias) => alias.trim()).filter(Boolean)
         if (item.value) {
           await api.updateAuthor(item.value.id, { otherNames })
           toast.success(`Author “${item.value.primaryName}” updated.`)
@@ -632,20 +714,54 @@ function ManageDialog({ item, onClose }: { item: ManagedItem; onClose: () => voi
         onSubmit={(event) => void handleSave(event)}
       >
         {isCreate ? (
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium text-ink-2">
-              {item.kind === 'tag' ? 'Tag name' : 'Primary name'}
-            </span>
-            <input
-              ref={nameFieldRef}
-              aria-label={item.kind === 'tag' ? 'Tag name' : 'Primary name'}
-              className={fieldClass}
-              maxLength={item.kind === 'tag' ? 100 : 300}
-              required
-              value={nameValue}
-              onChange={(event) => setNameValue(event.target.value)}
-            />
-          </label>
+          <>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[13px] font-medium text-ink-2">
+                {item.kind === 'tag' ? 'Tag name' : 'Primary name'}
+              </span>
+              <input
+                ref={nameFieldRef}
+                aria-label={item.kind === 'tag' ? 'Tag name' : 'Primary name'}
+                className={fieldClass}
+                maxLength={item.kind === 'tag' ? 100 : 300}
+                required
+                value={nameValue}
+                onChange={(event) => {
+                  setNameValue(event.target.value)
+                  setAuthorSuggestionsOpen(true)
+                }}
+                onFocus={() => setAuthorSuggestionsOpen(true)}
+              />
+            </label>
+            {item.kind === 'author' && authorSuggestionsOpen && authorSearch.length >= 2 ? (
+              <div
+                aria-label="Existing authors"
+                className="rounded-field border border-line bg-surface p-1"
+              >
+                {authorSuggestions.isFetching ? (
+                  <p className="px-3 text-sm text-ink-3">Searching authors…</p>
+                ) : null}
+                {authorSuggestions.data?.map((author) => (
+                  <button
+                    key={author.id}
+                    type="button"
+                    className="grid w-full gap-1 rounded-control border-0 bg-transparent px-3 py-2 text-left text-sm text-ink hover:bg-hover"
+                    onClick={() => {
+                      onExistingAuthor(author)
+                    }}
+                  >
+                    <strong>{author.primaryName}</strong>
+                    <span className="text-ink-3">
+                      {author.otherNames.join(' · ') || 'No alternative names'}
+                    </span>
+                  </button>
+                ))}
+                {!authorSuggestions.isFetching && authorSuggestions.data?.length === 0 ? (
+                  <p className="px-3 text-sm text-ink-3">New name — created on save.</p>
+                ) : null}
+              </div>
+            ) : null}
+          </>
         ) : null}
         {item.kind === 'tag' ? (
           <label className="flex flex-col gap-1.5">
@@ -663,22 +779,22 @@ function ManageDialog({ item, onClose }: { item: ManagedItem; onClose: () => voi
             <small className="text-xs text-ink-3 tabular-nums">{value.length}/500 characters</small>
           </label>
         ) : (
-          <label className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5" ref={authorNamesRef}>
             <span className="text-[13px] font-medium text-ink-2">Alternative names</span>
-            <textarea
-              aria-label="Alternative names"
-              ref={firstFieldRef}
-              className={textareaClass}
-              placeholder={'One alternative name per line\nExample: Cuttlefish That Loves Diving'}
-              rows={8}
-              value={value}
-              onChange={(event) => setValue(event.target.value)}
+            <TextListEditor
+              label="Alternative names"
+              itemLabel="Alternative name"
+              addLabel="Add alternative name"
+              values={alternativeNames}
+              onChange={setAlternativeNames}
+              maxLength={300}
+              maxItems={25}
+              disabled={saving}
             />
             <small className="text-xs text-ink-3">
-              One name per line. The primary name stays unchanged.
-              {isCreate ? ' New authors start private.' : ''}
+              {isCreate ? 'New authors start private.' : 'The primary name stays unchanged.'}
             </small>
-          </label>
+          </div>
         )}
 
         {item.kind === 'author' && item.value ? (

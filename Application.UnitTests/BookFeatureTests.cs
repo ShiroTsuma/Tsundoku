@@ -945,13 +945,13 @@ public class BookFeatureTests
         }
 
         public Task<IEnumerable<Author>> SearchAsync(Guid ownerId, string? search, int take,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken, int skip = 0)
         {
             return Task.FromResult<IEnumerable<Author>>(Authors.Take(take));
         }
 
         public Task<IEnumerable<Author>> SearchOwnedAsync(Guid ownerId, string? search, int take,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken, int skip = 0)
         {
             return Task.FromResult<IEnumerable<Author>>(Authors.Where(author => author.OwnerId == ownerId)
                 .Take(take));
@@ -1129,7 +1129,7 @@ public class BookFeatureTests
         }
 
         public Task<IEnumerable<Tag>> SearchAsync(Guid ownerId, string? search, int take,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken, int skip = 0)
         {
             return Task.FromResult<IEnumerable<Tag>>(_tags.Take(take));
         }

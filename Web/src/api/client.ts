@@ -201,9 +201,9 @@ export const api = {
     apiRequest<undefined>(`/public-book/${snapshotId}`, { method: 'DELETE' }),
   copyPublicBook: (snapshotId: string) =>
     apiRequest<CopyPublicBookResult>(`/public-book/${snapshotId}/copy`, { method: 'POST' }),
-  searchAuthors: (search: string, take = 10, mineOnly = false) =>
+  searchAuthors: (search: string, take = 10, mineOnly = false, skip = 0) =>
     apiRequest<AuthorDto[]>(
-      `/author${toQueryString({ search, take, mineOnly: mineOnly || undefined })}`,
+      `/author${toQueryString({ search, take, mineOnly: mineOnly || undefined, skip: skip || undefined })}`,
     ),
   createAuthor: (request: CreateAuthorRequest) =>
     apiRequest<AuthorDto>('/author', { method: 'POST', body: request }),
@@ -212,8 +212,8 @@ export const api = {
   updateAuthorVisibility: (id: string, isPublic: boolean) =>
     apiRequest<AuthorDto>(`/author/${id}/visibility`, { method: 'PUT', body: { isPublic } }),
   deleteAuthor: (id: string) => apiRequest<undefined>(`/author/${id}`, { method: 'DELETE' }),
-  searchTags: (search: string, take = 10) =>
-    apiRequest<TagDto[]>(`/tag${toQueryString({ search, take })}`),
+  searchTags: (search: string, take = 10, skip = 0) =>
+    apiRequest<TagDto[]>(`/tag${toQueryString({ search, take, skip: skip || undefined })}`),
   createTag: (request: CreateTagRequest) =>
     apiRequest<TagDto>('/tag', { method: 'POST', body: request }),
   updateTag: (id: string, request: UpdateTagRequest) =>
