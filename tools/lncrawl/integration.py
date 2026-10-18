@@ -327,8 +327,10 @@ async def lifespan(app):
     stopping.clear()
     ctx.setup(sync_remote_index=False)
     ctx.sources.ensure_load()
-    # Load our preserved local fix last, ahead of any older file in the data volume.
-    ctx.sources.load_crawlers(Path(__file__).parent / "sources/en/d/dobytranslations.py")
+    # Load bundled sources last, ahead of older files in the persistent data volume.
+    ctx.sources.load_crawlers(
+        Path(__file__).parent / "sources/en/d/dobytranslations.py",
+        Path(__file__).parent / "sources/en/t/tinytranslation.py")
     # Mandatory egress route. The crawler has no external Docker network.
     ctx.config.crawler.enable_proxy = True
     ctx.config.crawler.allow_fallback_on_proxy_miss = False

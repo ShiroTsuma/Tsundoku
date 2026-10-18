@@ -218,6 +218,13 @@ upgrading; also review the assertion-checked EPUB-builder patch.
 
 ## Validation
 
+Tiny Translation (`tinytranslation.xyz`, including `www`) is bundled as an English
+machine-translation source in `tools/lncrawl/overrides/tinytranslation.py` and loaded
+at startup. Search reads `/list-novels/`; series pages provide metadata and ordered
+chapter links. Chapter extraction keeps story paragraphs, images and notes while
+removing navigation, translation controls and site credits. Regression tests:
+`python -m unittest test_tinytranslation` from `tools/lncrawl`.
+
 ```sh
 dotnet test Infrastructure.IntegrationTests -c Crawler --filter Crawler
 python -m unittest discover -s tools/lncrawl -p test_integration.py
