@@ -10,6 +10,27 @@ const result = { candidates: [], searchedSourceCount: 3, durationMs: 20, warning
 describe('crawler API client', () => {
   beforeEach(() => http.mockReset())
 
+  it('refreshes the requested source and polls only its inspection job', async () => {
+    const client = createApiEpubSearchClient()
+    const request = {
+      bookId: 'book-1',
+      query: 'Test',
+      scope: 'all' as const,
+      sourceId: 'source-1',
+      forceRefresh: true,
+      refreshId: 'refresh-1',
+    }
+    http.mockResolvedValueOnce({ id: 'refresh-job', status: 'queued', result: null, error: null })
+    await client.search(request)
+    expect(http).toHaveBeenLastCalledWith('/book/book-1/epub-searches', {
+      method: 'POST',
+      body: { query: 'Test', scope: 'all', forceRefresh: true, sourceId: 'source-1' },
+    })
+    http.mockResolvedValueOnce({ id: 'refresh-job', status: 'completed', result, error: null })
+    await client.search(request)
+    expect(http).toHaveBeenLastCalledWith('/book/epub-searches/refresh-job', {})
+  })
+
   it('returns queued progress immediately, before any match, then polls the same job', async () => {
     const client = createApiEpubSearchClient()
     http.mockResolvedValueOnce({ id: 'queued-search', status: 'queued', result: null, error: null })
@@ -112,7 +133,7 @@ describe('crawler API client', () => {
       splitEvery: 2,
       titleTemplate: 'Part {n}',
       firstFileNumber: 3,
-      addToBookAutomatically: false,
+      regenerateAffectedVolumes: false,
     }
     http.mockResolvedValue({ id: 'download-1' })
     await createApiEpubSearchClient().startDownload(request)

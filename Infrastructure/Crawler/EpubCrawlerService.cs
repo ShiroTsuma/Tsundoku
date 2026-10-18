@@ -28,6 +28,15 @@ public sealed class EpubCrawlerService(ApplicationDbContext db, IUser user, IOpt
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await LockOwnerAsync(ct);
         await LockBookAsync(db, bookId, ct);
+        if (request.SourceId is { } sourceId)
+        {
+            var source = await db.BookCrawlerSources.SingleOrDefaultAsync(s => s.Id == sourceId && s.BookId == bookId && s.OwnerId == user.RequiredId, ct)
+                ?? throw new ValidationException("The selected source is no longer available.");
+            var refresh = await Create(bookId, "refresh", Guid.NewGuid().ToString("N"),
+                new CrawlerWork { Kind = "inspect", Url = source.Url, SourceId = source.Id }, ct);
+            await transaction.CommitAsync(ct);
+            return SearchDto(refresh);
+        }
         var title = await db.Books.Where(b => b.Id == bookId).Select(b => b.PrimaryTitle).SingleAsync(ct);
         var previous = await db.CrawlerJobs.Where(j => j.BookId == bookId && j.OwnerId == user.RequiredId &&
                 (j.Kind == "search" || j.Kind == "discovery") && j.Status != "failed" && j.Status != "cancelled" &&
@@ -95,7 +104,7 @@ public sealed class EpubCrawlerService(ApplicationDbContext db, IUser user, IOpt
                 throw new ValidationException("This request identifier was already used for different download options.");
             return existing;
         }
-        if (await db.CrawlerJobs.CountAsync(j => j.OwnerId == user.RequiredId && (j.Kind == "search" || j.Kind == "download") && j.ExpiresAtUtc > DateTime.UtcNow &&
+        if (await db.CrawlerJobs.CountAsync(j => j.OwnerId == user.RequiredId && (j.Kind == "search" || j.Kind == "download" || j.Kind == "refresh") && j.ExpiresAtUtc > DateTime.UtcNow &&
                 j.Status != "completed" && j.Status != "failed" && j.Status != "cancelled", ct) >= options.Value.MaxActiveJobsPerOwner)
             throw new ValidationException("Finish or cancel an existing crawler operation first.");
         var now = DateTime.UtcNow;
@@ -124,12 +133,39 @@ public sealed class EpubCrawlerService(ApplicationDbContext db, IUser user, IOpt
         await OwnedBook(bookId, ct);
         if (string.IsNullOrWhiteSpace(request.RequestKey) || request.RequestKey.Length > 100)
             throw new ValidationException("A download request identifier is required.");
+        var retry = await db.CrawlerJobs.SingleOrDefaultAsync(j => j.OwnerId == user.RequiredId && j.Kind == "download" && j.RequestKey == request.RequestKey, ct);
+        if (retry != null)
+        {
+            if (retry.BookId != bookId || CrawlerPlan.Read<CrawlerWork>(retry.RequestJson).DownloadRequest != request)
+                throw new ValidationException("This request identifier was already used for different download options.");
+            return DownloadDto(retry);
+        }
         var source = await db.BookCrawlerSources.SingleOrDefaultAsync(s => s.Id == request.SourceId && s.BookId == bookId && s.OwnerId == user.RequiredId, ct)
             ?? throw new ValidationException("Search again and choose an available source.");
         var chapters = CrawlerPlan.Read<List<CrawlerChapter>>(source.ChaptersJson);
+        var existing = request.RegenerateAffectedVolumes
+            ? (await ExistingVolumesAsync(bookId, ct)).GetValueOrDefault(source.Id) ?? [] : [];
         var work = new CrawlerWork { Kind = "download", SourceId = source.Id, Url = source.Url, Chapters = chapters,
-            AddAutomatically = request.AddToBookAutomatically, Files = CrawlerPlan.Files(request, chapters) };
+            DownloadRequest = request, Files = CrawlerPlan.Files(request, chapters, existing) };
         return DownloadDto(await Create(bookId, "download", request.RequestKey, work, ct));
+    }
+
+    private async Task<Dictionary<Guid, IReadOnlyList<EpubExistingVolume>>> ExistingVolumesAsync(Guid bookId, CancellationToken ct)
+    {
+        var files = await db.BookFiles.AsNoTracking().Where(f => f.BookId == bookId && f.OwnerId == user.RequiredId && f.DeletedAtUtc == null)
+            .ToDictionaryAsync(f => f.Id, ct);
+        var jobs = await db.CrawlerJobs.AsNoTracking().Where(j => j.BookId == bookId && j.OwnerId == user.RequiredId &&
+            j.Kind == "download" && j.ResultJson != "{}").OrderByDescending(j => j.CreatedAtUtc).ToListAsync(ct);
+        var volumes = new Dictionary<Guid, Dictionary<Guid, EpubExistingVolume>>();
+        foreach (var job in jobs)
+        {
+            if (CrawlerPlan.Read<CrawlerWork>(job.RequestJson).SourceId is not { } sourceId) continue;
+            if (!volumes.TryGetValue(sourceId, out var selected)) volumes[sourceId] = selected = [];
+            foreach (var volume in CrawlerPlan.Read<EpubDownloadJob>(job.ResultJson).Files)
+                if (volume.Status == "added" && volume.AttachmentId is { } id && files.TryGetValue(id, out var file))
+                    selected.TryAdd(id, new(id, file.Title, volume.FirstChapter, volume.LastChapter));
+        }
+        return volumes.ToDictionary(v => v.Key, v => (IReadOnlyList<EpubExistingVolume>)v.Value.Values.OrderBy(f => f.FirstChapter).ToList());
     }
 
     private async Task<CrawlerJob> OwnedJob(Guid id, string kind, CancellationToken ct) =>
@@ -139,7 +175,7 @@ public sealed class EpubCrawlerService(ApplicationDbContext db, IUser user, IOpt
     public async Task<EpubSearchJob> GetSearchAsync(Guid id, CancellationToken ct)
     {
         var job = await db.CrawlerJobs.SingleOrDefaultAsync(j => j.Id == id && j.OwnerId == user.RequiredId &&
-            (j.Kind == "search" || j.Kind == "discovery"), ct);
+            (j.Kind == "search" || j.Kind == "discovery" || j.Kind == "refresh"), ct);
         if (job != null) return await SearchDtoAsync(job, ct);
         var saved = await db.BookCrawlerDiscoveries.AsNoTracking().SingleOrDefaultAsync(d => d.Id == id && d.OwnerId == user.RequiredId, ct)
             ?? throw new EntityNotFoundException<CrawlerJob, Guid>(id);
@@ -197,8 +233,10 @@ public sealed class EpubCrawlerService(ApplicationDbContext db, IUser user, IOpt
         }
         if (dto.Result == null) return dto;
         var sources = await db.BookCrawlerSources.AsNoTracking().Where(s => s.BookId == job.BookId && s.OwnerId == job.OwnerId).ToDictionaryAsync(s => s.Id, ct);
+        var volumeMap = await ExistingVolumesAsync(job.BookId, ct);
         var candidates = dto.Result.Candidates.Select(c => c with { Sources = c.Sources.Select(s =>
         {
+            s = s with { ExistingVolumes = volumeMap.GetValueOrDefault(s.Id) ?? [] };
             if (!sources.TryGetValue(s.Id, out var current) || current.LastScannedAtUtc == null) return s;
             var chapters = CrawlerPlan.Read<List<CrawlerChapter>>(current.ChaptersJson);
             return s with { FetchedAt = current.LastScannedAtUtc, ChapterCount = chapters.Count,
@@ -209,6 +247,7 @@ public sealed class EpubCrawlerService(ApplicationDbContext db, IUser user, IOpt
     internal static EpubDownloadJob DownloadDto(CrawlerJob job)
     {
         var dto = CrawlerPlan.Read<EpubDownloadJob>(job.ResultJson);
+        dto.SourceId = CrawlerPlan.Read<CrawlerWork>(job.RequestJson).SourceId;
         dto.Status = job.Status;
         dto.Error = job.Error;
         return dto;

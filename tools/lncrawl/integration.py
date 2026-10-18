@@ -18,6 +18,7 @@ from uuid import UUID
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
 from integration_store import Store, empty_result
+from download_plan import resolve_chapter_ids
 from search_flow import search_metadata
 from source_policy import allowed_host, normalized_host, supported_url
 from processing_control import processing_enabled, set_processing, ProcessingPaused
@@ -165,7 +166,17 @@ def run(key, request, result, signal):
         result["novels"] = [data]
     elif request["kind"] == "download":
         novel, current = inspect(key, request["url"], signal)
-        expected = {c["id"]: c["url"] for c in request["chapters"]}
+        # Searching inspects metadata only. Actual downloads also fetch the cover
+        # so the normal builder can include its cover and front pages.
+        if novel.cover_url and not novel.cover_available:
+            def fetch_cover():
+                crawler = ctx.sources.init_crawler(novel.url, timeout=30, probe=True)
+                try:
+                    return observed_call(crawler, lambda: crawler.download_cover(
+                        novel.cover_url, ctx.files.resolve(novel.cover_file)))
+                finally:
+                    crawler.close()
+            paced(key, novel.url, signal, fetch_cover)
         available = {c["id"]: c["url"] for c in current["chapters"]}
         plans = request["files"]
         if not plans or len(plans) > 100:
@@ -179,14 +190,12 @@ def run(key, request, result, signal):
             target = output(key, index)
             if state["status"] == "ready" and target.is_file():
                 continue
-            ids = plan["chapterIds"]
-            if not ids or len(ids) != len(set(ids)) or any(c not in expected or available.get(c) != expected[c] for c in ids):
-                raise ValueError("The source chapter list changed. Search again before downloading.")
+            ids = resolve_chapter_ids(request["chapters"], current["chapters"], plan)
             state["chaptersDone"] = 0
             state["status"] = result["status"] = "crawling"
             for chapter_id in ids:
                 check(key, signal)
-                public_url(expected[chapter_id])
+                public_url(available[chapter_id])
                 chapter = ctx.chapters.get(chapter_id)
                 if not chapter.is_available:
                     def fetch_chapter():
@@ -196,7 +205,7 @@ def run(key, request, result, signal):
                                 user_id=ctx.users.get_admin().id, chapter_id=chapter_id, signal=signal, custom=crawler))
                         finally:
                             crawler.close()
-                    chapter = paced(key, expected[chapter_id], signal, fetch_chapter)
+                    chapter = paced(key, available[chapter_id], signal, fetch_chapter)
                 if not chapter.is_available:
                     raise ValueError("A chapter is missing; an incomplete EPUB was not created.")
                 for image in ctx.images.list(chapter_id=chapter_id):

@@ -10,6 +10,7 @@
 export type EpubSourceScope = 'english' | 'all'
 
 export type EpubSearchRequest = {
+  sourceId?: string
   bookId: string
   query: string
   scope: EpubSourceScope
@@ -19,6 +20,7 @@ export type EpubSearchRequest = {
 
 /** One site that hosts a novel, as returned by the crawler's search. */
 export type EpubCandidateSource = {
+  existingVolumes?: EpubExistingVolume[]
   id: string
   sourceName: string
   url: string
@@ -28,6 +30,13 @@ export type EpubCandidateSource = {
   updatedAt: string | null
   fetchedAt?: string | null
   language: string
+}
+
+export type EpubExistingVolume = {
+  fileId: string
+  title: string
+  firstChapter: number
+  lastChapter: number
 }
 
 export type EpubCandidateMatch = 'title' | 'similar'
@@ -70,7 +79,7 @@ export type EpubDownloadRequest = {
   titleTemplate: string
   /** Number to give the first new file (continues after existing files). */
   firstFileNumber: number
-  addToBookAutomatically: boolean
+  regenerateAffectedVolumes: boolean
 }
 
 export type EpubDownloadStatus =
@@ -89,6 +98,7 @@ export type EpubDownloadFile = {
 }
 
 export type EpubDownloadJob = {
+  sourceId?: string | null
   id: string
   bookId: string
   sourceName: string

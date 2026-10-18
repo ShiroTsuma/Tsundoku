@@ -20,6 +20,89 @@ using TestSupport;
 
 public sealed class CrawlerIntegrationTests
 {
+    [Theory]
+    [InlineData(50)]
+    [InlineData(100)]
+    [InlineData(200)]
+    public void Regeneration_UsesChaptersPerFile_AndPreservesVolumeTitles(int size)
+    {
+        var chapters = Enumerable.Range(1, 7 * size).Select(i => new CrawlerChapter($"id-{i}", $"https://example.com/{i}", $"Chapter {i}")).ToList();
+        var existing = Enumerable.Range(0, 6).Select(i => new EpubExistingVolume(Guid.NewGuid(), $"Volume {i + 1}",
+            i * size + 1, i == 5 ? 5 * size + 27 : (i + 1) * size)).ToList();
+        foreach (var range in new[] { new EpubRange("all"), new EpubRange("fromProgress", 5 * size + 28), new EpubRange("fromProgress", size + 10) })
+        {
+            var planned = CrawlerPlan.Files(new(Guid.NewGuid(), range, size, "Volume {n}", 7, true, "regen"),
+                chapters.Take(5 * size + 42).ToList(), existing);
+            var last = Assert.Single(planned);
+            Assert.Equal("Volume 6", last.Title);
+            Assert.Equal(5 * size + 1, last.FirstChapter);
+            Assert.Equal(5 * size + 42, last.LastChapter);
+            Assert.Equal(existing[5].FileId, last.ReplacesFileId);
+        }
+    }
+
+    [Fact]
+    public async Task Regeneration_ReplacesOnlyVolumeSix_AfterSuccessfulImport_AndSurvivesRetries()
+    {
+        using var h = new Harness(); var book = await h.Book();
+        var chapters = Enumerable.Range(1, 592).Select(i => new CrawlerChapter($"id-{i}", $"https://example.com/chapter/{i}", $"Chapter {i}")).ToList();
+        var source = new BookCrawlerSource { OwnerId = h.User.RequiredId, BookId = book.Id, Url = "https://example.com/novel/test", ChaptersJson = CrawlerPlan.Serialize(chapters) };
+        h.Db.BookCrawlerSources.Add(source);
+        var volumes = Enumerable.Range(0, 6).Select(i => new BookFile { Id = Guid.NewGuid(), OwnerId = h.User.RequiredId,
+            BookId = book.Id, StoragePath = $"old-{i}.epub", OriginalFileName = $"{i}.epub", Title = $"Volume {i+1}",
+            SortOrder = i, Sha256 = $"old-{i}", SizeBytes = 1 }).ToList();
+        h.Db.BookFiles.AddRange(volumes);
+        var previous = new CrawlerJob { OwnerId = h.User.RequiredId, BookId = book.Id, Kind = "download", Status = "completed", RequestKey = "previous",
+            RequestJson = CrawlerPlan.Serialize(new CrawlerWork { SourceId = source.Id }),
+            ResultJson = CrawlerPlan.Serialize(new EpubDownloadJob { Files = volumes.Select((v,i) => new EpubDownloadFile {
+                Title = v.Title, FirstChapter = i*100+1, LastChapter = i == 5 ? 527 : (i+1)*100, Status = "added", AttachmentId = v.Id }).ToList() }) };
+        h.Db.CrawlerJobs.Add(previous); await h.Db.SaveChangesAsync();
+        var request = new EpubDownloadRequest(source.Id, new("all"), 100, "Volume {n}", 7, true, "regenerate");
+        var job = await h.Api.DownloadAsync(book.Id, request, default);
+        var stored = await h.Db.CrawlerJobs.SingleAsync(j => j.Id == job.Id);
+        var plan = Assert.Single(CrawlerPlan.Read<CrawlerWork>(stored.RequestJson).Files);
+        Assert.Equal((501, 592, "Volume 6", volumes[5].Id), (plan.FirstChapter, plan.LastChapter, plan.Title, plan.ReplacesFileId!.Value));
+        h.Remote.Snapshot = new("completed", [], [new("Volume 6", 501, 592, 92, "ready")], 0, 20, [], null);
+        await h.Worker.TickAsync(default);
+        Assert.Null(volumes[5].DeletedAtUtc);
+        await h.Files.ProcessNextAsync(default);
+        await h.Due(); await h.Worker.TickAsync(default);
+        await h.Files.ProcessNextAsync(default);
+        await h.Due(); await h.Worker.TickAsync(default);
+        var active = await h.Db.BookFiles.Where(f => f.DeletedAtUtc == null).OrderBy(f => f.SortOrder).ToListAsync();
+        Assert.Equal(6, active.Count);
+        Assert.Equal(volumes.Take(5).Select(v => v.Id), active.Take(5).Select(v => v.Id));
+        Assert.NotNull(volumes[5].DeletedAtUtc);
+        Assert.Equal("Volume 6", active[5].Title);
+        Assert.Equal(5, active[5].SortOrder);
+        Assert.Equal(job.Id, (await h.Api.DownloadAsync(book.Id, request, default)).Id);
+        var result = await h.Api.GetDownloadAsync(job.Id, default);
+        Assert.Equal("completed", result.Status);
+        Assert.Equal(active[5].Id, Assert.Single(result.Files).AttachmentId);
+    }
+
+    [Fact]
+    public async Task Refresh_InspectsOnlySelectedSource_WithoutReplacingDiscovery()
+    {
+        using var h = new Harness(); var book = await h.Book();
+        var source = new BookCrawlerSource { OwnerId = h.User.RequiredId, BookId = book.Id,
+            Url = "https://example.com/novel/test", SourceName = "example.com", ChaptersJson = CrawlerPlan.Serialize(Chapters()) };
+        h.Db.BookCrawlerSources.Add(source); await h.Db.SaveChangesAsync();
+        var job = await h.Api.SearchAsync(book.Id, new(book.PrimaryTitle, "all", true, source.Id), default);
+        h.Remote.Snapshot = new("completed", [new(book.PrimaryTitle, source.Url, "example.com", "en", Chapters())], [], 0, 10, [], null);
+        await h.Worker.TickAsync(default);
+        var work = Assert.Single(h.Remote.Submissions);
+        Assert.Equal("inspect", work.Kind);
+        Assert.Equal(source.Url, work.Url);
+        Assert.Empty(work.Urls);
+        var result = await h.Api.GetSearchAsync(job.Id, default);
+        Assert.Equal("completed", result.Status);
+        Assert.Equal(source.Id, Assert.Single(Assert.Single(result.Result!.Candidates).Sources).Id);
+        Assert.Empty(await h.Db.BookCrawlerDiscoveries.ToListAsync());
+        await Assert.ThrowsAsync<ValidationException>(() => h.Api.SearchAsync(book.Id,
+            new(book.PrimaryTitle, "all", true, Guid.NewGuid()), default));
+    }
+
     [Fact]
     public async Task SourceSettings_RequireAdmin_AndRejectUnsupportedHosts()
     {
@@ -456,34 +539,24 @@ public sealed class CrawlerIntegrationTests
         Assert.Empty(h.Remote.Submissions);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task FinishedFiles_UseRealImportValidationAndSurviveWorkerRecreation(bool automatic)
+    [Fact]
+    public async Task FinishedFiles_UseRealImportValidationAndSurviveWorkerRecreation()
     {
         using var h = new Harness(); var book = await h.Book();
         var source = new BookCrawlerSource { OwnerId = h.User.RequiredId, BookId = book.Id, Url = "https://example.com/novel/test", ChaptersJson = CrawlerPlan.Serialize(Chapters()) };
         h.Db.BookCrawlerSources.Add(source); await h.Db.SaveChangesAsync();
-        var job = await h.Api.DownloadAsync(book.Id, new(source.Id, new("all"), 6, "Volume {n}", 1, automatic, "files"), default);
+        var job = await h.Api.DownloadAsync(book.Id, new(source.Id, new("all"), 6, "Volume {n}", 1, false, "files"), default);
         h.Remote.Snapshot = new("completed", [], [new("Volume 1", 1, 6, 6, "ready")], 0, 20, [], null);
         await h.Worker.TickAsync(default); // deterministic import session queued
         Assert.Single(await h.Db.BookFileJobs.ToListAsync());
         await h.Files.ProcessNextAsync(default); // EPUB validation
         await h.Due(); await h.Worker.TickAsync(default); // ready -> auto confirmation or manual review
-        if (automatic)
-        {
-            await h.Files.ProcessNextAsync(default);
-            await h.Due(); await h.Worker.TickAsync(default);
-            Assert.Single(await h.Db.BookFiles.ToListAsync());
-        }
-        else
-        {
-            Assert.Empty(await h.Db.BookFiles.ToListAsync());
-            Assert.Equal("Ready", (await h.Db.BookFileJobs.SingleAsync()).Status);
-        }
+        await h.Files.ProcessNextAsync(default);
+        await h.Due(); await h.Worker.TickAsync(default);
+        Assert.Single(await h.Db.BookFiles.ToListAsync());
         var finished = await h.Api.GetDownloadAsync(job.Id, default);
         Assert.Equal("completed", finished.Status);
-        Assert.Equal(automatic ? "added" : "ready", Assert.Single(finished.Files).Status);
+        Assert.Equal("added", Assert.Single(finished.Files).Status);
         Assert.NotNull(finished.Files[0].ImportSessionId);
         Assert.Equal("https://example.com/chapter/6", source.DownloadBoundaryUrl);
         Assert.Equal(source.Url, Assert.Single(await h.Db.BookLinks.ToListAsync()).Url);

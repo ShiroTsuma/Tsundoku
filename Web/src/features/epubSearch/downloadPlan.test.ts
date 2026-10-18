@@ -22,6 +22,40 @@ describe('resolveRange', () => {
 })
 
 describe('planFiles', () => {
+  it.each([50, 100, 200])(
+    'regenerates only the growing last volume using %i chapters per file',
+    (size) => {
+      const existing = Array.from({ length: 6 }, (_, index) => ({
+        fileId: `file-${index + 1}`,
+        title: `Volume ${index + 1}`,
+        firstChapter: index * size + 1,
+        lastChapter: index === 5 ? size * 5 + 27 : (index + 1) * size,
+      }))
+      const to = size * 5 + 42
+      const expected = [
+        {
+          title: 'Volume 6',
+          firstChapter: size * 5 + 1,
+          lastChapter: to,
+          replacesFileId: 'file-6',
+        },
+      ]
+      expect(planFiles({ from: 1, to }, size, 'Volume {n}', 7, existing)).toEqual(expected)
+      expect(planFiles({ from: size * 5 + 28, to }, size, 'Volume {n}', 7, existing)).toEqual(
+        expected,
+      )
+      expect(planFiles({ from: size + 10, to }, size, 'Volume {n}', 7, existing)).toEqual(expected)
+    },
+  )
+
+  it('extends volume 6 and numbers the following new volume as volume 7', () => {
+    const existing = [{ fileId: 'six', title: 'Volume 6', firstChapter: 501, lastChapter: 527 }]
+    expect(planFiles({ from: 528, to: 625 }, 100, 'Volume {n}', 7, existing)).toEqual([
+      { title: 'Volume 6', firstChapter: 501, lastChapter: 600, replacesFileId: 'six' },
+      { title: 'Volume 7', firstChapter: 601, lastChapter: 625 },
+    ])
+  })
+
   it('splits into files and continues numbering', () => {
     const files = planFiles({ from: 167, to: 311 }, 100, 'Volume {n}', 4)
     expect(files).toEqual([

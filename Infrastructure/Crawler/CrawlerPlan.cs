@@ -17,10 +17,11 @@ public sealed class CrawlerWork
     public Guid? SourceId { get; set; }
     public List<CrawlerChapter> Chapters { get; set; } = [];
     public List<CrawlerPlannedFile> Files { get; set; } = [];
-    public bool AddAutomatically { get; set; }
+    public EpubDownloadRequest? DownloadRequest { get; set; }
 }
 
-public sealed record CrawlerPlannedFile(string Title, int FirstChapter, int LastChapter, List<string> ChapterIds);
+public sealed record CrawlerPlannedFile(string Title, int FirstChapter, int LastChapter, List<string> ChapterIds,
+    Guid? ReplacesFileId = null);
 
 public static class CrawlerPlan
 {
@@ -39,7 +40,8 @@ public static class CrawlerPlan
     public static bool SupportedUrl(string url, HashSet<string> domains) =>
         CanonicalUrl(url) is { } canonical && domains.Contains(SourceHost(new Uri(canonical).IdnHost));
 
-    public static List<CrawlerPlannedFile> Files(EpubDownloadRequest request, List<CrawlerChapter> chapters)
+    public static List<CrawlerPlannedFile> Files(EpubDownloadRequest request, List<CrawlerChapter> chapters,
+        IReadOnlyList<EpubExistingVolume>? existingVolumes = null)
     {
         var range = request.Range;
         if (range is null || range.Kind is not ("all" or "fromProgress" or "custom") ||
@@ -59,18 +61,29 @@ public static class CrawlerPlan
         if (chapters.Count == 0 || from > chapters.Count || to < from)
             throw new ValidationException("There are no chapters in the selected range.");
         to = Math.Min(to, chapters.Count);
+        var existing = request.RegenerateAffectedVolumes ? existingVolumes ?? [] : [];
+        var affected = existing.FirstOrDefault(v => v.FirstChapter <= from && v.LastChapter + 1 >= from);
+        if (affected != null) from = affected.FirstChapter;
         var result = new List<CrawlerPlannedFile>();
+        var nextNumber = request.FirstFileNumber;
         var template = string.IsNullOrWhiteSpace(request.TitleTemplate) ? "Volume {n}" : request.TitleTemplate.Trim();
         for (var first = from; first <= to; first += request.SplitEvery)
         {
             var last = Math.Min(to, first + request.SplitEvery - 1);
-            var number = request.FirstFileNumber + result.Count;
+            var previous = existing.FirstOrDefault(v => v.FirstChapter == first);
+            if (previous != null && previous.LastChapter >= last) continue;
+            if (existing.Any(v => v.FirstChapter <= last && v.LastChapter >= first && v.FileId != previous?.FileId))
+                throw new ValidationException("Keep the existing chapters per file when regenerating volumes.");
+            var number = nextNumber;
             var title = template.Contains("{n}", StringComparison.Ordinal)
                 ? template.Replace("{n}", number.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
                 : $"{template} {number}";
-            result.Add(new(title, first, last, chapters.Skip(first - 1).Take(last - first + 1).Select(c => c.Id).ToList()));
+            if (previous == null) nextNumber++;
+            result.Add(new(previous?.Title ?? title, first, last,
+                chapters.Skip(first - 1).Take(last - first + 1).Select(c => c.Id).ToList(), previous?.FileId));
             if (result.Count > 100) throw new ValidationException("Choose at most 100 EPUB files per download.");
         }
+        if (result.Count == 0) throw new ValidationException("These volumes already contain all selected chapters.");
         return result;
     }
 

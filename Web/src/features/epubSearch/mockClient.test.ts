@@ -24,7 +24,7 @@ const request: EpubDownloadRequest = {
   splitEvery: 100,
   titleTemplate: 'Volume {n}',
   firstFileNumber: 4,
-  addToBookAutomatically: true,
+  regenerateAffectedVolumes: true,
 }
 
 describe('mock EPUB search client', () => {

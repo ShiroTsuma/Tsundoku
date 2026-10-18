@@ -148,7 +148,7 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
                 }
             }
         }
-        if (job.Kind is "search" or "discovery") job.ResultJson = CrawlerPlan.Serialize(new EpubSearchResult(candidates,
+        if (job.Kind is "search" or "discovery" or "refresh") job.ResultJson = CrawlerPlan.Serialize(new EpubSearchResult(candidates,
             result.SearchedSourceCount, result.DurationMs, result.Warnings, result.TotalSourceCount,
             result.CheckedLinkCount, result.TotalLinkCount, result.CurrentSource, result.NextRetryAt, result.RetryAttempt, work.Query, work.Scope, result.SkippedSourceCount));
         job.Status = result.Status;
@@ -207,13 +207,11 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
             if (state.Status is not ("added" or "ready")) state.Status = result.Files[i].Status;
         }
         var ready = result.Files.Select((f, index) => (f, index)).Where(x => x.f.Status == "ready").Select(x => x.index).ToList();
-        // Manual review uses one ordinary import session, allowing all files to be reviewed together.
-        var groups = work.AddAutomatically ? ready.Select(i => new List<int> { i }).ToList()
-            : remoteFinished && ready.Count > 0 ? [ready] : new List<List<int>>();
+        var groups = ready.Select(i => new List<int> { i }).ToList();
         var pending = false;
         foreach (var group in groups)
         {
-            var importId = CrawlerPlan.ImportId(job.Id, work.AddAutomatically ? group[0] : -1);
+            var importId = CrawlerPlan.ImportId(job.Id, group[0]);
             var existing = await db.BookFileJobs.AsNoTracking().SingleOrDefaultAsync(j => j.Id == importId, ct);
             BookFileJobDto imported;
             if (existing == null || existing.Status == "Uploading")
@@ -226,22 +224,24 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
                 if (imported.Entries.Any(e => e.Error != null))
                     throw new ValidationException("A generated EPUB did not pass validation.");
                 await RecordDownloadedAsync(work, group, ct);
-                if (work.AddAutomatically)
-                {
-                    var sort = await db.BookFiles.Where(f => f.BookId == job.BookId && f.DeletedAtUtc == null)
-                        .MaxAsync(f => (int?)f.SortOrder, ct) ?? -1;
-                    await files.FinalizeAsync(importId, imported.Entries.Select((e, n) => new BookFileImportSelection(e.Id, job.BookId,
-                        dto.Files[group[Math.Min(n, group.Count - 1)]].Title, sort + n + 1)).ToList(), ct);
-                    pending = true;
-                }
-                else foreach (var index in group) dto.Files[index].Status = "ready";
+                var sort = await db.BookFiles.Where(f => f.BookId == job.BookId && f.DeletedAtUtc == null)
+                    .MaxAsync(f => (int?)f.SortOrder, ct) ?? -1;
+                await files.FinalizeAsync(importId, imported.Entries.Select((e, n) => new BookFileImportSelection(e.Id, job.BookId,
+                    dto.Files[group[Math.Min(n, group.Count - 1)]].Title, sort + n + 1)).ToList(), ct);
+                pending = true;
             }
             else if (imported.Status == "Completed")
             {
                 var hashes = BookFileService.Payload(existing!).Entries.Select(e => e.Sha256).ToArray();
                 var attachments = await db.BookFiles.Where(f => f.BookId == job.BookId && f.DeletedAtUtc == null && hashes.Contains(f.Sha256))
                     .OrderBy(f => f.SortOrder).Select(f => f.Id).ToListAsync(ct);
-                foreach (var index in group) { dto.Files[index].Status = "added"; dto.Files[index].AttachmentId = attachments.FirstOrDefault(); }
+                foreach (var index in group)
+                {
+                    var attachmentId = attachments.FirstOrDefault();
+                    if (attachmentId == Guid.Empty)
+                        throw new ValidationException("The generated EPUB attachment is no longer available.");
+                    await AttachVolumeAsync(job, work.Files[index], dto, index, attachmentId, ct);
+                }
             }
             else pending = true;
             // The ordinary import service allows one active import per owner.
@@ -255,6 +255,35 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
             : result.Status;
         job.Error = result.Error;
         job.ResultJson = CrawlerPlan.Serialize(dto);
+    }
+
+    private async Task AttachVolumeAsync(CrawlerJob job, CrawlerPlannedFile plan, EpubDownloadJob dto,
+        int index, Guid attachmentId, CancellationToken ct)
+    {
+        // Publish the replacement and durable job progress together. The previous
+        // volume stays readable until the new EPUB has passed ordinary import.
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        if (db.Database.IsNpgsql())
+            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({BitConverter.ToInt64(job.OwnerId.ToByteArray())})", ct);
+        var added = await db.BookFiles.SingleAsync(f => f.Id == attachmentId && f.BookId == job.BookId && f.OwnerId == job.OwnerId && f.DeletedAtUtc == null, ct);
+        if (plan.ReplacesFileId is { } previousId && previousId != attachmentId)
+        {
+            var previous = await db.BookFiles.SingleOrDefaultAsync(f => f.Id == previousId && f.BookId == job.BookId && f.OwnerId == job.OwnerId, ct);
+            if (previous != null && previous.DeletedAtUtc == null)
+            {
+                added.SortOrder = previous.SortOrder;
+                previous.DeletedAtUtc = DateTime.UtcNow;
+                await db.PublicBookFiles.Where(p => p.BookFileId == previousId).ExecuteDeleteAsync(ct);
+                var fileOptions = services.GetRequiredService<IOptions<BookFileOptions>>().Value;
+                await services.GetRequiredService<IStorageCleanupQueue>().EnqueueBookFilesAsync(
+                    [previous.StoragePath], previous.DeletedAtUtc.Value + fileOptions.Retention, ct);
+            }
+        }
+        dto.Files[index].Status = "added";
+        dto.Files[index].AttachmentId = attachmentId;
+        job.ResultJson = CrawlerPlan.Serialize(dto);
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
     }
 
     private async IAsyncEnumerable<BookFileUpload> Uploads(Guid jobId, List<int> indexes,
