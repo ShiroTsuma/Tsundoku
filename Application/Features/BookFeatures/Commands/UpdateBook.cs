@@ -27,6 +27,7 @@ public sealed record UpdateBookCommand(
 
 public class UpdateBookHandler : IRequestHandler<UpdateBookCommand>
 {
+    private readonly IMetadataPolicy? _metadataPolicy;
     private readonly IAuthorRepository _authorRepository;
     private readonly IBookRepository _bookRepository;
     private readonly IBookListCacheInvalidator _cacheInvalidator;
@@ -44,7 +45,8 @@ public class UpdateBookHandler : IRequestHandler<UpdateBookCommand>
         IGenreRepository genreRepository,
         ITagRepository tagRepository,
         IBookListCacheInvalidator cacheInvalidator,
-        IUser user)
+        IUser user,
+        IMetadataPolicy? metadataPolicy = null)
     {
         _bookRepository = bookRepository;
         _authorRepository = authorRepository;
@@ -54,6 +56,7 @@ public class UpdateBookHandler : IRequestHandler<UpdateBookCommand>
         _tagRepository = tagRepository;
         _cacheInvalidator = cacheInvalidator;
         _user = user;
+        _metadataPolicy = metadataPolicy;
     }
 
     public async Task Handle(UpdateBookCommand request, CancellationToken cancellationToken)
@@ -80,6 +83,9 @@ public class UpdateBookHandler : IRequestHandler<UpdateBookCommand>
             request.PrimaryTitle,
             request.AlternativeTitles,
             cancellationToken);
+        var metadata = _metadataPolicy == null
+            ? new ResolvedMetadata((request.Tags ?? []).ToArray(), (request.GenreIds ?? []).ToArray())
+            : await _metadataPolicy.ResolveAsync(ownerId, request.Tags ?? [], request.GenreIds ?? [], cancellationToken);
         var author = await BookMutationSupport.ResolveAuthorAsync(_authorRepository, ownerId, request.AuthorId,
             request.AuthorName, cancellationToken);
         var primaryTitle = request.PrimaryTitle.Trim();
@@ -113,11 +119,11 @@ public class UpdateBookHandler : IRequestHandler<UpdateBookCommand>
         var links = BookMutationSupport.BuildLinks(request.Links);
 
         var genreIds =
-            (await _genreRepository.GetByIdsAsync(request.GenreIds ?? Enumerable.Empty<Guid>(), cancellationToken))
+            (await _genreRepository.GetByIdsAsync(metadata.GenreIds, cancellationToken))
             .Select(g => g.Id)
             .ToList();
         var tagIds = (await BookMutationSupport.ResolveTagsAsync(_tagRepository, ownerId,
-                request.Tags ?? Enumerable.Empty<string>(), cancellationToken))
+                metadata.Tags, cancellationToken))
             .Select(t => t.Id)
             .ToList();
         var progressHistory = progressChanged

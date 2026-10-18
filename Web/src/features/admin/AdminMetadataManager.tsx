@@ -10,9 +10,11 @@ import { Dialog } from '@/components/ui/Dialog'
 import { fieldClass, textareaClass } from '@/components/ui/fieldStyles'
 import { listRowClass, ListBox, SearchField, StateBox } from '@/components/ui/ListParts'
 import { SegmentButton } from '@/features/books/BookListControls'
+import { MetadataPolicyPanel } from './MetadataPolicyPanel'
 import { useDebouncedValue } from '@/lib/useDebouncedValue'
 
 type MetadataKind = 'statuses' | 'types' | 'genres' | 'tags'
+type MetadataTab = MetadataKind | 'rules'
 type MetadataItem = { id: string; name: string; description?: string | null | undefined }
 
 type MetadataSection = {
@@ -34,13 +36,14 @@ const sectionsByKind = Object.fromEntries(sections.map((item) => [item.kind, ite
 >
 
 export function AdminMetadataManager() {
-  const [kind, setKind] = useState<MetadataKind>('statuses')
+  const [tab, setTab] = useState<MetadataTab>('statuses')
+  const kind: MetadataKind = tab === 'rules' ? 'statuses' : tab
   const [search, setSearch] = useState('')
   const [editor, setEditor] = useState<MetadataItem | 'create' | null>(null)
   const dictionaryQuery = useQuery({
     queryKey: ['admin-metadata', kind],
     queryFn: () => loadItems(kind),
-    enabled: kind !== 'tags',
+    enabled: tab !== 'rules' && kind !== 'tags',
   })
   const tagSearch = useDebouncedValue(search.trim(), 220)
   const tagsQuery = useInfiniteQuery({
@@ -48,7 +51,7 @@ export function AdminMetadataManager() {
     initialPageParam: 0,
     queryFn: ({ pageParam }) => api.searchAdminGlobalTags(tagSearch, 50, pageParam),
     getNextPageParam: (last, pages) => (last.length === 50 ? pages.length * 50 : undefined),
-    enabled: kind === 'tags',
+    enabled: tab === 'tags',
     retry: false,
   })
   const query = kind === 'tags' ? tagsQuery : dictionaryQuery
@@ -80,111 +83,126 @@ export function AdminMetadataManager() {
         {sections.map((item) => (
           <SegmentButton
             key={item.kind}
-            pressed={kind === item.kind}
+            pressed={tab === item.kind}
             onClick={() => {
-              setKind(item.kind)
+              setTab(item.kind)
               setSearch('')
             }}
           >
             {item.label}
           </SegmentButton>
         ))}
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <SearchField
-          label={`Search ${section.label}`}
-          placeholder={`Search ${section.label.toLocaleLowerCase()}…`}
-          value={search}
-          onChange={setSearch}
-        />
-        <span className="text-[13px] text-ink-3 tabular-nums" role="status">
-          {items.length.toLocaleString()} shown
-        </span>
-        <Button variant="primary" onClick={() => setEditor('create')}>
-          <Plus aria-hidden="true" className="size-4" />
-          Add {section.singular}
-        </Button>
-      </div>
-      <p className="m-0 text-[13px] text-ink-3">
-        Shared by every account. Double-click a row to edit it, or use Edit.
-      </p>
-
-      {query.isPending ? (
-        <StateBox>Loading {section.label.toLocaleLowerCase()}…</StateBox>
-      ) : query.isError && !items.length ? (
-        <StateBox tone="error">Could not load metadata.</StateBox>
-      ) : items.length === 0 ? (
-        <StateBox>No matching items.</StateBox>
-      ) : (
-        <ListBox
-          key={kind + (kind === 'tags' ? tagSearch : '')}
-          label={section.label}
-          busy={kind === 'tags' && tagsQuery.isFetchingNextPage}
-          onScroll={(event) => {
-            const element = event.currentTarget
-            if (
-              kind === 'tags' &&
-              element.scrollHeight - element.scrollTop - element.clientHeight < 300 &&
-              tagsQuery.hasNextPage &&
-              !tagsQuery.isFetchingNextPage &&
-              !tagsQuery.isFetchNextPageError
-            )
-              void tagsQuery.fetchNextPage()
+        <SegmentButton
+          pressed={tab === 'rules'}
+          onClick={() => {
+            setTab('rules')
+            setEditor(null)
           }}
         >
-          {items.map((item) => (
-            <div
-              className={listRowClass}
-              key={item.id}
-              role="group"
-              onDoubleClick={() => setEditor(item)}
-            >
-              <div className="min-w-0 flex-[1_1_16rem]">
-                <div className="truncate font-semibold">{item.name}</div>
-                <div className="line-clamp-2 text-[13px] text-ink-3">
-                  {item.description?.length ? item.description : 'No description'}
-                </div>
-              </div>
-              <Button
-                aria-label={`Edit ${section.singular} ${item.name}`}
-                size="row"
-                variant="ghost"
-                onClick={() => setEditor(item)}
-              >
-                Edit
-              </Button>
-            </div>
-          ))}
-          {kind === 'tags' && tagsQuery.isFetchingNextPage ? (
-            <p role="status" className="m-0 px-4 py-3 text-sm text-ink-3">
-              Loading more tags…
-            </p>
-          ) : null}
-          {kind === 'tags' && tagsQuery.isFetchNextPageError ? (
-            <div className="flex items-center gap-3 px-4 py-3 text-sm text-danger-ink">
-              Could not load more tags.
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
+          Rules
+        </SegmentButton>
+      </div>
+      {tab === 'rules' ? (
+        <MetadataPolicyPanel />
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-3">
+            <SearchField
+              label={`Search ${section.label}`}
+              placeholder={`Search ${section.label.toLocaleLowerCase()}…`}
+              value={search}
+              onChange={setSearch}
+            />
+            <span className="text-[13px] text-ink-3 tabular-nums" role="status">
+              {items.length.toLocaleString()} shown
+            </span>
+            <Button variant="primary" onClick={() => setEditor('create')}>
+              <Plus aria-hidden="true" className="size-4" />
+              Add {section.singular}
+            </Button>
+          </div>
+          <p className="m-0 text-[13px] text-ink-3">
+            Shared by every account. Double-click a row to edit it, or use Edit.
+          </p>
+
+          {query.isPending ? (
+            <StateBox>Loading {section.label.toLocaleLowerCase()}…</StateBox>
+          ) : query.isError && !items.length ? (
+            <StateBox tone="error">Could not load metadata.</StateBox>
+          ) : items.length === 0 ? (
+            <StateBox>No matching items.</StateBox>
+          ) : (
+            <ListBox
+              key={kind + (kind === 'tags' ? tagSearch : '')}
+              label={section.label}
+              busy={kind === 'tags' && tagsQuery.isFetchingNextPage}
+              onScroll={(event) => {
+                const element = event.currentTarget
+                if (
+                  kind === 'tags' &&
+                  element.scrollHeight - element.scrollTop - element.clientHeight < 300 &&
+                  tagsQuery.hasNextPage &&
+                  !tagsQuery.isFetchingNextPage &&
+                  !tagsQuery.isFetchNextPageError
+                )
                   void tagsQuery.fetchNextPage()
-                }}
-              >
-                Retry
-              </Button>
-            </div>
+              }}
+            >
+              {items.map((item) => (
+                <div
+                  className={listRowClass}
+                  key={item.id}
+                  role="group"
+                  onDoubleClick={() => setEditor(item)}
+                >
+                  <div className="min-w-0 flex-[1_1_16rem]">
+                    <div className="truncate font-semibold">{item.name}</div>
+                    <div className="line-clamp-2 text-[13px] text-ink-3">
+                      {item.description?.length ? item.description : 'No description'}
+                    </div>
+                  </div>
+                  <Button
+                    aria-label={`Edit ${section.singular} ${item.name}`}
+                    size="row"
+                    variant="ghost"
+                    onClick={() => setEditor(item)}
+                  >
+                    Edit
+                  </Button>
+                </div>
+              ))}
+              {kind === 'tags' && tagsQuery.isFetchingNextPage ? (
+                <p role="status" className="m-0 px-4 py-3 text-sm text-ink-3">
+                  Loading more tags…
+                </p>
+              ) : null}
+              {kind === 'tags' && tagsQuery.isFetchNextPageError ? (
+                <div className="flex items-center gap-3 px-4 py-3 text-sm text-danger-ink">
+                  Could not load more tags.
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      void tagsQuery.fetchNextPage()
+                    }}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              ) : null}
+            </ListBox>
+          )}
+          {editor ? (
+            <MetadataDialog
+              key={editor === 'create' ? 'create' : editor.id}
+              item={editor}
+              kind={kind}
+              singular={section.singular}
+              onClose={() => setEditor(null)}
+            />
           ) : null}
-        </ListBox>
+        </>
       )}
-      {editor ? (
-        <MetadataDialog
-          key={editor === 'create' ? 'create' : editor.id}
-          item={editor}
-          kind={kind}
-          singular={section.singular}
-          onClose={() => setEditor(null)}
-        />
-      ) : null}
     </div>
   )
 }

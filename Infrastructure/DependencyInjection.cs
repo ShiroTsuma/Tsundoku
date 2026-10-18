@@ -1,4 +1,4 @@
-﻿namespace Infrastructure;
+namespace Infrastructure;
 
 using Amazon.Runtime;
 using Amazon.S3;
@@ -129,6 +129,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<IAdminLibraryService, AdminLibraryService>();
         builder.Services.AddScoped<IGlobalTagService, GlobalTagService>();
         builder.Services.AddScoped<MetadataSimilarityReconciler>();
+        builder.Services.AddScoped<IMetadataPolicy, MetadataPolicy>();
         builder.Services.AddScoped<IPublicBookService, PublicBookService>();
         builder.Services.AddScoped<IStorageCleanupQueue, StorageCleanupQueue>();
         builder.Services.AddScoped<StorageCleanupQueueProcessor>();

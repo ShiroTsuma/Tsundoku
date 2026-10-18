@@ -119,7 +119,7 @@ public class AutocompleteFeatureTests
         }
 
         public Task<IEnumerable<Author>> SearchAsync(Guid ownerId, string? search, int take,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken, int skip = 0)
         {
             var normalizedSearch = search == null ? string.Empty : MappingExtensions.NormalizeName(search);
             return Task.FromResult<IEnumerable<Author>>(_authors
@@ -130,7 +130,7 @@ public class AutocompleteFeatureTests
         }
 
         public Task<IEnumerable<Author>> SearchOwnedAsync(Guid ownerId, string? search, int take,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken, int skip = 0)
         {
             return Task.FromResult<IEnumerable<Author>>(_authors
                 .Where(author => author.OwnerId == ownerId)
@@ -181,7 +181,7 @@ public class AutocompleteFeatureTests
         }
 
         public Task<IEnumerable<Tag>> SearchAsync(Guid ownerId, string? search, int take,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken, int skip = 0)
         {
             var normalizedSearch = search == null ? string.Empty : MappingExtensions.NormalizeName(search);
             return Task.FromResult<IEnumerable<Tag>>(_tags

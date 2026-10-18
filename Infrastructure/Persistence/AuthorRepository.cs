@@ -34,7 +34,7 @@ public class AuthorRepository(ApplicationDbContext context) : IAuthorRepository
     }
 
     public async Task<IEnumerable<Author>> SearchAsync(Guid ownerId, string? search, int take,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, int skip = 0)
     {
         var availableAuthors = context.Authors
             .Where(author => author.IsPublic || author.OwnerId == ownerId)
@@ -52,15 +52,19 @@ public class AuthorRepository(ApplicationDbContext context) : IAuthorRepository
         return await SearchQuery(availableAuthors.Include(a => a.Names), search)
             .OrderBy(a => a.IsPublic)
             .ThenBy(a => a.PrimaryName)
+            .ThenBy(a => a.Id)
+            .Skip(Math.Max(0, skip))
             .Take(take)
             .ToListAsync(cancellationToken);
     }
 
     public async Task<IEnumerable<Author>> SearchOwnedAsync(Guid ownerId, string? search, int take,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, int skip = 0)
     {
         return await SearchQuery(context.Authors.Include(a => a.Names).Where(a => a.OwnerId == ownerId), search)
             .OrderBy(a => a.PrimaryName)
+            .ThenBy(a => a.Id)
+            .Skip(Math.Max(0, skip))
             .Take(take)
             .ToListAsync(cancellationToken);
     }

@@ -1,13 +1,15 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Link2, Upload, X } from 'lucide-react'
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { api } from '@/api/client'
 import { HttpError } from '@/api/http'
 import type { AuthorDto, BookCoverDto, BookHtmlParseResult, BookMutationRequest } from '@/api/types'
+import { ChipBox } from '@/components/ui/ChipBox'
+import { TextListEditor } from '@/components/ui/TextListEditor'
 import { Button } from '@/components/ui/Button'
 import { buttonStyles } from '@/components/ui/buttonStyles'
 import { fieldClass, textareaClass } from '@/components/ui/fieldStyles'
@@ -701,50 +703,14 @@ export function BookFormPage({ mode, admin = false }: BookFormPageProps) {
               </Field>
 
               <Field label="Alternative titles">
-                <div className="flex flex-col gap-1.5">
-                  {alternativeTitles.map((title, index) => (
-                    <div
-                      className="flex items-center gap-2 rounded-control border border-line bg-sunk py-1 pr-1 pl-3"
-                      key={index}
-                    >
-                      <input
-                        aria-label={`Alternative title ${index + 1}`}
-                        className="h-8 min-w-0 flex-1 border-0 bg-transparent text-ink outline-none"
-                        data-alt-title-index={index}
-                        value={title}
-                        onChange={(event) =>
-                          setAlternativeTitles(
-                            alternativeTitles.map((current, position) =>
-                              position === index ? event.target.value : current,
-                            ),
-                          )
-                        }
-                      />
-                      <button
-                        aria-label={`Remove alternative title ${title || index + 1}`}
-                        className={removeButtonClass}
-                        type="button"
-                        onClick={() =>
-                          setAlternativeTitles(
-                            alternativeTitles.filter((_, position) => position !== index),
-                          )
-                        }
-                      >
-                        <X aria-hidden="true" className="size-3.5" strokeWidth={2.2} />
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    className={addRowButtonClass}
-                    type="button"
-                    onClick={() => {
-                      setAlternativeTitles([...alternativeTitles, ''])
-                      focusLater(`[data-alt-title-index="${alternativeTitles.length}"]`)
-                    }}
-                  >
-                    + Add alternative title
-                  </button>
-                </div>
+                <TextListEditor
+                  label="Alternative titles"
+                  itemLabel="Alternative title"
+                  addLabel="Add alternative title"
+                  values={alternativeTitles}
+                  onChange={setAlternativeTitles}
+                  maxLength={500}
+                />
               </Field>
 
               <Field
@@ -1686,210 +1652,6 @@ function TagChipSelect({
       onPick={addTag}
       onRemove={(tag) => onChange(selected.filter((selectedTag) => selectedTag !== tag))}
     />
-  )
-}
-
-function ChipBox({
-  ariaLabel,
-  input,
-  placeholder,
-  selected,
-  suggestions,
-  onInputChange,
-  onPick,
-  onRemove,
-  onCreate,
-  suggestionsPending = false,
-  variant = 'genre',
-  collapseAfter,
-}: {
-  ariaLabel: string
-  input: string
-  placeholder: string
-  selected: { key: string; label: string }[]
-  suggestions: {
-    key: string
-    label: string
-    description?: string | null | undefined
-    global?: boolean | undefined
-  }[]
-  /** Genres are solid chips, tags lighter ones (as on the details page). */
-  variant?: 'genre' | 'tag'
-  /** Shows only this many chips until "Show all N". */
-  collapseAfter?: number | undefined
-  onInputChange: (value: string) => void
-  onPick: (key: string) => void
-  onRemove: (key: string) => void
-  onCreate?: ((value: string) => void) | undefined
-  suggestionsPending?: boolean
-}) {
-  const trimmed = input.trim()
-  const canCreate = Boolean(
-    onCreate &&
-    trimmed &&
-    !suggestionsPending &&
-    !suggestions.some((item) => item.label.toLocaleLowerCase() === trimmed.toLocaleLowerCase()),
-  )
-  const [activeIndex, setActiveIndex] = useState(0)
-  const [showAll, setShowAll] = useState(false)
-  const collapsed = collapseAfter !== undefined && !showAll && selected.length > collapseAfter
-  const visibleChips = collapsed ? selected.slice(0, collapseAfter) : selected
-  const activeIndexResetKey = JSON.stringify([
-    input,
-    suggestions.map((item) => item.key),
-    canCreate,
-  ])
-  const [trackedResetKey, setTrackedResetKey] = useState(activeIndexResetKey)
-  const listboxId = useId()
-  const choiceCount = suggestions.length + (canCreate ? 1 : 0)
-
-  if (trackedResetKey !== activeIndexResetKey) {
-    setTrackedResetKey(activeIndexResetKey)
-    setActiveIndex(0)
-  }
-
-  function pickActiveChoice() {
-    const activeSuggestion = suggestions[activeIndex]
-    if (activeSuggestion) {
-      onPick(activeSuggestion.key)
-      return
-    }
-    if (canCreate) {
-      onCreate?.(trimmed)
-    }
-  }
-
-  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if ((event.key === 'Enter' || event.key === 'Tab') && trimmed && choiceCount > 0) {
-      event.preventDefault()
-      pickActiveChoice()
-      return
-    }
-
-    if (event.key === 'ArrowDown' && choiceCount > 0) {
-      event.preventDefault()
-      setActiveIndex((current) => (current + 1) % choiceCount)
-      return
-    }
-
-    if (event.key === 'ArrowUp' && choiceCount > 0) {
-      event.preventDefault()
-      setActiveIndex((current) => (current - 1 + choiceCount) % choiceCount)
-      return
-    }
-
-    const lastSelected = selected.at(-1)
-    if (event.key === 'Backspace' && !input && lastSelected) {
-      event.preventDefault()
-      onRemove(lastSelected.key)
-    }
-  }
-
-  return (
-    <div className="relative">
-      <div className="flex min-h-11 flex-wrap items-center gap-1.5 rounded-control border border-line-strong bg-ground p-1.5 focus-within:border-ink">
-        {visibleChips.map((item) => (
-          <span
-            className={cn(
-              'inline-flex h-[30px] items-center gap-1 rounded-pill border pr-1 pl-2.5',
-              variant === 'genre'
-                ? 'border-line-strong bg-raised'
-                : 'border-line bg-surface text-[13px]',
-            )}
-            key={item.key}
-          >
-            {item.label}
-            <button
-              aria-label={`Remove ${item.label}`}
-              className="flex size-[22px] items-center justify-center rounded border-0 bg-transparent text-ink-3 hover:text-ink"
-              type="button"
-              onMouseDown={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-              }}
-              onClick={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-                onRemove(item.key)
-              }}
-            >
-              <X aria-hidden="true" className="size-3" strokeWidth={2.4} />
-            </button>
-          </span>
-        ))}
-        {collapseAfter !== undefined && selected.length > collapseAfter ? (
-          <button
-            className="h-[30px] rounded-pill border-0 bg-transparent px-2.5 font-medium text-ink hover:underline"
-            type="button"
-            onClick={() => setShowAll(!showAll)}
-          >
-            {showAll ? 'Show fewer' : `Show all ${selected.length}`}
-          </button>
-        ) : null}
-        <input
-          aria-activedescendant={
-            trimmed && choiceCount > 0 ? `${listboxId}-option-${activeIndex}` : undefined
-          }
-          aria-autocomplete="list"
-          aria-controls={trimmed ? listboxId : undefined}
-          aria-expanded={Boolean(trimmed)}
-          aria-label={ariaLabel}
-          className="h-[30px] min-w-[100px] flex-[1_1_120px] border-0 bg-transparent px-1 text-ink outline-none placeholder:text-ink-3"
-          placeholder={placeholder}
-          role="combobox"
-          value={input}
-          onChange={(event) => onInputChange(event.target.value)}
-          onKeyDown={handleKeyDown}
-        />
-      </div>
-      {trimmed ? (
-        <div aria-busy={suggestionsPending} className={popoverClass} id={listboxId} role="listbox">
-          {suggestions.map((item, index) => (
-            <button
-              aria-selected={activeIndex === index}
-              className={`w-full rounded-control border-0 px-3 py-2 text-left text-sm text-ink hover:bg-hover ${activeIndex === index ? 'bg-selected' : 'bg-transparent'}`}
-              id={`${listboxId}-option-${index}`}
-              key={item.key}
-              role="option"
-              type="button"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => onPick(item.key)}
-            >
-              <span className="font-medium">
-                {item.global ? (
-                  <span aria-label="global" className="mr-1.5 text-[10px] text-status-reading-ink">
-                    ◆
-                  </span>
-                ) : null}
-                {item.label}
-              </span>
-              {item.description ? (
-                <span className="mt-0.5 block text-xs text-ink-3">{item.description}</span>
-              ) : null}
-            </button>
-          ))}
-          {canCreate ? (
-            <button
-              aria-selected={activeIndex === suggestions.length}
-              className={`w-full rounded-control border-0 px-3 py-2 text-left text-sm font-medium text-ink hover:bg-hover ${activeIndex === suggestions.length ? 'bg-selected' : 'bg-transparent'}`}
-              id={`${listboxId}-option-${suggestions.length}`}
-              role="option"
-              type="button"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => onCreate?.(trimmed)}
-            >
-              Add "{trimmed}"
-            </button>
-          ) : null}
-          {suggestionsPending && !suggestions.length ? (
-            <div className="px-3 py-2 text-sm text-ink-3">Searching...</div>
-          ) : null}
-          {!suggestionsPending && !suggestions.length && !canCreate ? (
-            <div className="px-3 py-2 text-sm text-ink-3">No results.</div>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
   )
 }
 

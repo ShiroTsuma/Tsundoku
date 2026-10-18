@@ -98,6 +98,30 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
             e.HasIndex(s => s.BookId).IsUnique();
             e.HasIndex(s => s.NextCheckAtUtc);
         });
+        modelBuilder.Entity<MetadataAlias>(e =>
+        {
+            e.Property(a => a.SourceKind).HasMaxLength(5);
+            e.Property(a => a.Name).HasMaxLength(100);
+            e.Property(a => a.NormalizedName).HasMaxLength(100);
+            e.HasIndex(a => new { a.SourceKind, a.NormalizedName }).IsUnique();
+            e.HasOne<Tag>().WithMany().HasForeignKey(a => a.TagId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Genre>().WithMany().HasForeignKey(a => a.GenreId).OnDelete(DeleteBehavior.Cascade);
+            e.ToTable(t => {
+                t.HasCheckConstraint("CK_MetadataAlias_Kind", "\"SourceKind\" IN ('tag', 'genre')");
+                t.HasCheckConstraint("CK_MetadataAlias_Target", "(\"TagId\" IS NULL) <> (\"GenreId\" IS NULL)");
+            });
+        });
+        modelBuilder.Entity<MetadataImplication>(e =>
+        {
+            e.HasOne<Tag>().WithMany().HasForeignKey(a => a.SourceTagId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Genre>().WithMany().HasForeignKey(a => a.SourceGenreId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Tag>().WithMany().HasForeignKey(a => a.TargetTagId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Genre>().WithMany().HasForeignKey(a => a.TargetGenreId).OnDelete(DeleteBehavior.Cascade);
+            e.ToTable(t => {
+                t.HasCheckConstraint("CK_MetadataImplication_Source", "(\"SourceTagId\" IS NULL) <> (\"SourceGenreId\" IS NULL)");
+                t.HasCheckConstraint("CK_MetadataImplication_Target", "(\"TargetTagId\" IS NULL) <> (\"TargetGenreId\" IS NULL)");
+            });
+        });
         ConfigureAuthor(modelBuilder);
         ConfigureGenre(modelBuilder);
         ConfigureStatus(modelBuilder);

@@ -26,6 +26,7 @@ public sealed record CreateBookCommand(
 
 public class CreateBookHandler : IRequestHandler<CreateBookCommand, Guid>
 {
+    private readonly IMetadataPolicy? _metadataPolicy;
     private readonly IAuthorRepository _authorRepository;
     private readonly IBookCoverQueue _bookCoverQueue;
     private readonly IBookRepository _bookRepository;
@@ -45,7 +46,8 @@ public class CreateBookHandler : IRequestHandler<CreateBookCommand, Guid>
         ITagRepository tagRepository,
         IBookCoverQueue bookCoverQueue,
         IBookListCacheInvalidator cacheInvalidator,
-        IUser user)
+        IUser user,
+        IMetadataPolicy? metadataPolicy = null)
     {
         _bookRepository = bookRepository;
         _authorRepository = authorRepository;
@@ -56,6 +58,7 @@ public class CreateBookHandler : IRequestHandler<CreateBookCommand, Guid>
         _bookCoverQueue = bookCoverQueue;
         _cacheInvalidator = cacheInvalidator;
         _user = user;
+        _metadataPolicy = metadataPolicy;
     }
 
     public async Task<Guid> Handle(CreateBookCommand request, CancellationToken cancellationToken)
@@ -74,6 +77,9 @@ public class CreateBookHandler : IRequestHandler<CreateBookCommand, Guid>
             request.AlternativeTitles,
             cancellationToken);
 
+        var metadata = _metadataPolicy == null
+            ? new ResolvedMetadata((request.Tags ?? []).ToArray(), (request.GenreIds ?? []).ToArray())
+            : await _metadataPolicy.ResolveAsync(ownerId, request.Tags ?? [], request.GenreIds ?? [], cancellationToken);
         var author = await BookMutationSupport.ResolveAuthorAsync(_authorRepository, ownerId, request.AuthorId,
             request.AuthorName, cancellationToken);
         var primaryTitle = request.PrimaryTitle.Trim();
@@ -124,14 +130,14 @@ public class CreateBookHandler : IRequestHandler<CreateBookCommand, Guid>
             book.Links.Add(link);
         }
 
-        foreach (var genre in await _genreRepository.GetByIdsAsync(request.GenreIds ?? Enumerable.Empty<Guid>(),
+        foreach (var genre in await _genreRepository.GetByIdsAsync(metadata.GenreIds,
                      cancellationToken))
         {
             book.BookGenres.Add(new BookGenre { Book = book, Genre = genre });
         }
 
         foreach (var tag in await BookMutationSupport.ResolveTagsAsync(_tagRepository, ownerId,
-                     request.Tags ?? Enumerable.Empty<string>(), cancellationToken))
+                     metadata.Tags, cancellationToken))
         {
             book.BookTags.Add(new BookTag { Book = book, Tag = tag });
         }

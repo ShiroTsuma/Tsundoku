@@ -9,7 +9,7 @@ public interface ITagRepository
         CancellationToken cancellationToken);
 
     public Task<IEnumerable<Tag>> SearchAsync(Guid ownerId, string? search, int take,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken, int skip = 0);
 
     public Task AddAsync(Tag tag, CancellationToken cancellationToken);
     public Task DeleteAsync(Tag tag, CancellationToken cancellationToken);
