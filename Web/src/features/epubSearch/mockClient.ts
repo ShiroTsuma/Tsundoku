@@ -73,12 +73,7 @@ export function createMockEpubSearchClient(options: MockClientOptions = {}): Epu
       const crawlEndMs = (offset + size) * msPerChapter
       let status: EpubDownloadFile['status'] = 'waiting'
       if (done >= size) {
-        status =
-          elapsed >= crawlEndMs + buildMs
-            ? job.request.addToBookAutomatically
-              ? 'added'
-              : 'ready'
-            : 'building'
+        status = elapsed >= crawlEndMs + buildMs ? 'added' : 'building'
       } else if (done > 0) {
         status = 'crawling'
       }
@@ -106,10 +101,13 @@ export function createMockEpubSearchClient(options: MockClientOptions = {}): Epu
         ...novel,
         title: novel.title.replaceAll('{query}', query),
         sources: novel.sources.filter(
-          (source) => request.scope === 'all' || source.language === 'en',
+          (source) =>
+            (!request.sourceId || source.id === request.sourceId) &&
+            (request.scope === 'all' || source.language === 'en'),
         ),
       }))
       return {
+        status: 'completed',
         candidates: query.length > 0 ? candidates : [],
         searchedSourceCount:
           request.scope === 'all' ? mockSearchedSourceCount * 3 : mockSearchedSourceCount,
@@ -158,7 +156,7 @@ function overallStatus(
   if (files.every((file) => file.status === 'added' || file.status === 'ready')) return 'completed'
   if (files.some((file) => file.status === 'crawling' || file.status === 'waiting'))
     return 'crawling'
-  return job.request.addToBookAutomatically ? 'adding' : 'building'
+  return 'adding'
 }
 
 function defaultWait(ms: number, signal?: AbortSignal): Promise<void> {

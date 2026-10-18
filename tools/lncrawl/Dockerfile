@@ -9,7 +9,7 @@ RUN git init . && git remote add origin https://github.com/lncrawl/lightnovel-cr
 RUN uv sync --python /usr/local/bin/python3.14 --frozen --no-dev
 COPY patch_upstream.py /app/patch_upstream.py
 RUN /app/.venv/bin/python /app/patch_upstream.py
-COPY integration.py integration_store.py search_flow.py resilience.py source_policy.py source_health.py processing_control.py /app/
+COPY integration.py integration_store.py download_plan.py search_flow.py resilience.py source_policy.py source_health.py processing_control.py /app/
 COPY overrides/dobytranslations.py /app/sources/en/d/dobytranslations.py
 
 FROM python:3.14-slim-trixie AS runtime
@@ -18,7 +18,7 @@ COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/lncrawl /app/lncrawl
 COPY --from=builder /app/sources /app/sources
 COPY --from=builder /app/LICENSE /app/LICENSE
-COPY --from=builder /app/integration.py /app/integration_store.py /app/search_flow.py /app/resilience.py /app/source_policy.py /app/source_health.py /app/processing_control.py /app/
+COPY --from=builder /app/integration.py /app/integration_store.py /app/download_plan.py /app/search_flow.py /app/resilience.py /app/source_policy.py /app/source_health.py /app/processing_control.py /app/
 COPY egress.py /app/egress.py
 ENV LNCRAWL_DATA_PATH=/data TZ=Europe/Warsaw PYTHONUNBUFFERED=1
 EXPOSE 8181

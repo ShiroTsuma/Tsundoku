@@ -21,9 +21,7 @@ export function observeDownloads(
   const notices: DownloadNotice[] = []
   for (const job of jobs) {
     const before = state[job.id]
-    const ready = job.files.flatMap((file, index) =>
-      file.status === 'ready' || file.status === 'added' ? [index] : [],
-    )
+    const ready = job.files.flatMap((file, index) => (file.status === 'added' ? [index] : []))
     const terminal = isDownloadFinished(job.status)
     const book = job.bookTitle ?? job.sourceName
     const finishedNow = before && !before.terminal && terminal
@@ -32,7 +30,7 @@ export function observeDownloads(
         id: `epub-${job.id}-completed`,
         bookId: job.bookId,
         title: 'EPUB download completed',
-        description: `${book} · ${ready.length} ${ready.length === 1 ? 'file' : 'files'}${job.files.some((file) => file.status === 'ready') ? ' ready to review' : ' added to the book'}`,
+        description: `${book} · ${ready.length} ${ready.length === 1 ? 'file' : 'files'} added to the book`,
         error: false,
       })
     } else if (before) {
@@ -42,7 +40,7 @@ export function observeDownloads(
         notices.push({
           id: `epub-${job.id}-file-${index}`,
           bookId: job.bookId,
-          title: `${file.title} ${file.status === 'added' ? 'added to the book' : 'ready to review'}`,
+          title: `${file.title} added to the book`,
           description: book,
           error: false,
         })

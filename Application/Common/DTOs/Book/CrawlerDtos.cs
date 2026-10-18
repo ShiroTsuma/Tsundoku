@@ -1,12 +1,14 @@
 namespace Application.Common.DTOs.Book;
 
-public sealed record EpubSearchRequest(string Query, string Scope = "english", bool ForceRefresh = false);
+public sealed record EpubSearchRequest(string Query, string Scope = "english", bool ForceRefresh = false, Guid? SourceId = null);
 public sealed record EpubRange(string Kind, double? From = null, double? To = null);
 public sealed record EpubDownloadRequest(Guid SourceId, EpubRange Range, int SplitEvery,
-    string TitleTemplate, int FirstFileNumber, bool AddToBookAutomatically, string RequestKey);
+    string TitleTemplate, int FirstFileNumber, bool RegenerateAffectedVolumes, string RequestKey);
 public sealed record CrawlerChapter(string Id, string Url, string Label);
 public sealed record EpubSource(Guid Id, string SourceName, string Url, int? ChapterCount,
-    string? LatestChapterLabel, DateTime? UpdatedAt, string Language, DateTime? FetchedAt = null);
+    string? LatestChapterLabel, DateTime? UpdatedAt, string Language, DateTime? FetchedAt = null,
+    IReadOnlyList<EpubExistingVolume>? ExistingVolumes = null);
+public sealed record EpubExistingVolume(Guid FileId, string Title, int FirstChapter, int LastChapter);
 public sealed record EpubCandidate(string Id, string Title, string Match, IReadOnlyList<EpubSource> Sources);
 public sealed record EpubSearchResult(IReadOnlyList<EpubCandidate> Candidates, int SearchedSourceCount,
     long DurationMs, IReadOnlyList<string> Warnings, int TotalSourceCount = 0,
@@ -25,6 +27,7 @@ public sealed class EpubDownloadFile
 }
 public sealed class EpubDownloadJob
 {
+    public Guid? SourceId { get; set; }
     public Guid Id { get; set; }
     public Guid BookId { get; set; }
     public string SourceName { get; set; } = "";

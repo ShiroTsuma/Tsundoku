@@ -30,6 +30,7 @@ export function createApiEpubSearchClient(): EpubSearchClient {
           query: request.query,
           scope: request.scope,
           forceRefresh: request.forceRefresh ?? false,
+          ...(request.sourceId ? { sourceId: request.sourceId } : {}),
         },
         ...(signal ? { signal } : {}),
       })

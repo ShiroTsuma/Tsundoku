@@ -90,11 +90,16 @@ The backend freezes exact chapter IDs/URLs, validates the selected range and
 splits into at most 100 files with the chosen title template. Each EPUB contains
 only its selected chapters. Missing content fails the file; completed files
 survive failure or cancellation of later work.
+Actual downloads fetch the cover; EPUBs include the cover when available, a front
+page, introduction, visible table of contents and NCX navigation. Without a cover
+image, the front page uses the novel and volume titles.
 
-With **Add finished files to this book automatically** checked, validated files
-are attached privately as they finish. Otherwise open **Upload EPUB / ZIP** and
-**Resume existing import** to review and confirm the generated files. This uses
-ordinary import sessions and their two-hour lifetime; no upload is repeated.
+Validated files are always attached privately as they finish. **Regenerate affected
+volumes** uses **Chapters per file** to extend previously downloaded partial volumes,
+preserving their titles and sort positions. Unchanged complete volumes are skipped;
+old attachments move to trash only after the replacement passes import validation.
+Only attachments recorded for the selected source are eligible for replacement.
+This uses ordinary import sessions and their two-hour lifetime; no upload is repeated.
 Storage, structural validation, sharing and duplicate-content rules are reused.
 An occupied import slot delays attachment until the other import is resolved.
 
@@ -113,7 +118,7 @@ retries. This normally happens within 30 seconds while the API is running.
 Authenticated pages share a global download monitor, including Library, Manage
 and Analytics. It shows a toast when a volume becomes available and when the
 whole operation finishes, with an Open book action. A completion toast combines
-files that finish in the same poll. Manual-review results say ready to review.
+files that finish in the same poll. Notifications wait until attachment completes.
 Failures also notify; automatic retry pauses do not report a terminal failure.
 Notifications remember observed progress per account in local browser storage,
 so navigation/reload does not replay old completions. The page must be open;

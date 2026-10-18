@@ -53,13 +53,23 @@ describe('global EPUB download notifications', () => {
     expect(observeDownloads([{ ...job, status: 'completed' }], {}).notices).toEqual([])
   })
 
-  it('announces manual-review files without saying they were attached', () => {
+  it('waits for automatic attachment before announcing a generated file', () => {
     const initial = observeDownloads([job], {}).state
     const staged = {
       ...job,
       files: job.files.map((file, i) => (i === 0 ? { ...file, status: 'ready' as const } : file)),
     }
-    expect(observeDownloads([staged], initial).notices[0]?.title).toBe('Volume 1 ready to review')
+    const waiting = observeDownloads([staged], initial)
+    expect(waiting.notices).toEqual([])
+    const added = {
+      ...staged,
+      files: staged.files.map((file, i) =>
+        i === 0 ? { ...file, status: 'added' as const } : file,
+      ),
+    }
+    expect(observeDownloads([added], waiting.state).notices[0]?.title).toBe(
+      'Volume 1 added to the book',
+    )
   })
 
   it('does not notify for pauses or cancellation and reports failure once', () => {

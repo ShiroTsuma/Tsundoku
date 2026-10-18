@@ -1,6 +1,7 @@
-import type { EpubChapterRange } from './types'
+import type { EpubChapterRange, EpubExistingVolume } from './types'
 
 export type PlannedFile = {
+  replacesFileId?: string
   title: string
   firstChapter: number
   lastChapter: number
@@ -36,17 +37,34 @@ export function planFiles(
   splitEvery: number,
   titleTemplate: string,
   firstFileNumber: number,
+  existing: EpubExistingVolume[] = [],
 ): PlannedFile[] {
   const size = Math.max(1, Math.floor(splitEvery))
   const files: PlannedFile[] = []
   let number = firstFileNumber
-  for (let first = range.from; first <= range.to; first += size) {
+  const affected = existing.find(
+    (volume) => volume.firstChapter <= range.from && volume.lastChapter + 1 >= range.from,
+  )
+  for (let first = affected?.firstChapter ?? range.from; first <= range.to; first += size) {
+    const last = Math.min(range.to, first + size - 1)
+    const previous = existing.find((volume) => volume.firstChapter === first)
+    if (previous && previous.lastChapter >= last) continue
+    if (
+      existing.some(
+        (volume) =>
+          volume.firstChapter <= last &&
+          volume.lastChapter >= first &&
+          volume.fileId !== previous?.fileId,
+      )
+    )
+      return []
     files.push({
-      title: formatFileTitle(titleTemplate, number),
+      title: previous?.title ?? formatFileTitle(titleTemplate, number),
       firstChapter: first,
-      lastChapter: Math.min(range.to, first + size - 1),
+      lastChapter: last,
+      ...(previous ? { replacesFileId: previous.fileId } : {}),
     })
-    number += 1
+    if (!previous) number += 1
   }
   return files
 }

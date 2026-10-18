@@ -4,7 +4,7 @@ import { useState, type SyntheticEvent } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { cn } from '@/lib/utils'
-import { chapterCount, planFiles, resolveRange } from './downloadPlan'
+import { planFiles, resolveRange } from './downloadPlan'
 import {
   useCancelEpubDownload,
   useEpubDownload,
@@ -65,13 +65,14 @@ export function EpubSearchDialog({
   const [query, setQuery] = useState(book.title)
   const [scope, setScope] = useState<EpubSourceScope>('english')
   const [request, setRequest] = useState<EpubSearchRequest | null>(null)
-  const [source, setSource] = useState<EpubCandidateSource | null>(null)
+  const [selectedSource, setSource] = useState<EpubCandidateSource | null>(null)
+  const [refreshRequest, setRefreshRequest] = useState<EpubSearchRequest | null>(null)
   const [rangeKind, setRangeKind] = useState<RangeKind>(read > 0 ? 'fromProgress' : 'all')
   const [customFrom, setCustomFrom] = useState(String(read + 1))
   const [customTo, setCustomTo] = useState('')
   const [splitEvery, setSplitEvery] = useState('100')
   const [titleTemplate, setTitleTemplate] = useState('Volume {n}')
-  const [addAutomatically, setAddAutomatically] = useState(true)
+  const [regenerateVolumes, setRegenerateVolumes] = useState(false)
   const [jobId, setJobId] = useState<string | null>(initialJobId)
   const [reportedJobId, setReportedJobId] = useState<string | null>(null)
 
@@ -80,6 +81,18 @@ export function EpubSearchDialog({
   const cancel = useCancelEpubDownload()
   const download = useEpubDownload(jobId)
   const job = download.data ?? null
+  const refresh = useEpubSearch(open ? refreshRequest : null)
+  const refreshedSource =
+    refreshRequest && refresh.data?.status === 'completed'
+      ? refresh.data.candidates
+          .flatMap((candidate) => candidate.sources)
+          .find((candidate) => candidate.id === refreshRequest.sourceId)
+      : undefined
+  const source = refreshedSource ?? selectedSource
+  const refreshing =
+    refreshRequest !== null &&
+    !refresh.isError &&
+    !['completed', 'failed', 'cancelled'].includes(refresh.data?.status ?? '')
 
   if (job && isDownloadFinished(job.status) && reportedJobId !== job.id) {
     setReportedJobId(job.id)
@@ -90,7 +103,13 @@ export function EpubSearchDialog({
   const resolved = source ? resolveRange(range, source.chapterCount ?? 0) : null
   const planned =
     resolved && source
-      ? planFiles(resolved, Number(splitEvery), titleTemplate, book.existingFileCount + 1)
+      ? planFiles(
+          resolved,
+          Number(splitEvery),
+          titleTemplate,
+          book.existingFileCount + 1,
+          regenerateVolumes ? source.existingVolumes : undefined,
+        )
       : []
 
   function submitSearch(event?: SyntheticEvent) {
@@ -108,6 +127,29 @@ export function EpubSearchDialog({
     setRequest({ ...request, forceRefresh: true, refreshId: crypto.randomUUID() })
   }
 
+  function restartSearch() {
+    setJobId(null)
+    setSource(null)
+    start.reset()
+    cancel.reset()
+    setRefreshRequest(null)
+    setRequest(null)
+    setStep('search')
+  }
+
+  function refreshSelectedSource() {
+    const sourceId = source?.id ?? job?.sourceId
+    if (!sourceId) return
+    setRefreshRequest({
+      bookId: book.id,
+      query,
+      scope: 'all',
+      sourceId,
+      forceRefresh: true,
+      refreshId: crypto.randomUUID(),
+    })
+  }
+
   function startDownload() {
     if (!source?.chapterCount) return
     start.mutate(
@@ -118,10 +160,12 @@ export function EpubSearchDialog({
         splitEvery: Math.max(1, Number(splitEvery) || 100),
         titleTemplate,
         firstFileNumber: book.existingFileCount + 1,
-        addToBookAutomatically: addAutomatically,
+        regenerateAffectedVolumes: regenerateVolumes,
       },
       {
         onSuccess: (started) => {
+          setSource(source)
+          setRefreshRequest(null)
           setJobId(started.id)
           setStep('download')
           onDownloadStarted?.(started.id)
@@ -186,6 +230,33 @@ export function EpubSearchDialog({
             >
               Cancel download
             </Button>
+          ) : null}
+          {step === 'download' && job && isDownloadFinished(job.status) ? (
+            <>
+              {job.status !== 'failed' ? (
+                <Button variant="outline" onClick={restartSearch} disabled={refreshing}>
+                  New search
+                </Button>
+              ) : null}
+              {job.status === 'failed' ? (
+                <Button
+                  variant="outline"
+                  onClick={refreshSelectedSource}
+                  disabled={refreshing || !(source?.id ?? job.sourceId)}
+                >
+                  {refreshing ? 'Refreshing…' : 'Refresh'}
+                </Button>
+              ) : null}
+              {job.status === 'failed' && refreshedSource ? (
+                <Button
+                  variant="primary"
+                  onClick={startDownload}
+                  disabled={planned.length === 0 || start.isPending || refreshing}
+                >
+                  {start.isPending ? 'Starting…' : 'Start download'}
+                </Button>
+              ) : null}
+            </>
           ) : null}
           {step === 'download' ? (
             <Button variant="primary" onClick={onClose}>
@@ -414,18 +485,16 @@ export function EpubSearchDialog({
           <label className="flex items-start gap-2.5">
             <input
               type="checkbox"
-              checked={addAutomatically}
-              onChange={(event) => setAddAutomatically(event.target.checked)}
+              checked={regenerateVolumes}
+              onChange={(event) => setRegenerateVolumes(event.target.checked)}
               className="mt-0.5"
             />
             <span>
-              <strong className="font-semibold">
-                Add finished files to this book automatically
-              </strong>
+              <strong className="font-semibold">Regenerate affected volumes</strong>
               <br />
               <span className="text-[13px] text-ink-3">
-                Each EPUB appears in the book's file list as soon as it is built, with no review
-                step.
+                Extend incomplete volumes using Chapters per file and replace them after the new
+                EPUB is ready. Finished files are always added to this book.
               </span>
             </span>
           </label>
@@ -433,13 +502,23 @@ export function EpubSearchDialog({
           <p className="m-0 rounded-field border border-dashed border-line-strong px-3.5 py-3 text-ink-2 tabular-nums">
             You'll get{' '}
             <strong className="text-ink">
-              {numberFormat.format(chapterCount(resolved))} chapters
+              {numberFormat.format(
+                planned.reduce((sum, file) => sum + file.lastChapter - file.firstChapter + 1, 0),
+              )}{' '}
+              chapters
             </strong>{' '}
-            ({resolved.from}–{resolved.to}) in{' '}
+            ({planned[0]?.firstChapter ?? resolved.from}–
+            {planned.at(-1)?.lastChapter ?? resolved.to}) in{' '}
             <strong className="text-ink">
               {planned.length} EPUB file{planned.length === 1 ? '' : 's'}
             </strong>
             {planned.length > 0 ? `: ${planned.map((file) => file.title).join(', ')}` : ''}.
+            {regenerateVolumes && planned.some((file) => file.replacesFileId)
+              ? ' Updated volumes replace their previous files.'
+              : ''}
+            {regenerateVolumes && planned.length === 0
+              ? ' No new chapters to add, or the existing volume boundaries do not match Chapters per file.'
+              : ''}
           </p>
           {start.isError ? (
             <p role="alert" className="m-0 text-danger-ink">
@@ -449,7 +528,21 @@ export function EpubSearchDialog({
         </div>
       ) : null}
 
-      {step === 'download' && job ? <DownloadProgress job={job} /> : null}
+      {step === 'download' && job && !refreshedSource ? <DownloadProgress job={job} /> : null}
+      {step === 'download' && refreshRequest ? (
+        <p role="status" className="m-0 px-6 pb-5 text-ink-2">
+          {refreshing
+            ? 'Refreshing the selected source…'
+            : refreshedSource
+              ? `${refreshedSource.sourceName} refreshed: ${refreshedSource.chapterCount ?? 0} chapters. Your download options are kept.`
+              : 'Could not refresh the selected source. Try Refresh again.'}
+        </p>
+      ) : null}
+      {step === 'download' && start.isError ? (
+        <p role="alert" className="m-0 px-6 pb-5 text-danger-ink">
+          Could not start the download. Try again.
+        </p>
+      ) : null}
     </Dialog>
   )
 }
@@ -635,7 +728,7 @@ const fileStatusLabels: Record<EpubDownloadFile['status'], string> = {
   crawling: 'Crawling',
   building: 'Building',
   added: 'Added',
-  ready: 'Ready for review',
+  ready: 'Adding to book',
 }
 
 function DownloadProgress({ job }: { job: EpubDownloadJob }) {
@@ -724,8 +817,11 @@ function DownloadProgress({ job }: { job: EpubDownloadJob }) {
         </p>
       ) : null}
       <p className="m-0 text-[13px] text-ink-3">
-        You can close this window. The download keeps running and its progress shows in the book's
-        EPUB panel.
+        {job.status === 'failed'
+          ? 'Use Refresh to update the selected source, then start the download again. Your download options are kept.'
+          : !isDownloadFinished(job.status)
+            ? "You can close this window. The download keeps running and its progress shows in the book's EPUB panel."
+            : 'You can start a new search or close this window.'}
       </p>
     </div>
   )
@@ -762,9 +858,7 @@ function headline(job: EpubDownloadJob): string {
     case 'adding':
       return 'Adding files to the book'
     case 'completed':
-      return job.files.some((file) => file.status === 'ready')
-        ? 'Files ready to review in Upload EPUB / ZIP'
-        : 'All files added to the book'
+      return 'All files added to the book'
     case 'failed':
       return 'Download failed'
     case 'cancelled':
