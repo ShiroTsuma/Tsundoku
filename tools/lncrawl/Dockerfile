@@ -11,6 +11,7 @@ COPY patch_upstream.py /app/patch_upstream.py
 RUN /app/.venv/bin/python /app/patch_upstream.py
 COPY integration.py integration_store.py download_plan.py search_flow.py resilience.py source_policy.py source_health.py processing_control.py /app/
 COPY overrides/dobytranslations.py /app/sources/en/d/dobytranslations.py
+COPY overrides/tinytranslation.py /app/sources/en/t/tinytranslation.py
 
 FROM python:3.14-slim-trixie AS runtime
 WORKDIR /app
