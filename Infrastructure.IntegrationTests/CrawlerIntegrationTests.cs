@@ -104,15 +104,37 @@ public sealed class CrawlerIntegrationTests
     }
 
     [Fact]
-    public async Task SourceSettings_RequireAdmin_AndRejectUnsupportedHosts()
+    public async Task Admission_RunsMetadataJobs_WhenManyDownloadsWaitForASlot()
     {
+        using var h = new Harness(); var book = await h.Book();
+        var now = DateTime.UtcNow;
+        CrawlerJob Job(string kind, bool running, DateTime created) => new()
+        {
+            OwnerId = h.User.RequiredId, BookId = book.Id, Kind = kind, RequestKey = Guid.NewGuid().ToString("N"),
+            Status = running ? CrawlerJobStatus.Crawling : CrawlerJobStatus.Queued, Submitted = running, CreatedAtUtc = created,
+            NextAttemptAtUtc = running ? now.AddMinutes(5) : now.AddSeconds(-1), ExpiresAtUtc = now.AddDays(1)
+        };
+        // Both download slots are taken, and more blocked downloads wait than the old 100-row admission window.
+        h.Db.CrawlerJobs.AddRange(Enumerable.Range(0, h.Options.Value.MaxConcurrentDownloads)
+            .Select(_ => Job(CrawlerJobKind.Download, true, now.AddHours(-2))));
+        h.Db.CrawlerJobs.AddRange(Enumerable.Range(0, 120).Select(i => Job(CrawlerJobKind.Download, false, now.AddHours(-1).AddSeconds(i))));
+        var search = Job(CrawlerJobKind.Search, false, now);
+        h.Db.CrawlerJobs.Add(search);
+        await h.Db.SaveChangesAsync();
+
+        Assert.True(await h.Worker.TickAsync(default));
+
+        Assert.True(await h.Db.CrawlerJobs.AsNoTracking().Where(j => j.Id == search.Id).Select(j => j.Submitted).SingleAsync());
+        Assert.Equal(0, await h.Db.CrawlerJobs.CountAsync(j => j.Kind == CrawlerJobKind.Download && j.Submitted &&
+            j.CreatedAtUtc > now.AddHours(-1.5)));
+    }
+
+    [Fact]
+    public async Task SourceSettings_RejectUnsupportedHosts()
+    {
+        // Admin-only access is enforced by the controller (SecurityBaselineEndpointTests).
         using var h = new Harness();
-        var member = new CrawlerSourceAdminService(h.Remote, h.User);
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => member.GetAsync(default));
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => member.ProcessingAsync(default));
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => member.SetProcessingAsync(new(true), default));
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => member.UpdateAsync("example.com", new(false, true), default));
-        var admin = new CrawlerSourceAdminService(h.Remote, new Reader(h.User.RequiredId, true));
+        var admin = new CrawlerSourceAdminService(h.Remote);
         await admin.GetAsync(default);
         Assert.False((await admin.SetProcessingAsync(new(false), default)).ProcessingEnabled);
         Assert.False((await admin.ProcessingAsync(default)).ProcessingEnabled);
@@ -409,7 +431,6 @@ public sealed class CrawlerIntegrationTests
         Assert.Equal(28, Assert.Single(status.Jobs).SearchedSourceCount);
         Assert.Equal(job.Id, status.Jobs[0].Id);
         Assert.Null(status.Jobs[0].Username);
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => own.GetAsync(true, "active", 0, 20, default));
         var stranger = new CrawlerMonitorService(h.Db, new Reader(Guid.NewGuid()), h.Options, h.Remote);
         Assert.Empty((await stranger.GetAsync(false, "active", 0, 20, default)).Jobs);
         var admin = new CrawlerMonitorService(h.Db, new Reader(Guid.NewGuid(), true), h.Options, h.Remote);

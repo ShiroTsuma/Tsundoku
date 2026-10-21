@@ -8,6 +8,8 @@ using Microsoft.Extensions.Options;
 public sealed class CrawlerBackgroundService(IServiceScopeFactory scopes, IOptions<CrawlerOptions> options,
     ILogger<CrawlerBackgroundService> logger) : BackgroundService
 {
+    private const int MaxJobsPerPass = 50;
+
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         if (!options.Value.Enabled || !options.Value.RunJobs) return;
@@ -23,11 +25,15 @@ public sealed class CrawlerBackgroundService(IServiceScopeFactory scopes, IOptio
                     await Task.Delay(TimeSpan.FromSeconds(2), ct);
                     continue;
                 }
-                var worker = scope.ServiceProvider.GetRequiredService<CrawlerWorker>();
-                await worker.TickAsync(ct);
+                // Drain due jobs before waiting; a scope per job keeps each DbContext small.
+                for (var admitted = 0; admitted < MaxJobsPerPass; admitted++)
+                {
+                    using var jobScope = scopes.CreateScope();
+                    if (!await jobScope.ServiceProvider.GetRequiredService<CrawlerWorker>().TickAsync(ct)) break;
+                }
                 if (DateTime.UtcNow >= maintenanceAt)
                 {
-                    await worker.MaintainAsync(ct);
+                    await scope.ServiceProvider.GetRequiredService<CrawlerWorker>().MaintainAsync(ct);
                     maintenanceAt = DateTime.UtcNow.AddSeconds(30);
                 }
             }

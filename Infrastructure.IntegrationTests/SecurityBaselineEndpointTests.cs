@@ -42,13 +42,18 @@ public class SecurityBaselineEndpointTests
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    [Fact]
-    public async Task AdminEndpoint_ShouldReturnForbiddenForNonAdminUser()
+    [Theory]
+    [InlineData("/api/v1/admin/books")]
+    [InlineData("/api/v1/admin/crawler")]
+    [InlineData("/api/v1/admin/crawler/processing")]
+    [InlineData("/api/v1/admin/crawler/sources")]
+    [InlineData("/api/v1/admin/metadata/aliases")]
+    public async Task AdminEndpoint_ShouldReturnForbiddenForNonAdminUser(string path)
     {
         await using var factory = new SecurityApiFactory();
         using var client = factory.CreateAuthenticatedClient(UserAId);
 
-        var response = await client.GetAsync("/api/v1/admin/books");
+        var response = await client.GetAsync(path);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }

@@ -8,7 +8,6 @@ public sealed class CrawlerMonitorService(ApplicationDbContext db, IUser user, I
 {
     public async Task<CrawlerMonitorSnapshot> GetAsync(bool allAccounts, string filter, int skip, int take, CancellationToken ct)
     {
-        if (allAccounts && !user.Roles.Contains(AuthorizationRoles.Admin)) throw new UnauthorizedAccessException();
         if (filter is not ("active" or "recent" or "failed")) throw new ValidationException("Unknown crawler job filter.");
         skip = Math.Max(0, skip);
         take = Math.Clamp(take, 1, 100);
@@ -18,12 +17,12 @@ public sealed class CrawlerMonitorService(ApplicationDbContext db, IUser user, I
         var sources = db.BookCrawlerSources.AsNoTracking().Where(s => bookIds.Contains(s.BookId));
         var jobs = db.CrawlerJobs.AsNoTracking().Where(j => bookIds.Contains(j.BookId));
         var now = DateTime.UtcNow;
-        var active = jobs.Where(j => j.Status != "completed" && j.Status != "failed" && j.Status != "cancelled");
-        var waiting = await active.CountAsync(j => j.Status == "queued", ct);
-        var running = await active.CountAsync(j => j.Status != "queued", ct);
-        var filtered = filter == "active" ? active : filter == "failed" ? jobs.Where(j => j.Status == "failed") : jobs;
+        var active = jobs.Where(j => !CrawlerJobStatus.Terminal.Contains(j.Status));
+        var waiting = await active.CountAsync(j => j.Status == CrawlerJobStatus.Queued, ct);
+        var running = await active.CountAsync(j => j.Status != CrawlerJobStatus.Queued, ct);
+        var filtered = filter == "active" ? active : filter == "failed" ? jobs.Where(j => j.Status == CrawlerJobStatus.Failed) : jobs;
         var totalJobs = await filtered.CountAsync(ct);
-        var page = await filtered.OrderBy(j => j.Status == "completed" || j.Status == "failed" || j.Status == "cancelled")
+        var page = await filtered.OrderBy(j => CrawlerJobStatus.Terminal.Contains(j.Status))
             .ThenByDescending(j => j.CreatedAtUtc).Skip(skip).Take(take).ToListAsync(ct);
         var ids = page.Select(j => j.BookId).Distinct().ToList();
         var titles = await books.Where(b => ids.Contains(b.Id)).ToDictionaryAsync(b => b.Id, b => b.PrimaryTitle, ct);
@@ -32,9 +31,9 @@ public sealed class CrawlerMonitorService(ApplicationDbContext db, IUser user, I
             .ToDictionaryAsync(u => u.Id, u => u.UserName, ct) : new Dictionary<Guid, string?>();
         var items = page.Where(j => titles.ContainsKey(j.BookId)).Select(j =>
         {
-            var search = j.Kind is "search" or "discovery" && j.ResultJson != "{}"
+            var search = j.Kind is CrawlerJobKind.Search or CrawlerJobKind.Discovery && j.ResultJson != "{}"
                 ? CrawlerPlan.Read<EpubSearchResult>(j.ResultJson) : null;
-            var download = j.Kind == "download" && j.ResultJson != "{}"
+            var download = j.Kind == CrawlerJobKind.Download && j.ResultJson != "{}"
                 ? CrawlerPlan.Read<EpubDownloadJob>(j.ResultJson) : null;
             var work = CrawlerPlan.Read<CrawlerWork>(j.RequestJson);
             var source = search?.CurrentSource ?? (Uri.TryCreate(work.Url, UriKind.Absolute, out var url) ? url.Host : null);
