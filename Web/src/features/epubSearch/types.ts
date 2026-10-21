@@ -131,3 +131,8 @@ export const terminalDownloadStatuses: readonly EpubDownloadStatus[] = [
 export function isDownloadFinished(status: EpubDownloadStatus): boolean {
   return terminalDownloadStatuses.includes(status)
 }
+
+/** A source search stops polling once it reaches one of these. */
+export function isSearchFinished(status: string | undefined): boolean {
+  return status === 'completed' || status === 'failed' || status === 'cancelled'
+}

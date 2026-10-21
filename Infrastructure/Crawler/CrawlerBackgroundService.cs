@@ -10,7 +10,7 @@ public sealed class CrawlerBackgroundService(IServiceScopeFactory scopes, IOptio
 {
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
-        if (!options.Value.Enabled) return;
+        if (!options.Value.Enabled || !options.Value.RunJobs) return;
         var maintenanceAt = DateTime.MinValue;
         while (!ct.IsCancellationRequested)
         {

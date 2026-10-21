@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { ReactNode } from 'react'
+import { CircleAlert, CircleCheck, Info, TriangleAlert } from 'lucide-react'
+import type { CSSProperties, ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/features/auth/AuthProvider'
@@ -63,7 +64,28 @@ export function App() {
             <Route path="*" element={<Navigate to="/books" replace />} />
           </Routes>
         </BrowserRouter>
-        <Toaster richColors position="top-right" />
+        <Toaster
+          position="top-right"
+          theme="dark"
+          // Toasts are popovers: neutral surface, the type shows only in the icon colour.
+          style={
+            {
+              '--normal-bg': 'var(--color-raised)',
+              '--normal-border': 'var(--color-line-strong)',
+              '--normal-text': 'var(--color-ink)',
+              '--border-radius': 'var(--radius-field)',
+            } as CSSProperties
+          }
+          toastOptions={{
+            classNames: { toast: 'font-sans shadow-popover', description: '!text-ink-2' },
+          }}
+          icons={{
+            success: <CircleCheck aria-hidden="true" className="size-4 text-status-finished" />,
+            error: <CircleAlert aria-hidden="true" className="size-4 text-danger" />,
+            warning: <TriangleAlert aria-hidden="true" className="size-4 text-status-hold" />,
+            info: <Info aria-hidden="true" className="size-4 text-ink-2" />,
+          }}
+        />
       </AuthProvider>
     </QueryClientProvider>
   )

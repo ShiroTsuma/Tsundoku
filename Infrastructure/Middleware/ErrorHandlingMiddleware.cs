@@ -114,7 +114,8 @@ public class ErrorHandlingMiddleware
                 or EntityNotFoundException<BookFileDownloadTicket, Guid>
                 or EntityNotFoundException<PublicBookSnapshot, Guid>
                 or EntityNotFoundException<Tag, Guid>
-                or EntityNotFoundException<Author, Guid> => ErrorCategory.NotFound,
+                or EntityNotFoundException<Author, Guid>
+                or EntityNotFoundException<CrawlerJob, Guid> => ErrorCategory.NotFound,
             UsernameTakenException
                 or EmailInUseException
                 or CannotDeleteCurrentAccountException

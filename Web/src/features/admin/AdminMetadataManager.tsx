@@ -135,18 +135,7 @@ export function AdminMetadataManager() {
             <ListBox
               key={kind + (kind === 'tags' ? tagSearch : '')}
               label={section.label}
-              busy={kind === 'tags' && tagsQuery.isFetchingNextPage}
-              onScroll={(event) => {
-                const element = event.currentTarget
-                if (
-                  kind === 'tags' &&
-                  element.scrollHeight - element.scrollTop - element.clientHeight < 300 &&
-                  tagsQuery.hasNextPage &&
-                  !tagsQuery.isFetchingNextPage &&
-                  !tagsQuery.isFetchNextPageError
-                )
-                  void tagsQuery.fetchNextPage()
-              }}
+              pages={kind === 'tags' ? tagsQuery : undefined}
             >
               {items.map((item) => (
                 <div
@@ -171,25 +160,6 @@ export function AdminMetadataManager() {
                   </Button>
                 </div>
               ))}
-              {kind === 'tags' && tagsQuery.isFetchingNextPage ? (
-                <p role="status" className="m-0 px-4 py-3 text-sm text-ink-3">
-                  Loading more tags…
-                </p>
-              ) : null}
-              {kind === 'tags' && tagsQuery.isFetchNextPageError ? (
-                <div className="flex items-center gap-3 px-4 py-3 text-sm text-danger-ink">
-                  Could not load more tags.
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      void tagsQuery.fetchNextPage()
-                    }}
-                  >
-                    Retry
-                  </Button>
-                </div>
-              ) : null}
             </ListBox>
           )}
           {editor ? (

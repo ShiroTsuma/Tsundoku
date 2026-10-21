@@ -5,6 +5,7 @@ import type {
   EpubSearchRequest,
   EpubSearchResult,
 } from './types'
+import { isDownloadFinished, isSearchFinished } from './types'
 
 type SearchJob = {
   id: string
@@ -43,7 +44,7 @@ export function createApiEpubSearchClient(): EpubSearchClient {
       searches.delete(key)
       throw new Error(job.error ?? 'The crawler could not search the sources.')
     }
-    if (['completed', 'failed', 'cancelled'].includes(job.status)) searches.delete(key)
+    if (isSearchFinished(job.status)) searches.delete(key)
     const result = job.result ?? { candidates: [], searchedSourceCount: 0, durationMs: 0 }
     return {
       ...result,
@@ -77,7 +78,7 @@ export function createApiEpubSearchClient(): EpubSearchClient {
     },
     getDownload: async (id) => {
       const job = await apiRequest<EpubDownloadJob>(`/book/epub-downloads/${id}`)
-      if (['completed', 'failed', 'cancelled'].includes(job.status)) {
+      if (isDownloadFinished(job.status)) {
         for (const [fingerprint, operation] of downloads) {
           if (operation.jobId === id) downloads.delete(fingerprint)
         }

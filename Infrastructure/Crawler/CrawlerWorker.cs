@@ -96,9 +96,15 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
         catch (Exception ex)
         {
             logger.LogError(ex, "Crawler operation {JobId} failed.", job.Id);
+            // Changes rejected by the failed step stay tracked and would fail the save below again.
+            db.ChangeTracker.Clear();
+            job = await db.CrawlerJobs.SingleAsync(j => j.Id == job.Id, stoppingToken);
             job.Status = "failed";
             job.Error = ex is ValidationException ? ex.Message : "The crawler operation could not be completed. Finished files remain available.";
-            try { await remote.CancelAsync(job.Id, ct); } catch (HttpRequestException) { /* next cleanup retries */ }
+            try { await remote.CancelAsync(job.Id, stoppingToken); }
+            catch (Exception cancelError) when (cancelError is HttpRequestException ||
+                cancelError is OperationCanceledException && !stoppingToken.IsCancellationRequested)
+            { /* next cleanup retries */ }
         }
         job.LeaseUntilUtc = null;
         if (job.NextAttemptAtUtc <= now) job.NextAttemptAtUtc = DateTime.UtcNow.AddSeconds(2);

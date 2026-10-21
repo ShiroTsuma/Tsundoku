@@ -1,6 +1,7 @@
 import { Search } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { Button } from './Button'
 import { fieldClass } from './fieldStyles'
 
 export function StateBox({ children, tone }: { children: ReactNode; tone?: 'error' }) {
@@ -40,27 +41,62 @@ export function Pill({
   )
 }
 
+/** The part of an infinite query a list needs to load further pages. */
+export type ListPages = {
+  hasNextPage: boolean
+  isFetchingNextPage: boolean
+  isFetchNextPageError: boolean
+  fetchNextPage: () => Promise<unknown>
+}
+
 export function ListBox({
   children,
   label,
   onScroll,
   busy,
+  pages,
 }: {
   children: ReactNode
   label: string
   onScroll?: (event: React.UIEvent<HTMLDivElement>) => void
   busy?: boolean
+  /** Loads the next page near the bottom and shows the loading or retry row. */
+  pages?: ListPages | undefined
 }) {
   return (
     <div
-      aria-busy={busy}
+      aria-busy={busy ?? pages?.isFetchingNextPage}
       aria-label={label}
       className="max-h-[min(70vh,48rem)] overflow-y-auto rounded-xl border border-line bg-sunk"
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scrollable list must stay keyboard-focusable so it can be scrolled without a mouse (axe scrollable-region-focusable)
       tabIndex={0}
-      onScroll={onScroll}
+      onScroll={(event) => {
+        onScroll?.(event)
+        const list = event.currentTarget
+        if (
+          pages?.hasNextPage &&
+          !pages.isFetchingNextPage &&
+          !pages.isFetchNextPageError &&
+          list.scrollHeight - list.scrollTop - list.clientHeight < 200
+        ) {
+          void pages.fetchNextPage()
+        }
+      }}
     >
       {children}
+      {pages?.isFetchingNextPage ? (
+        <div className="px-4 py-3 text-center text-[13px] text-ink-3" role="status">
+          Loading more…
+        </div>
+      ) : null}
+      {pages?.isFetchNextPageError ? (
+        <div className="flex items-center justify-center gap-3 px-4 py-3 text-[13px] text-danger-ink">
+          Could not load more.
+          <Button size="row" variant="outline" onClick={() => void pages.fetchNextPage()}>
+            Retry
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }

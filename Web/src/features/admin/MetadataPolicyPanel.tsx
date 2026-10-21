@@ -22,11 +22,17 @@ type Rule = {
   targetGenreId: string | null
 }
 type Review = { id: string; name: string; booksCount: number; aliases: string[] }
+type PolicyTab = 'aliases' | 'implications' | 'review'
 const root = '/admin/metadata'
+const policyTabs: { id: PolicyTab; label: string }[] = [
+  { id: 'aliases', label: 'Redirects' },
+  { id: 'implications', label: 'Required metadata' },
+  { id: 'review', label: 'Tags without descriptions' },
+]
 
 export function MetadataPolicyPanel() {
   const client = useQueryClient()
-  const [tab, setTab] = useState<'aliases' | 'implications' | 'review'>('aliases')
+  const [tab, setTab] = useState<PolicyTab>('aliases')
   const [name, setName] = useState('')
   const [savedAliases, setSavedAliases] = useState(0)
   const [sourceKind, setSourceKind] = useState<'tag' | 'genre'>('tag')
@@ -62,9 +68,7 @@ export function MetadataPolicyPanel() {
     enabled: tab === 'review',
   })
   const genres = useQuery({ queryKey: ['metadata-policy', 'genres'], queryFn: api.getGenres })
-  function label(tagId: string | null, genreId: string | null) {
-    return genreId ? (genres.data?.data.find((g) => g.id === genreId)?.name ?? genreId) : tagId
-  }
+  const genreName = (id: string) => genres.data?.data.find((genre) => genre.id === id)?.name ?? id
   async function mutate(action: () => Promise<unknown>) {
     setBusy(true)
     try {
@@ -77,6 +81,25 @@ export function MetadataPolicyPanel() {
       setBusy(false)
     }
   }
+  async function previewRules() {
+    try {
+      const result = await apiRequest<{ tags: string[]; genreIds: string[] }>(`${root}/preview`, {
+        method: 'POST',
+        body: {
+          tags: preview
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter(Boolean),
+          genreIds: [],
+        },
+      })
+      setPreviewResult(
+        [...result.tags, ...result.genreIds.map(genreName)].join(', ') || 'No metadata',
+      )
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not preview rules.')
+    }
+  }
   const query = tab === 'aliases' ? aliases : tab === 'implications' ? rules : review
   return (
     <section aria-label="Metadata rules" className="flex min-w-0 flex-col gap-3">
@@ -84,24 +107,24 @@ export function MetadataPolicyPanel() {
       <p className="m-0 text-sm text-ink-3">
         Rules apply to HTML imports and future book saves. Existing books are reviewed separately.
       </p>
-      <div className="flex flex-wrap gap-2">
-        {(['aliases', 'implications', 'review'] as const).map((value) => (
-          <Button
-            key={value}
-            aria-pressed={tab === value}
+      <div
+        aria-label="Metadata rule kind"
+        role="group"
+        className="flex w-fit flex-wrap gap-0.5 rounded-field border border-line bg-surface p-[3px]"
+      >
+        {policyTabs.map((item) => (
+          <SegmentButton
+            key={item.id}
+            pressed={tab === item.id}
             onClick={() => {
-              setTab(value)
+              setTab(item.id)
               setName('')
               setSource({ tagId: null, genreId: null })
               setTarget({ tagId: null, genreId: null })
             }}
           >
-            {value === 'aliases'
-              ? 'Redirects'
-              : value === 'implications'
-                ? 'Required metadata'
-                : 'Tags without descriptions'}
-          </Button>
+            {item.label}
+          </SegmentButton>
         ))}
       </div>
       {tab !== 'review' ? (
@@ -151,6 +174,7 @@ export function MetadataPolicyPanel() {
           <Button
             type="submit"
             variant="primary"
+            className="justify-self-start"
             disabled={
               busy ||
               (!target.tagId && !target.genreId) ||
@@ -171,28 +195,19 @@ export function MetadataPolicyPanel() {
       ) : query.isError && !query.data ? (
         <StateBox tone="error">Could not load rules.</StateBox>
       ) : (
-        <ListBox
-          label="Metadata policy entries"
-          busy={query.isFetchingNextPage}
-          onScroll={(event) => {
-            const list = event.currentTarget
-            if (
-              list.scrollHeight - list.scrollTop - list.clientHeight < 150 &&
-              query.hasNextPage &&
-              !query.isFetching &&
-              !query.isFetchNextPageError
-            ) {
-              void query.fetchNextPage()
-            }
-          }}
-        >
+        <ListBox label="Metadata policy entries" pages={query}>
           {tab === 'aliases'
             ? aliases.data?.pages.flat().map((alias) => (
                 <div className={listRowClass} key={alias.id}>
                   <span className="min-w-0 flex-1 break-words">
-                    {alias.sourceKind}: {alias.name} → {alias.targetName}
+                    <span className="text-ink-3">
+                      {alias.sourceKind === 'genre' ? 'Genre' : 'Tag'}
+                    </span>{' '}
+                    {alias.name} → {alias.targetName}
                   </span>
                   <Button
+                    size="row"
+                    variant="ghost"
                     disabled={busy}
                     aria-label={`Delete redirect ${alias.name}`}
                     onClick={() =>
@@ -212,8 +227,10 @@ export function MetadataPolicyPanel() {
                       {rule.sourceName} → {rule.targetName}
                     </span>
                     <Button
+                      size="row"
+                      variant="ghost"
                       disabled={busy}
-                      aria-label="Delete required metadata rule"
+                      aria-label={`Delete rule ${rule.sourceName} → ${rule.targetName}`}
                       onClick={() =>
                         void mutate(() =>
                           apiRequest(`${root}/implications/${rule.id}`, { method: 'DELETE' }),
@@ -230,59 +247,33 @@ export function MetadataPolicyPanel() {
                     <div className={listRowClass} key={tag.id}>
                       <span className="min-w-0 flex-1">
                         {tag.name}
-                        <small className="block text-ink-3">
+                        <small className="block text-[13px] text-ink-3">
                           {tag.booksCount} books · {tag.aliases.join(', ') || 'No redirects'}
                         </small>
                       </span>
                     </div>
                   ))}
-          {query.isFetchingNextPage ? (
-            <p role="status" className="m-0 px-4 py-3 text-sm text-ink-3">
-              Loading more…
-            </p>
-          ) : null}
-          {query.isFetchNextPageError ? (
-            <Button onClick={() => void query.fetchNextPage()}>Retry loading more</Button>
-          ) : null}
         </ListBox>
       )}
       <form
         className="flex flex-wrap items-end gap-3"
         onSubmit={(event) => {
           event.preventDefault()
-          void mutate(async () => {
-            const result = await apiRequest<{ tags: string[]; genreIds: string[] }>(
-              `${root}/preview`,
-              {
-                method: 'POST',
-                body: {
-                  tags: preview
-                    .split(',')
-                    .map((t) => t.trim())
-                    .filter(Boolean),
-                  genreIds: [],
-                },
-              },
-            )
-            setPreviewResult(
-              [...result.tags, ...result.genreIds.map((id) => label(null, id))].join(', ') ||
-                'No metadata',
-            )
-          })
+          void previewRules()
         }}
       >
-        <label className="flex flex-1 flex-col gap-1 text-sm">
-          Preview tags (comma separated)
+        <label className="flex flex-1 flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-ink-2">Preview tags (comma separated)</span>
           <input
             className={fieldClass}
             value={preview}
-            onChange={(e) => {
-              setPreview(e.target.value)
+            onChange={(event) => {
+              setPreview(event.target.value)
               setPreviewResult(null)
             }}
           />
         </label>
-        <Button type="submit" disabled={busy}>
+        <Button type="submit" disabled={!preview.trim()}>
           Preview
         </Button>
         {previewResult !== null ? (
@@ -325,7 +316,7 @@ function MetadataRuleRow({
     kind === 'tag'
       ? (tags.data ?? [])
       : (genres.data?.data ?? [])
-          .filter((g) => g.name.toLowerCase().includes(term.toLowerCase()))
+          .filter((genre) => genre.name.toLowerCase().includes(term.toLowerCase()))
           .slice(0, 8)
   const pending = input.trim() !== term || (kind === 'tag' ? tags.isFetching : genres.isFetching)
   function clearSelection() {

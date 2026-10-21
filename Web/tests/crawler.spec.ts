@@ -220,118 +220,109 @@ test('search shows saved-link progress before the first match', async ({ page })
   })
 })
 
-for (const automatic of [true, false]) {
-  test(`crawler download preserves the existing options and ${automatic ? 'attaches' : 'stages'} EPUBs`, async ({
-    page,
-  }) => {
-    await seedAuthenticatedSession(page)
-    await installLayoutApiMocks(page)
-    let finished = false
-    let job: Record<string, unknown> | null = null
-    await page.route('**/api/v1/book/**', async (route) => {
-      const path = new URL(route.request().url()).pathname
-      if (path.endsWith('/epub-searches'))
-        return route.fulfill({
-          json: {
-            id: 'search-1',
-            status: 'completed',
-            error: null,
-            result: {
-              candidates: [
-                {
-                  id: 'novel-1',
-                  title: layoutBooks[0]!.primaryTitle,
-                  match: 'title',
-                  sources: [source],
-                },
-              ],
-              searchedSourceCount: 3,
-              durationMs: 100,
-              warnings: [],
-            },
-          },
-        })
-      if (path === `/api/v1/book/${bookId}/epub-downloads`) {
-        if (route.request().method() === 'GET')
-          return route.fulfill({ json: job && !finished ? [job] : [] })
-        const body = route.request().postDataJSON() as {
-          addToBookAutomatically: boolean
-          splitEvery: number
-          requestKey: string
-        }
-        expect(body.addToBookAutomatically).toBe(automatic)
-        expect(body.splitEvery).toBe(100)
-        expect(body.requestKey).toBeTruthy()
-        job = {
-          id: 'download-1',
-          bookId,
-          sourceName: source.sourceName,
-          status: 'building',
-          chaptersDone: 10,
-          chaptersTotal: 10,
-          startedAt: '2026-10-16T12:00:00Z',
+test('crawler download preserves the existing options and attaches EPUBs', async ({ page }) => {
+  await seedAuthenticatedSession(page)
+  await installLayoutApiMocks(page)
+  let finished = false
+  let job: Record<string, unknown> | null = null
+  await page.route('**/api/v1/book/**', async (route) => {
+    const path = new URL(route.request().url()).pathname
+    if (path.endsWith('/epub-searches'))
+      return route.fulfill({
+        json: {
+          id: 'search-1',
+          status: 'completed',
           error: null,
+          result: {
+            candidates: [
+              {
+                id: 'novel-1',
+                title: layoutBooks[0]!.primaryTitle,
+                match: 'title',
+                sources: [source],
+              },
+            ],
+            searchedSourceCount: 3,
+            durationMs: 100,
+            warnings: [],
+          },
+        },
+      })
+    if (path === `/api/v1/book/${bookId}/epub-downloads`) {
+      if (route.request().method() === 'GET')
+        return route.fulfill({ json: job && !finished ? [job] : [] })
+      const body = route.request().postDataJSON() as {
+        regenerateAffectedVolumes: boolean
+        splitEvery: number
+        requestKey: string
+      }
+      expect(body.regenerateAffectedVolumes).toBe(false)
+      expect(body.splitEvery).toBe(100)
+      expect(body.requestKey).toBeTruthy()
+      job = {
+        id: 'download-1',
+        bookId,
+        sourceName: source.sourceName,
+        status: 'building',
+        chaptersDone: 10,
+        chaptersTotal: 10,
+        startedAt: '2026-10-16T12:00:00Z',
+        error: null,
+        files: [
+          {
+            title: 'Volume 1',
+            firstChapter: 1,
+            lastChapter: 10,
+            chaptersDone: 10,
+            status: 'building',
+          },
+        ],
+      }
+      return route.fulfill({ json: job })
+    }
+    if (path === '/api/v1/book/epub-downloads/download-1') {
+      finished = true
+      return route.fulfill({
+        json: {
+          ...job,
+          status: 'completed',
           files: [
             {
               title: 'Volume 1',
               firstChapter: 1,
               lastChapter: 10,
               chaptersDone: 10,
-              status: 'building',
+              status: 'added',
+              importSessionId: 'import-1',
             },
           ],
-        }
-        return route.fulfill({ json: job })
-      }
-      if (path === '/api/v1/book/epub-downloads/download-1') {
-        finished = true
-        return route.fulfill({
-          json: {
-            ...job,
-            status: 'completed',
-            files: [
-              {
-                title: 'Volume 1',
-                firstChapter: 1,
-                lastChapter: 10,
-                chaptersDone: 10,
-                status: automatic ? 'added' : 'ready',
-                importSessionId: 'import-1',
-              },
-            ],
-          },
-        })
-      }
-      return route.fallback()
-    })
-    await page.goto(`/books/${bookId}`)
-    await page
-      .getByRole('region', { name: 'EPUB files' })
-      .getByRole('button', { name: 'Find & download' })
-      .click()
-    const dialog = page.getByRole('dialog', { name: 'Find EPUB' })
-    await dialog.getByRole('button', { name: 'Search', exact: true }).click()
-    await dialog.getByRole('radio', { name: /Example source/ }).click()
-    await expect(dialog.getByText('Update date unknown')).toBeVisible()
-    await dialog.getByRole('button', { name: 'Use this source' }).click()
-    await dialog.getByRole('radio', { name: /Custom range/ }).click()
-    await dialog.getByLabel('From', { exact: true }).fill('1')
-    await dialog.getByLabel('to', { exact: true }).fill('10')
-    if (!automatic) await dialog.getByRole('checkbox', { name: /Add finished files/ }).uncheck()
-    await dialog.getByRole('button', { name: 'Start download' }).click()
-    await expect(
-      dialog.getByText(
-        automatic ? 'All files added to the book' : 'Files ready to review in Upload EPUB / ZIP',
-      ),
-    ).toBeVisible()
-    await dialog.getByRole('button', { name: 'Done', exact: true }).click()
-    await expect(
-      page
-        .getByRole('region', { name: 'EPUB files' })
-        .getByRole('button', { name: 'Upload EPUB / ZIP' }),
-    ).toBeVisible()
+        },
+      })
+    }
+    return route.fallback()
   })
-}
+  await page.goto(`/books/${bookId}`)
+  await page
+    .getByRole('region', { name: 'EPUB files' })
+    .getByRole('button', { name: 'Find & download' })
+    .click()
+  const dialog = page.getByRole('dialog', { name: 'Find EPUB' })
+  await dialog.getByRole('button', { name: 'Search', exact: true }).click()
+  await dialog.getByRole('radio', { name: /Example source/ }).click()
+  await expect(dialog.getByText('Update date unknown')).toBeVisible()
+  await dialog.getByRole('button', { name: 'Use this source' }).click()
+  await dialog.getByRole('radio', { name: /Custom range/ }).click()
+  await dialog.getByLabel('From', { exact: true }).fill('1')
+  await dialog.getByLabel('to', { exact: true }).fill('10')
+  await dialog.getByRole('button', { name: 'Start download' }).click()
+  await expect(dialog.getByText('All files added to the book')).toBeVisible()
+  await dialog.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(
+    page
+      .getByRole('region', { name: 'EPUB files' })
+      .getByRole('button', { name: 'Upload EPUB / ZIP' }),
+  ).toBeVisible()
+})
 
 test('a running crawler job can be restored after reload and cancelled', async ({ page }) => {
   await seedAuthenticatedSession(page)

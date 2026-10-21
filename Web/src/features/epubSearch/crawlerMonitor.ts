@@ -40,14 +40,10 @@ export type CrawlerMonitorSnapshot = {
   jobs: CrawlerMonitorJob[]
 }
 
-export function useCrawlerMonitor(admin = false, filter = 'active', skip = 0) {
+export function useCrawlerMonitor() {
   return useQuery({
-    queryKey: ['crawler-monitor', getStoredSessionUserId(), admin, filter, skip],
-    queryFn: ({ signal }) =>
-      apiRequest<CrawlerMonitorSnapshot>(
-        admin ? `/admin/crawler?filter=${filter}&skip=${skip}&take=20` : '/book/crawler-status',
-        { signal },
-      ),
+    queryKey: ['crawler-monitor', getStoredSessionUserId()],
+    queryFn: ({ signal }) => apiRequest<CrawlerMonitorSnapshot>('/book/crawler-status', { signal }),
     refetchInterval: 5000,
     staleTime: 3000,
     retry: false,
@@ -88,6 +84,20 @@ export function jobProgress(job: CrawlerMonitorJob) {
   return job.nextRetryAt
     ? `${progress} · ${retryLabel(job.nextRetryAt, job.retryAttempt)}`
     : progress
+}
+
+const jobStatusLabels: Record<string, string> = {
+  queued: 'Queued',
+  running: 'Running',
+  completed: 'Completed',
+  failed: 'Failed',
+  cancelled: 'Cancelled',
+}
+
+export function jobStatusLabel(job: CrawlerMonitorJob) {
+  if (job.nextRetryAt) return 'Waiting to retry'
+  if (job.status === 'completed' && job.warnings.length) return 'Completed with warnings'
+  return jobStatusLabels[job.status] ?? job.status
 }
 
 export const jobKindLabels: Record<string, string> = {
