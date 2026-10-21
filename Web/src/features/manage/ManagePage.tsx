@@ -16,7 +16,14 @@ import { TextListEditor } from '@/components/ui/TextListEditor'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { fieldClass, textareaClass } from '@/components/ui/fieldStyles'
-import { listRowClass, ListBox, Pill, SearchField, StateBox } from '@/components/ui/ListParts'
+import {
+  listRowClass,
+  ListBox,
+  Pill,
+  SearchField,
+  StateBox,
+  type ListPages,
+} from '@/components/ui/ListParts'
 import { CoverThumb } from '@/features/books/BookListCells'
 import { useDebouncedValue } from '@/lib/useDebouncedValue'
 import { cn } from '@/lib/utils'
@@ -76,17 +83,6 @@ export function ManagePage() {
       ]),
     ).values(),
   )
-  function loadMoreMetadata(event: React.UIEvent<HTMLDivElement>) {
-    const list = event.currentTarget
-    if (
-      results.hasNextPage &&
-      !results.isFetching &&
-      list.scrollHeight - list.scrollTop - list.clientHeight < 96
-    ) {
-      void results.fetchNextPage()
-    }
-  }
-
   const libraryBooks = useInfiniteQuery({
     queryKey: ['manage-books', debouncedSearch],
     initialPageParam: 0,
@@ -243,19 +239,13 @@ export function ManagePage() {
         ) : section === 'tags' ? (
           <TagList
             tags={metadataItems as TagDto[]}
-            onScroll={loadMoreMetadata}
-            loadingMore={results.isFetchingNextPage}
-            loadError={results.isFetchNextPageError}
-            onRetry={() => void results.fetchNextPage()}
+            pages={results}
             onEdit={(tag) => setSelected({ kind: 'tag', value: tag })}
           />
         ) : (
           <AuthorList
             authors={metadataItems as AuthorDto[]}
-            onScroll={loadMoreMetadata}
-            loadingMore={results.isFetchingNextPage}
-            loadError={results.isFetchNextPageError}
-            onRetry={() => void results.fetchNextPage()}
+            pages={results}
             onEdit={(author) => setSelected({ kind: 'author', value: author })}
           />
         )}
@@ -414,36 +404,20 @@ function ManagedBooks({
   )
 }
 
-type MetadataListProps = {
-  onScroll: React.UIEventHandler<HTMLDivElement>
-  loadingMore: boolean
-  loadError: boolean
-  onRetry: () => void
-}
-
-function MetadataListFooter({
-  loadingMore,
-  loadError,
-  onRetry,
-}: Omit<MetadataListProps, 'onScroll'>) {
-  return loadingMore ? (
-    <StateBox>Loading more…</StateBox>
-  ) : loadError ? (
-    <Button onClick={onRetry}>Retry loading more</Button>
-  ) : null
-}
-
 function TagList({
   tags,
   onEdit,
-  onScroll,
-  ...pagination
-}: { tags: TagDto[]; onEdit: (tag: TagDto) => void } & MetadataListProps) {
+  pages,
+}: {
+  tags: TagDto[]
+  onEdit: (tag: TagDto) => void
+  pages: ListPages
+}) {
   const sortedTags = [...tags].sort((left, right) =>
     left.name.localeCompare(right.name, undefined, { sensitivity: 'base', numeric: true }),
   )
   return (
-    <ListBox label="Tags" onScroll={onScroll} busy={pagination.loadingMore}>
+    <ListBox label="Tags" pages={pages}>
       {sortedTags.map((tag) => (
         <ManageRow
           editable={!tag.isGlobal}
@@ -462,7 +436,6 @@ function TagList({
           {tag.isGlobal ? <Pill>Global</Pill> : null}
         </ManageRow>
       ))}
-      <MetadataListFooter {...pagination} />
     </ListBox>
   )
 }
@@ -470,12 +443,12 @@ function TagList({
 function AuthorList({
   authors,
   onEdit,
-  onScroll,
-  ...pagination
+  pages,
 }: {
   authors: AuthorDto[]
   onEdit: (author: AuthorDto) => void
-} & MetadataListProps) {
+  pages: ListPages
+}) {
   const sortedAuthors = [...authors].sort((left, right) =>
     left.primaryName.localeCompare(right.primaryName, undefined, {
       sensitivity: 'base',
@@ -483,7 +456,7 @@ function AuthorList({
     }),
   )
   return (
-    <ListBox label="Authors" onScroll={onScroll} busy={pagination.loadingMore}>
+    <ListBox label="Authors" pages={pages}>
       {sortedAuthors.map((author) => (
         <ManageRow
           editable={author.isOwned}
@@ -509,7 +482,6 @@ function AuthorList({
           </Pill>
         </ManageRow>
       ))}
-      <MetadataListFooter {...pagination} />
     </ListBox>
   )
 }

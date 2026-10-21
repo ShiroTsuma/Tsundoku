@@ -1,7 +1,7 @@
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEpubSearchClient } from './clientContext'
 import type { EpubDownloadJob, EpubDownloadRequest, EpubSearchRequest } from './types'
-import { isDownloadFinished } from './types'
+import { isDownloadFinished, isSearchFinished } from './types'
 import { getStoredSessionUserId } from '@/api/http'
 
 export const epubSearchKeys = {
@@ -25,7 +25,7 @@ export function useEpubSearch(request: EpubSearchRequest | null) {
     refetchOnWindowFocus: false,
     refetchInterval: (query) => {
       const status = query.state.data?.status
-      return status && !['completed', 'failed', 'cancelled'].includes(status) ? 2000 : false
+      return status && !isSearchFinished(status) ? 2000 : false
     },
   })
 }

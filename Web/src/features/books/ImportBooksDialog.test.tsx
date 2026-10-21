@@ -45,8 +45,9 @@ vi.mock('sonner', () => ({
 }))
 
 describe('ImportBooksDialog', () => {
-  function uploadCsv(container: HTMLElement) {
-    fireEvent.change(container.querySelector('input[type="file"]')!, {
+  function uploadCsv() {
+    // The dialog renders in a portal on document.body, outside the render container.
+    fireEvent.change(document.querySelector('input[type="file"]')!, {
       target: {
         files: [new File(['primaryTitle,contentType,status'], 'books.csv', { type: 'text/csv' })],
       },
@@ -149,11 +150,9 @@ describe('ImportBooksDialog', () => {
     vi.mocked(api.createBookImportSession).mockResolvedValue(importSessionWithFieldErrors)
 
     const onClose = vi.fn()
-    const { container } = renderWithProviders(
-      <ImportBooksDialog open onClose={onClose} onImported={vi.fn()} />,
-    )
+    renderWithProviders(<ImportBooksDialog open onClose={onClose} onImported={vi.fn()} />)
 
-    uploadCsv(container)
+    uploadCsv()
 
     await screen.findByText('Line 2')
     fireEvent.click(screen.getByRole('button', { name: /^close$/i }))
@@ -176,11 +175,9 @@ describe('ImportBooksDialog', () => {
     vi.mocked(api.cancelBookImport).mockResolvedValue(undefined)
 
     const onClose = vi.fn()
-    const { container } = renderWithProviders(
-      <ImportBooksDialog open onClose={onClose} onImported={vi.fn()} />,
-    )
+    renderWithProviders(<ImportBooksDialog open onClose={onClose} onImported={vi.fn()} />)
 
-    uploadCsv(container)
+    uploadCsv()
 
     await screen.findByText('Line 2')
     fireEvent.click(screen.getByRole('button', { name: /^cancel import$/i }))
@@ -221,11 +218,9 @@ describe('ImportBooksDialog', () => {
   it('keeps row actions visible for long invalid row titles', async () => {
     vi.mocked(api.createBookImportSession).mockResolvedValue(importSessionWithLongTitle)
 
-    const { container } = renderWithProviders(
-      <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
-    )
+    renderWithProviders(<ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />)
 
-    uploadCsv(container)
+    uploadCsv()
 
     const title = await screen.findByTitle(importSessionWithLongTitle.rows[0]!.primaryTitle!)
     expect(title).toHaveClass('truncate')
@@ -236,11 +231,9 @@ describe('ImportBooksDialog', () => {
   it('mounts import row form controls only after opening a row', async () => {
     vi.mocked(api.createBookImportSession).mockResolvedValue(importSessionWithFieldErrors)
 
-    const { container } = renderWithProviders(
-      <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
-    )
+    renderWithProviders(<ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />)
 
-    uploadCsv(container)
+    uploadCsv()
 
     expect(await screen.findByRole('button', { name: 'Fix' })).toHaveAttribute(
       'aria-expanded',
@@ -261,11 +254,9 @@ describe('ImportBooksDialog', () => {
   it('shows the summary and splits rows into Needs fixing, Ready and All rows', async () => {
     vi.mocked(api.createBookImportSession).mockResolvedValue(importSessionWithMixedRows)
 
-    const { container } = renderWithProviders(
-      <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
-    )
+    renderWithProviders(<ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />)
 
-    uploadCsv(container)
+    uploadCsv()
 
     expect(await screen.findByRole('progressbar')).toHaveAccessibleName('1 of 2 rows ready')
     expect(screen.getByRole('tab', { name: /needs fixing 1/i })).toHaveAttribute(
@@ -303,11 +294,9 @@ describe('ImportBooksDialog', () => {
     vi.mocked(api.createBookImportSession).mockResolvedValue(session)
     vi.mocked(api.updateBookImportRow).mockResolvedValue(importSessionAfterDiscardInvalid)
 
-    const { container } = renderWithProviders(
-      <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
-    )
+    renderWithProviders(<ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />)
 
-    uploadCsv(container)
+    uploadCsv()
 
     expect(await screen.findByText(/2 rows · Status “Readin” does not exist/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Replace with “Reading”' }))
@@ -328,11 +317,9 @@ describe('ImportBooksDialog', () => {
   it('marks import row fields with field errors and links the message to the input', async () => {
     vi.mocked(api.createBookImportSession).mockResolvedValue(importSessionWithFieldErrors)
 
-    const { container } = renderWithProviders(
-      <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
-    )
+    renderWithProviders(<ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />)
 
-    uploadCsv(container)
+    uploadCsv()
 
     fireEvent.click(await screen.findByRole('button', { name: 'Fix' }))
 
@@ -354,11 +341,9 @@ describe('ImportBooksDialog', () => {
     vi.mocked(api.createBookImportSession).mockResolvedValue(sessionWithGenres)
     vi.mocked(api.updateBookImportRow).mockResolvedValue(sessionWithGenres)
 
-    const { container } = renderWithProviders(
-      <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
-    )
+    renderWithProviders(<ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />)
 
-    uploadCsv(container)
+    uploadCsv()
 
     fireEvent.click(await screen.findByRole('button', { name: 'Fix' }))
     expect(screen.getByLabelText(/^Genres/)).toHaveValue('Fantasy; Action')
@@ -382,11 +367,9 @@ describe('ImportBooksDialog', () => {
   it('shows type and status suggestions for invalid import rows', async () => {
     vi.mocked(api.createBookImportSession).mockResolvedValue(importSessionWithFieldErrors)
 
-    const { container } = renderWithProviders(
-      <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
-    )
+    renderWithProviders(<ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />)
 
-    uploadCsv(container)
+    uploadCsv()
 
     fireEvent.click(await screen.findByRole('button', { name: 'Fix' }))
 
@@ -407,11 +390,9 @@ describe('ImportBooksDialog', () => {
     vi.mocked(api.createBookImportSession).mockResolvedValue(importSessionWithMixedRows)
     vi.mocked(api.deleteInvalidBookImportRows).mockResolvedValue(importSessionAfterDiscardInvalid)
 
-    const { container } = renderWithProviders(
-      <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
-    )
+    renderWithProviders(<ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />)
 
-    uploadCsv(container)
+    uploadCsv()
 
     const dropInvalidButton = await screen.findByRole('button', { name: 'Drop 1 invalid row' })
     const cancelButton = screen.getByRole('button', { name: /^cancel import$/i })
@@ -442,11 +423,9 @@ describe('ImportBooksDialog', () => {
     const onClose = vi.fn()
     const onImported = vi.fn()
 
-    const { container } = renderWithProviders(
-      <ImportBooksDialog open onClose={onClose} onImported={onImported} />,
-    )
+    renderWithProviders(<ImportBooksDialog open onClose={onClose} onImported={onImported} />)
 
-    uploadCsv(container)
+    uploadCsv()
 
     fireEvent.click(await screen.findByRole('button', { name: /finalize import/i }))
 
@@ -468,11 +447,9 @@ describe('ImportBooksDialog', () => {
     vi.mocked(api.createBookImportSession).mockResolvedValue(importSessionAfterDiscardInvalid)
     vi.mocked(api.finalizeBookImport).mockResolvedValue(importFinalizeFullSuccess)
 
-    const { container } = renderWithProviders(
-      <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
-    )
+    renderWithProviders(<ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />)
 
-    uploadCsv(container)
+    uploadCsv()
     fireEvent.click(await screen.findByRole('button', { name: /finalize import/i }))
     fireEvent.click(await screen.findByRole('button', { name: /import another file/i }))
 
@@ -490,11 +467,9 @@ describe('ImportBooksDialog', () => {
       })),
     })
 
-    const { container } = renderWithProviders(
-      <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
-    )
+    renderWithProviders(<ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />)
 
-    uploadCsv(container)
+    uploadCsv()
 
     fireEvent.click(await screen.findByRole('button', { name: /finalize import/i }))
 
@@ -507,11 +482,9 @@ describe('ImportBooksDialog', () => {
     vi.mocked(api.createBookImportSession).mockResolvedValue(importSessionAfterDiscardInvalid)
     vi.mocked(api.finalizeBookImport).mockResolvedValue(importFinalizePartialSuccess)
 
-    const { container } = renderWithProviders(
-      <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
-    )
+    renderWithProviders(<ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />)
 
-    uploadCsv(container)
+    uploadCsv()
 
     fireEvent.click(await screen.findByRole('button', { name: /finalize import/i }))
 
@@ -527,11 +500,9 @@ describe('ImportBooksDialog', () => {
     vi.mocked(api.createBookImportSession).mockResolvedValue(importSessionAfterDiscardInvalid)
     vi.mocked(api.finalizeBookImport).mockResolvedValue(importFinalizeEmptySuccess)
 
-    const { container } = renderWithProviders(
-      <ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />,
-    )
+    renderWithProviders(<ImportBooksDialog open onClose={vi.fn()} onImported={vi.fn()} />)
 
-    uploadCsv(container)
+    uploadCsv()
 
     fireEvent.click(await screen.findByRole('button', { name: /finalize import/i }))
 

@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/Button'
 import { Pill } from '@/components/ui/ListParts'
 import { retryLabel } from './crawlerMonitor'
-import type { EpubSearchResult } from './types'
+import { isSearchFinished, type EpubSearchResult } from './types'
 
 export function SearchFeedback({
   result,
@@ -10,7 +10,7 @@ export function SearchFeedback({
   result: EpubSearchResult
   onRefresh: () => void
 }) {
-  const running = result.status && !['completed', 'failed', 'cancelled'].includes(result.status)
+  const running = result.status !== undefined && !isSearchFinished(result.status)
   const warnings = [...new Set(result.warnings ?? [])]
   const count = result.candidates.reduce((sum, novel) => sum + novel.sources.length, 0)
   return (

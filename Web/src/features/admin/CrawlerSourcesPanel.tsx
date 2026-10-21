@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Check, ChevronDown, CircleOff, Pin } from 'lucide-react'
@@ -53,19 +53,23 @@ type SortKey =
   | 'warningRate'
   | 'rateLimitedCount'
   | 'lastObservedAt'
-const columns: { key: SortKey; label: string }[] = [
-  { key: 'domain', label: 'Source' },
-  { key: 'language', label: 'Language' },
-  { key: 'status', label: 'Search status' },
-  { key: 'sampleCount', label: 'Samples' },
-  { key: 'successRate', label: 'Success' },
-  { key: 'timeoutRate', label: 'Timeout' },
-  { key: 'warningRate', label: 'Warning' },
-  { key: 'rateLimitedCount', label: 'Rate limited' },
-  { key: 'lastObservedAt', label: 'Last checked' },
-]
 const automaticallySkipped = (source: CrawlerSourceHealth) =>
   source.enabled && !source.alwaysInclude && source.autoSkipped
+const statusFilters = [
+  { value: 'all', label: 'All statuses', short: 'All' },
+  { value: 'enabled', label: 'Enabled', short: 'Enabled' },
+  { value: 'disabled', label: 'Disabled', short: 'Disabled' },
+  { value: 'skipped', label: 'Automatically skipped', short: 'Automatically skipped' },
+  { value: 'pinned', label: 'Always include', short: 'Always include' },
+] as const
+type StatusFilter = (typeof statusFilters)[number]['value']
+const menuTriggerClass =
+  'flex h-9 items-center gap-1.5 rounded-control border border-line bg-transparent px-3 text-sm text-ink hover:border-line-strong'
+const rate = (value: number | null, count: number) => (
+  <>
+    {percent(value)} <span className="text-ink-3">({count})</span>
+  </>
+)
 const statusLabel = (source: CrawlerSourceHealth) =>
   !source.enabled ? 'Disabled' : automaticallySkipped(source) ? 'Automatically skipped' : 'Enabled'
 function sortValue(source: CrawlerSourceHealth, column: SortKey): string | number | null {
@@ -78,7 +82,7 @@ export function CrawlerSourcesPanel() {
   const [filter, setFilter] = useState('')
   const [language, setLanguage] = useState('all')
   const [includeMultilingual, setIncludeMultilingual] = useState(true)
-  const [status, setStatus] = useState('all')
+  const [status, setStatus] = useState<StatusFilter>('all')
   const [sort, setSort] = useState<{ key: SortKey; descending: boolean }>({
     key: 'domain',
     descending: false,
@@ -128,8 +132,8 @@ export function CrawlerSourcesPanel() {
       )
     })
     .sort((a, b) => {
-      const left = sortValue(a, sort.key),
-        right = sortValue(b, sort.key)
+      const left = sortValue(a, sort.key)
+      const right = sortValue(b, sort.key)
       // Missing measurements remain at the end in either direction.
       if (left == null || right == null)
         return left == null && right == null
@@ -151,29 +155,47 @@ export function CrawlerSourcesPanel() {
         column === sort.key ? !sort.descending : !['domain', 'language', 'status'].includes(column),
     })
   }
-  const cellRenderers = [
-    (source: CrawlerSourceHealth) => (
-      <>
-        <a
-          className="block truncate font-semibold text-ink hover:underline hover:underline-offset-4"
-          href={source.url}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {source.domain}
-        </a>
-        <span className="mt-1 block text-xs text-ink-3">
-          {source.canSearch ? 'Title search' : 'Saved links only'}
-        </span>
-      </>
-    ),
-    (source: CrawlerSourceHealth) => <>{languageLabel(languageCode(source.language))}</>,
-    (source: CrawlerSourceHealth) => (
-      <>
+  const sourceColumns: {
+    key: SortKey
+    label: string
+    width: string
+    render: (source: CrawlerSourceHealth) => ReactNode
+  }[] = [
+    {
+      key: 'domain',
+      label: 'Source',
+      width: 'w-[15rem]',
+      render: (source) => (
+        <>
+          <a
+            className="block truncate font-semibold text-ink hover:underline hover:underline-offset-4"
+            href={source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {source.domain}
+          </a>
+          <span className="mt-1 block text-xs text-ink-3">
+            {source.canSearch ? 'Title search' : 'Saved links only'}
+          </span>
+        </>
+      ),
+    },
+    {
+      key: 'language',
+      label: 'Language',
+      width: 'w-[8rem]',
+      render: (source) => languageLabel(languageCode(source.language)),
+    },
+    {
+      key: 'status',
+      label: 'Search status',
+      width: 'w-[11rem]',
+      render: (source) => (
         <div className="flex flex-col items-start gap-1.5">
           <span
             className={cn(
-              'inline-flex items-center gap-1.5 whitespace-nowrap rounded-pill border px-2 py-1 text-xs font-semibold',
+              'inline-flex items-center gap-1.5 rounded-pill border px-2 py-1 text-xs font-semibold whitespace-nowrap',
               !source.enabled
                 ? 'border-danger-line bg-danger-soft text-danger-ink'
                 : automaticallySkipped(source)
@@ -191,52 +213,58 @@ export function CrawlerSourcesPanel() {
           {source.alwaysInclude ? (
             <span className="inline-flex items-center gap-1 text-xs text-ink-2">
               <Pin className="size-3" aria-hidden="true" />
-              Always include{!source.enabled ? ' (inactive)' : ''}
+              Always include{source.enabled ? '' : ' (inactive)'}
             </span>
           ) : null}
         </div>
-      </>
-    ),
-    (source: CrawlerSourceHealth) => <>{source.sampleCount}</>,
-    (source: CrawlerSourceHealth) => (
-      <>
-        {percent(source.successRate)} <span className="text-ink-3">({source.successCount})</span>
-      </>
-    ),
-    (source: CrawlerSourceHealth) => (
-      <>
-        {percent(source.timeoutRate)} <span className="text-ink-3">({source.timeoutCount})</span>
-      </>
-    ),
-    (source: CrawlerSourceHealth) => (
-      <>
-        {percent(source.warningRate)} <span className="text-ink-3">({source.warningCount})</span>
-      </>
-    ),
-    (source: CrawlerSourceHealth) => <>{source.rateLimitedCount}</>,
-    (source: CrawlerSourceHealth) => (
-      <>{source.lastObservedAt ? new Date(source.lastObservedAt * 1000).toLocaleString() : '—'}</>
-    ),
+      ),
+    },
+    {
+      key: 'sampleCount',
+      label: 'Samples',
+      width: 'w-[5rem]',
+      render: (source) => source.sampleCount,
+    },
+    {
+      key: 'successRate',
+      label: 'Success',
+      width: 'w-[6rem]',
+      render: (source) => rate(source.successRate, source.successCount),
+    },
+    {
+      key: 'timeoutRate',
+      label: 'Timeout',
+      width: 'w-[6rem]',
+      render: (source) => rate(source.timeoutRate, source.timeoutCount),
+    },
+    {
+      key: 'warningRate',
+      label: 'Warning',
+      width: 'w-[6rem]',
+      render: (source) => rate(source.warningRate, source.warningCount),
+    },
+    {
+      key: 'rateLimitedCount',
+      label: 'Rate limited',
+      width: 'w-[7rem]',
+      render: (source) => source.rateLimitedCount,
+    },
+    {
+      key: 'lastObservedAt',
+      label: 'Last checked',
+      width: 'w-[9rem]',
+      render: (source) =>
+        source.lastObservedAt ? new Date(source.lastObservedAt * 1000).toLocaleString() : '—',
+    },
   ]
-  const widths = [
-    'w-[15rem]',
-    'w-[8rem]',
-    'w-[11rem]',
-    'w-[5rem]',
-    'w-[6rem]',
-    'w-[6rem]',
-    'w-[6rem]',
-    'w-[7rem]',
-    'w-[9rem]',
-  ]
-  const tableColumns: ColumnDefinition<CrawlerSourceHealth & { id: string }>[] = columns.map(
-    (column, index) => ({
-      id: column.key,
-      label: column.label,
-      sortBy: column.key,
+  const tableColumns: ColumnDefinition<CrawlerSourceHealth & { id: string }>[] = sourceColumns.map(
+    ({ key, label, width, render }) => ({
+      id: key,
+      label,
+      sortBy: key,
       defaultVisible: true,
-      widthClass: widths[index]!,
-      render: cellRenderers[index]!,
+      widthClass: width,
+      render,
     }),
   )
   return (
@@ -247,14 +275,12 @@ export function CrawlerSourcesPanel() {
             label="Filter crawler sources"
             placeholder="Search source or language…"
             value={filter}
-            onChange={(value) => {
-              setFilter(value)
-            }}
+            onChange={setFilter}
           />
         </div>
         <Menu
           label="Filter by language"
-          triggerClassName="flex h-9 items-center gap-1.5 rounded-control border border-line bg-transparent px-3 text-sm text-ink hover:border-line-strong"
+          triggerClassName={menuTriggerClass}
           triggerContent={
             <>
               <span className="text-ink-3">Language</span>
@@ -267,58 +293,32 @@ export function CrawlerSourcesPanel() {
               items: ['all', ...languages].map((code) => ({
                 label: code === 'all' ? 'All languages' : languageLabel(code),
                 checked: language === code,
-                onSelect: () => {
-                  setLanguage(code)
-                },
+                onSelect: () => setLanguage(code),
               })),
             },
           ]}
         />
         <Menu
           label="Filter by search status"
-          triggerClassName="flex h-9 items-center gap-1.5 rounded-control border border-line bg-transparent px-3 text-sm text-ink hover:border-line-strong"
+          triggerClassName={menuTriggerClass}
           triggerContent={
             <>
               <span className="text-ink-3">Status</span>
-              {
-                (
-                  {
-                    all: 'All',
-                    enabled: 'Enabled',
-                    disabled: 'Disabled',
-                    skipped: 'Automatically skipped',
-                    pinned: 'Always include',
-                  } as Record<string, string>
-                )[status]
-              }
+              {statusFilters.find((item) => item.value === status)?.short}
               <ChevronDown aria-hidden="true" className="size-3.5 text-ink-2" />
             </>
           }
           sections={[
             {
-              items: [
-                { value: 'all', label: 'All statuses' },
-                { value: 'enabled', label: 'Enabled' },
-                { value: 'disabled', label: 'Disabled' },
-                { value: 'skipped', label: 'Automatically skipped' },
-                { value: 'pinned', label: 'Always include' },
-              ].map((item) => ({
+              items: statusFilters.map((item) => ({
                 label: item.label,
                 checked: status === item.value,
-                onSelect: () => {
-                  setStatus(item.value)
-                },
+                onSelect: () => setStatus(item.value),
               })),
             },
           ]}
         />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            void query.refetch()
-          }}
-        >
+        <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
           Refresh sources
         </Button>
       </div>
@@ -332,9 +332,7 @@ export function CrawlerSourcesPanel() {
               type="checkbox"
               className="size-4 accent-accent"
               checked={includeMultilingual}
-              onChange={(event) => {
-                setIncludeMultilingual(event.target.checked)
-              }}
+              onChange={(event) => setIncludeMultilingual(event.target.checked)}
             />
             Include multilingual sources
           </label>
@@ -347,57 +345,53 @@ export function CrawlerSourcesPanel() {
           Source settings are unavailable. The crawler service may be offline.
         </StateBox>
       ) : (
-        <>
-          <div className="overflow-hidden rounded-xl border border-line bg-sunk">
-            <BookDataTable
-              items={sources.map((source) => ({ ...source, id: source.domain }))}
-              wrapperClassName="w-full max-h-[65vh] overflow-y-auto [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-20 [&_thead]:bg-sunk"
-              columns={tableColumns}
-              isLoading={false}
-              emptyMessage="No sources match these filters."
-              actionHeader="Controls"
-              actionsWidthRem={17}
-              sortBy={sort.key}
-              sortDirection={sort.descending ? 'desc' : 'asc'}
-              onSort={(value) => changeSort(value as SortKey)}
-              renderActions={(source) => (
-                <>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={update.isPending}
-                      onClick={() =>
-                        update.mutate({
-                          domain: source.domain,
-                          enabled: !source.enabled,
-                          alwaysInclude: source.alwaysInclude,
-                        })
-                      }
-                    >
-                      {source.enabled ? 'Disable search' : 'Enable search'}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={source.alwaysInclude ? 'primary' : 'outline'}
-                      aria-pressed={source.alwaysInclude}
-                      disabled={update.isPending}
-                      onClick={() =>
-                        update.mutate({
-                          domain: source.domain,
-                          enabled: source.enabled,
-                          alwaysInclude: !source.alwaysInclude,
-                        })
-                      }
-                    >
-                      Always include
-                    </Button>
-                  </div>
-                </>
-              )}
-            />
-          </div>
-        </>
+        <div className="overflow-hidden rounded-xl border border-line bg-sunk">
+          <BookDataTable
+            items={sources.map((source) => ({ ...source, id: source.domain }))}
+            wrapperClassName="w-full max-h-[65vh] overflow-y-auto [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-20 [&_thead]:bg-sunk"
+            columns={tableColumns}
+            isLoading={false}
+            emptyMessage="No sources match these filters."
+            actionHeader="Controls"
+            actionsWidthRem={17}
+            sortBy={sort.key}
+            sortDirection={sort.descending ? 'desc' : 'asc'}
+            onSort={(value) => changeSort(value as SortKey)}
+            renderActions={(source) => (
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={update.isPending}
+                  onClick={() =>
+                    update.mutate({
+                      domain: source.domain,
+                      enabled: !source.enabled,
+                      alwaysInclude: source.alwaysInclude,
+                    })
+                  }
+                >
+                  {source.enabled ? 'Disable search' : 'Enable search'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={source.alwaysInclude ? 'primary' : 'outline'}
+                  aria-pressed={source.alwaysInclude}
+                  disabled={update.isPending}
+                  onClick={() =>
+                    update.mutate({
+                      domain: source.domain,
+                      enabled: source.enabled,
+                      alwaysInclude: !source.alwaysInclude,
+                    })
+                  }
+                >
+                  Always include
+                </Button>
+              </div>
+            )}
+          />
+        </div>
       )}
     </section>
   )

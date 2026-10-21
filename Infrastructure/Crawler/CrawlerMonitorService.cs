@@ -49,8 +49,13 @@ public sealed class CrawlerMonitorService(ApplicationDbContext db, IUser user, I
         var processing = false;
         if (options.Value.Enabled)
         {
-            try { processing = (await remote.ProcessingAsync(ct)).ProcessingEnabled; }
-            catch (HttpRequestException) { /* Offline crawlers cannot process work. */ }
+            // Polled by every open page: a slow crawler must not hold the request for the client's full timeout.
+            using var probe = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            probe.CancelAfter(TimeSpan.FromSeconds(5));
+            try { processing = (await remote.ProcessingAsync(probe.Token)).ProcessingEnabled; }
+            catch (Exception ex) when (ex is HttpRequestException ||
+                ex is OperationCanceledException && !ct.IsCancellationRequested)
+            { /* Offline crawlers cannot process work. */ }
         }
         return new(options.Value.Enabled, now, await books.CountAsync(ct),
             await discoveries.CountAsync(d => d.LastCheckedAtUtc != null, ct),

@@ -2,25 +2,30 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { ListBox, Pill, StateBox, listRowClass } from '@/components/ui/ListParts'
+import { SegmentButton } from '@/features/books/BookListControls'
 import {
   jobKindLabels,
   jobProgress,
+  jobStatusLabel,
   useAdminCrawlerActivity,
 } from '@/features/epubSearch/crawlerMonitor'
-import { CrawlerSourcesPanel } from './CrawlerSourcesPanel'
 import { CrawlerProcessingControl } from './CrawlerProcessingControl'
-import { SegmentButton } from '@/features/books/BookListControls'
+import { CrawlerSourcesPanel } from './CrawlerSourcesPanel'
+
+const segmentGroupClass = 'flex w-fit gap-0.5 rounded-field border border-line bg-surface p-[3px]'
+const activityFilters = [
+  { id: 'active', label: 'Active queue' },
+  { id: 'recent', label: 'Recent jobs' },
+  { id: 'failed', label: 'Failed jobs' },
+] as const
+type ActivityFilter = (typeof activityFilters)[number]['id']
 
 export function AdminCrawlerPanel() {
-  const [section, setSection] = useState('activity')
+  const [section, setSection] = useState<'activity' | 'sources'>('activity')
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <CrawlerProcessingControl />
-      <div
-        aria-label="Crawler view"
-        role="group"
-        className="flex w-fit gap-0.5 rounded-field border border-line bg-surface p-[3px]"
-      >
+      <div aria-label="Crawler view" role="group" className={segmentGroupClass}>
         {(['activity', 'sources'] as const).map((value) => (
           <SegmentButton key={value} pressed={section === value} onClick={() => setSection(value)}>
             {value === 'activity' ? 'Activity' : 'Sources'}
@@ -33,7 +38,7 @@ export function AdminCrawlerPanel() {
 }
 
 function CrawlerActivityPanel() {
-  const [filter, setFilter] = useState('active')
+  const [filter, setFilter] = useState<ActivityFilter>('active')
   const query = useAdminCrawlerActivity(filter)
   const data = query.data?.pages[0]
   const jobs = [
@@ -43,31 +48,19 @@ function CrawlerActivityPanel() {
   ]
   return (
     <div className="flex min-w-0 flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {(['active', 'recent', 'failed'] as const).map((value) => (
-          <Button
-            key={value}
-            variant={filter === value ? 'primary' : 'outline'}
-            size="sm"
-            aria-pressed={filter === value}
-            onClick={() => {
-              setFilter(value)
-            }}
-          >
-            {value === 'active'
-              ? 'Active queue'
-              : value === 'recent'
-                ? 'Recent jobs'
-                : 'Failed jobs'}
-          </Button>
-        ))}
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            void query.refetch()
-          }}
-        >
+      <div className="flex flex-wrap items-center gap-3">
+        <div aria-label="Crawler jobs filter" role="group" className={segmentGroupClass}>
+          {activityFilters.map((item) => (
+            <SegmentButton
+              key={item.id}
+              pressed={filter === item.id}
+              onClick={() => setFilter(item.id)}
+            >
+              {item.label}
+            </SegmentButton>
+          ))}
+        </div>
+        <Button size="sm" variant="ghost" onClick={() => void query.refetch()}>
           Refresh
         </Button>
         <span className="text-xs text-ink-3">All accounts · refreshes every 5 seconds</span>
@@ -92,20 +85,7 @@ function CrawlerActivityPanel() {
             take priority. A source cooldown preserves results already found.
           </p>
           {jobs.length ? (
-            <ListBox
-              label="Crawler jobs"
-              busy={query.isFetchingNextPage}
-              onScroll={(event) => {
-                const element = event.currentTarget
-                if (
-                  element.scrollHeight - element.scrollTop - element.clientHeight < 300 &&
-                  query.hasNextPage &&
-                  !query.isFetchingNextPage &&
-                  !query.isFetchNextPageError
-                )
-                  void query.fetchNextPage()
-              }}
-            >
+            <ListBox label="Crawler jobs" pages={query}>
               {jobs.map((job) => (
                 <article key={job.id} className={listRowClass}>
                   <div className="min-w-0 flex-1">
@@ -117,12 +97,8 @@ function CrawlerActivityPanel() {
                         {job.bookTitle}
                       </Link>
                       <Pill>{jobKindLabels[job.kind] ?? job.kind}</Pill>
-                      <Pill>
-                        {job.nextRetryAt
-                          ? 'Waiting to retry'
-                          : job.status === 'completed' && job.warnings.length
-                            ? 'Success with warnings'
-                            : job.status}
+                      <Pill tone={job.status === 'completed' ? 'good' : 'neutral'}>
+                        {jobStatusLabel(job)}
                       </Pill>
                     </div>
                     <p className="m-0 mt-1 text-[13px] text-ink-2">
@@ -164,31 +140,9 @@ function CrawlerActivityPanel() {
                   </div>
                 </article>
               ))}
-              {query.isFetchingNextPage ? (
-                <p role="status" className="m-0 px-4 py-3 text-sm text-ink-3">
-                  Loading more jobs…
-                </p>
-              ) : null}
-              {query.isFetchNextPageError ? (
-                <div className="flex items-center gap-3 px-4 py-3 text-sm text-danger-ink">
-                  Could not load more jobs.
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      void query.fetchNextPage()
-                    }}
-                  >
-                    Retry
-                  </Button>
-                </div>
-              ) : null}
             </ListBox>
           ) : (
-            <StateBox>
-              No {filter === 'active' ? 'active' : filter === 'failed' ? 'failed' : 'recent'}{' '}
-              crawler jobs.
-            </StateBox>
+            <StateBox>No {filter} crawler jobs.</StateBox>
           )}
           <span className="text-xs text-ink-3">
             {jobs.length} of {data.totalJobs} jobs

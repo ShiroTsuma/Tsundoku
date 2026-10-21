@@ -27,9 +27,11 @@ public sealed class MetadataPolicy(ApplicationDbContext context) : IMetadataPoli
             var alias = aliases.FirstOrDefault(a => a.SourceKind == kind && a.NormalizedName == normalized);
             if (alias != null)
             {
-                if (alias.TagId is { } tagId && tags.Any(t => t.Id == tagId && t.IsGlobal)) selectedTags.Add(tagId);
+                var aliasTag = alias.TagId is { } tagId && tags.Any(t => t.Id == tagId && t.IsGlobal) ? alias.TagId : null;
+                if (aliasTag is { } usableTag) selectedTags.Add(usableTag);
                 if (alias.GenreId is { } genreId) selectedGenres.Add(genreId);
-                return;
+                // An alias whose tag is no longer global falls back to matching, so the name is not lost.
+                if (aliasTag != null || alias.GenreId != null) return;
             }
 
             // A known genre arriving in a source's tag list remains a genre.

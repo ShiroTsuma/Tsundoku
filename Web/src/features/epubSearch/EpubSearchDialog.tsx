@@ -19,7 +19,7 @@ import type {
   EpubSearchRequest,
   EpubSourceScope,
 } from './types'
-import { isDownloadFinished } from './types'
+import { isDownloadFinished, isSearchFinished } from './types'
 import { SearchFeedback } from './SearchFeedback'
 
 export type EpubSearchBook = {
@@ -65,7 +65,7 @@ export function EpubSearchDialog({
   const [query, setQuery] = useState(book.title)
   const [scope, setScope] = useState<EpubSourceScope>('english')
   const [request, setRequest] = useState<EpubSearchRequest | null>(null)
-  const [selectedSource, setSource] = useState<EpubCandidateSource | null>(null)
+  const [selectedSource, setSelectedSource] = useState<EpubCandidateSource | null>(null)
   const [refreshRequest, setRefreshRequest] = useState<EpubSearchRequest | null>(null)
   const [rangeKind, setRangeKind] = useState<RangeKind>(read > 0 ? 'fromProgress' : 'all')
   const [customFrom, setCustomFrom] = useState(String(read + 1))
@@ -90,9 +90,7 @@ export function EpubSearchDialog({
       : undefined
   const source = refreshedSource ?? selectedSource
   const refreshing =
-    refreshRequest !== null &&
-    !refresh.isError &&
-    !['completed', 'failed', 'cancelled'].includes(refresh.data?.status ?? '')
+    refreshRequest !== null && !refresh.isError && !isSearchFinished(refresh.data?.status)
 
   if (job && isDownloadFinished(job.status) && reportedJobId !== job.id) {
     setReportedJobId(job.id)
@@ -117,19 +115,19 @@ export function EpubSearchDialog({
     const trimmed = query.trim()
     if (trimmed.length === 0) return
     setRequest({ bookId: book.id, query: trimmed, scope })
-    setSource(null)
+    setSelectedSource(null)
     setStep('source')
   }
 
   function refreshSources() {
     if (!request) return
-    setSource(null)
+    setSelectedSource(null)
     setRequest({ ...request, forceRefresh: true, refreshId: crypto.randomUUID() })
   }
 
   function restartSearch() {
     setJobId(null)
-    setSource(null)
+    setSelectedSource(null)
     start.reset()
     cancel.reset()
     setRefreshRequest(null)
@@ -164,7 +162,7 @@ export function EpubSearchDialog({
       },
       {
         onSuccess: (started) => {
-          setSource(source)
+          setSelectedSource(source)
           setRefreshRequest(null)
           setJobId(started.id)
           setStep('download')
@@ -328,8 +326,7 @@ export function EpubSearchDialog({
           {search.data ? (
             <>
               <SearchFeedback result={search.data} onRefresh={refreshSources} />
-              {search.data.candidates.length === 0 &&
-              ['completed', 'failed', 'cancelled'].includes(search.data.status ?? '') ? (
+              {search.data.candidates.length === 0 && isSearchFinished(search.data.status) ? (
                 <p className="m-0 text-ink-2">No matches. Try one of the alternative titles.</p>
               ) : null}
               {search.data.candidates.map((novel) => (
@@ -370,7 +367,7 @@ export function EpubSearchDialog({
                         source={candidate}
                         chaptersRead={read}
                         selected={source?.id === candidate.id}
-                        onSelect={() => setSource(candidate)}
+                        onSelect={() => setSelectedSource(candidate)}
                       />
                     ))}
                   </div>
@@ -408,7 +405,11 @@ export function EpubSearchDialog({
               selected={rangeKind === 'all'}
               onSelect={() => setRangeKind('all')}
               label="Everything"
-              hint={`Chapters 1–${source.chapterCount} · ${source.chapterCount === null ? 'Unknown' : numberFormat.format(source.chapterCount)} chapters`}
+              hint={
+                source.chapterCount === null
+                  ? 'Chapter count unknown'
+                  : `Chapters 1–${source.chapterCount} · ${numberFormat.format(source.chapterCount)} chapters`
+              }
             />
             {read > 0 ? (
               <RangeOption

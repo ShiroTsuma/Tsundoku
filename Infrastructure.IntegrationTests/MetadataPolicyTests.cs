@@ -55,6 +55,19 @@ public sealed class MetadataPolicyTests
     }
 
     [Fact]
+    public async Task AliasToTagThatIsNoLongerGlobalKeepsTheIncomingName()
+    {
+        using var database = new SqliteTestDatabase();
+        await using var context = database.CreateContext();
+        var demoted = TestData.Tag(database.UserId, "Celestial beings");
+        context.AddRange(demoted, Alias("tag", "Angel", demoted.Id));
+        await context.SaveChangesAsync();
+
+        var result = await new MetadataPolicy(context).ResolveImportAsync(database.UserId, ["Angel"], [], default);
+        Assert.Equal(["Angel"], result.Tags);
+    }
+
+    [Fact]
     public async Task ImplicationsAreTransitiveIdempotentAndCycleSafe()
     {
         using var database = new SqliteTestDatabase();
