@@ -5,38 +5,38 @@ using Application.Common.DTOs.Book;
 
 [ApiController]
 [Authorize]
-public sealed class CrawlerMonitorController(ICrawlerMonitorService service) : ControllerBase
+public sealed class CrawlerMonitorController(ICrawlerMonitorService service, ICrawlerSourceAdminService sources)
+    : ControllerBase
 {
     [HttpGet(ApiRoutes.Book + "/crawler-status")]
     public async Task<IActionResult> Owner(CancellationToken ct) =>
         Ok(await service.GetAsync(false, "active", 0, 10, ct));
 
     [Authorize(Roles = AuthorizationRoles.Admin)]
-    [HttpGet(ApiRoutes.Admin + "/crawler")]
+    [HttpGet(ApiRoutes.AdminCrawler)]
     public async Task<IActionResult> Admin([FromQuery] string filter = "active", [FromQuery] int skip = 0,
         [FromQuery] int take = 20, CancellationToken ct = default) =>
         Ok(await service.GetAsync(true, filter, skip, take, ct));
 
     [Authorize(Roles = AuthorizationRoles.Admin)]
-    [HttpGet(ApiRoutes.Admin + "/crawler/processing")]
-    public async Task<IActionResult> Processing([FromServices] ICrawlerSourceAdminService sources, CancellationToken ct) =>
+    [HttpGet(ApiRoutes.AdminCrawler + "/processing")]
+    public async Task<IActionResult> Processing(CancellationToken ct) =>
         Ok(await sources.ProcessingAsync(ct));
 
     [Authorize(Roles = AuthorizationRoles.Admin)]
-    [HttpPut(ApiRoutes.Admin + "/crawler/processing")]
-    public async Task<IActionResult> SetProcessing([FromBody] CrawlerProcessingState state,
-        [FromServices] ICrawlerSourceAdminService sources, CancellationToken ct) =>
+    [HttpPut(ApiRoutes.AdminCrawler + "/processing")]
+    public async Task<IActionResult> SetProcessing([FromBody] CrawlerProcessingState state, CancellationToken ct) =>
         Ok(await sources.SetProcessingAsync(state, ct));
 
     [Authorize(Roles = AuthorizationRoles.Admin)]
-    [HttpGet(ApiRoutes.Admin + "/crawler/sources")]
-    public async Task<IActionResult> Sources([FromServices] ICrawlerSourceAdminService sources, CancellationToken ct) =>
+    [HttpGet(ApiRoutes.AdminCrawler + "/sources")]
+    public async Task<IActionResult> Sources(CancellationToken ct) =>
         Ok(await sources.GetAsync(ct));
 
     [Authorize(Roles = AuthorizationRoles.Admin)]
-    [HttpPut(ApiRoutes.Admin + "/crawler/sources/{domain}")]
+    [HttpPut(ApiRoutes.AdminCrawler + "/sources/{domain}")]
     public async Task<IActionResult> UpdateSource(string domain, [FromBody] CrawlerSourceSettings settings,
-        [FromServices] ICrawlerSourceAdminService sources, CancellationToken ct)
+        CancellationToken ct)
     {
         await sources.UpdateAsync(domain, settings, ct);
         return NoContent();

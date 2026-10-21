@@ -5,6 +5,8 @@ public static class ApiRoutes
     public const string VersionPrefix = "api/v1";
     public const string Account = VersionPrefix + "/account";
     public const string Admin = VersionPrefix + "/admin";
+    public const string AdminCrawler = Admin + "/crawler";
+    public const string AdminMetadata = Admin + "/metadata";
     public const string Author = VersionPrefix + "/author";
     public const string Book = VersionPrefix + "/book";
     public const string PublicBook = VersionPrefix + "/public-book";

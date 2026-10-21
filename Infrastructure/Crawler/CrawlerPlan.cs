@@ -23,12 +23,19 @@ public sealed class CrawlerWork
 public sealed record CrawlerPlannedFile(string Title, int FirstChapter, int LastChapter, List<string> ChapterIds,
     Guid? ReplacesFileId = null);
 
+/// <summary>Postgres advisory lock keys; each guards one crawler critical section across API instances.</summary>
+internal static class CrawlerLocks
+{
+    public const long Admission = 914732832;
+    public const long Maintenance = 914732833;
+    public const int Book = 914732834;
+}
+
 public static class CrawlerPlan
 {
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     public static string Serialize<T>(T value) => JsonSerializer.Serialize(value, Json);
     public static T Read<T>(string value) => JsonSerializer.Deserialize<T>(value, Json)!;
-    public static bool Terminal(string status) => status is "completed" or "failed" or "cancelled";
 
     public static bool AllowedHost(string host) =>
         !host.TrimEnd('.').Equals("novelupdates.com", StringComparison.OrdinalIgnoreCase) &&

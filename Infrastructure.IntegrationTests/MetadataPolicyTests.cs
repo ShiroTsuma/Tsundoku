@@ -138,8 +138,8 @@ public sealed class MetadataPolicyTests
         Assert.IsType<BadRequestObjectResult>(await controller.SetAlias(new("tag", "alias", tag.Id, null), default));
         var review = Assert.IsType<OkObjectResult>(await controller.Review(cancellationToken: default));
         var json = System.Text.Json.JsonSerializer.SerializeToElement(review.Value);
-        Assert.Equal(1, json.GetProperty("total").GetInt32());
-        Assert.Equal("private", json.GetProperty("data")[0].GetProperty("Name").GetString());
+        Assert.Equal(1, json.GetProperty("Total").GetInt32());
+        Assert.Equal("private", json.GetProperty("Data")[0].GetProperty("Name").GetString());
     }
 
     [Fact]

@@ -1,6 +1,8 @@
 namespace Api.Controllers;
 
+using Application.Common.DTOs.Tag;
 using Application.Common.Interfaces;
+using Application.Common.Models;
 using Domain.Entities;
 using Infrastructure.Contexts;
 using Microsoft.EntityFrameworkCore;
@@ -8,23 +10,23 @@ using System.ComponentModel.DataAnnotations;
 
 [ApiController]
 [Authorize(Roles = AuthorizationRoles.Admin)]
-[Route(ApiRoutes.Admin + "/metadata")]
+[Route(ApiRoutes.AdminMetadata)]
 public sealed class MetadataPolicyController(ApplicationDbContext context, IMetadataPolicy policy, IUser user) : ControllerBase
 {
     public sealed record AliasInput(
         [Required, RegularExpression("^(tag|genre)$")] string SourceKind,
         [Required, StringLength(100, MinimumLength = 1)] string Name, Guid? TagId, Guid? GenreId);
     public sealed record ImplicationInput(Guid? SourceTagId, Guid? SourceGenreId, Guid? TargetTagId, Guid? TargetGenreId);
-    public sealed record PreviewInput([Required] string[] Tags, [Required] Guid[] GenreIds);
+    public sealed record PreviewInput([Required, MaxLength(200)] string[] Tags, [Required, MaxLength(100)] Guid[] GenreIds);
 
     [HttpGet("aliases")]
     public async Task<IActionResult> Aliases(int skip = 0, int take = 50, CancellationToken cancellationToken = default) =>
         Ok(await context.Set<MetadataAlias>().AsNoTracking().OrderBy(a => a.SourceKind).ThenBy(a => a.Name)
-            .ThenBy(a => a.Id).Skip(Math.Max(0, skip)).Take(Math.Clamp(take, 1, 100)).Select(a => new {
+            .ThenBy(a => a.Id).Skip(Math.Max(0, skip)).Take(Math.Clamp(take, 1, 100)).Select(a => new MetadataAliasDto(
                 a.Id, a.SourceKind, a.Name, a.TagId, a.GenreId,
-                TargetName = a.TagId != null ? context.Tags.Where(t => t.Id == a.TagId).Select(t => t.Name).FirstOrDefault()
+                a.TagId != null ? context.Tags.Where(t => t.Id == a.TagId).Select(t => t.Name).FirstOrDefault()
                     : context.Genres.Where(g => g.Id == a.GenreId).Select(g => g.Name).FirstOrDefault()
-            }).ToListAsync(cancellationToken));
+            )).ToListAsync(cancellationToken));
 
     [HttpPut("aliases")]
     public async Task<IActionResult> SetAlias(AliasInput input, CancellationToken cancellationToken)
@@ -43,8 +45,16 @@ public sealed class MetadataPolicyController(ApplicationDbContext context, IMeta
         alias.Name = name;
         alias.TagId = input.TagId;
         alias.GenreId = input.GenreId;
-        await context.SaveChangesAsync(cancellationToken);
-        return Ok(alias);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // Another request created the same incoming name first (unique SourceKind + NormalizedName).
+            return Conflict("This incoming name was just redirected by another request. Reload and try again.");
+        }
+        return Ok(new MetadataAliasDto(alias.Id, alias.SourceKind, alias.Name, alias.TagId, alias.GenreId, null));
     }
 
     [HttpDelete("aliases/{id:guid}")]
@@ -60,13 +70,13 @@ public sealed class MetadataPolicyController(ApplicationDbContext context, IMeta
     [HttpGet("implications")]
     public async Task<IActionResult> Implications(int skip = 0, int take = 50, CancellationToken cancellationToken = default) =>
         Ok(await context.Set<MetadataImplication>().AsNoTracking().OrderBy(r => r.Id)
-            .Skip(Math.Max(0, skip)).Take(Math.Clamp(take, 1, 100)).Select(r => new {
+            .Skip(Math.Max(0, skip)).Take(Math.Clamp(take, 1, 100)).Select(r => new MetadataImplicationDto(
                 r.Id, r.SourceTagId, r.SourceGenreId, r.TargetTagId, r.TargetGenreId,
-                SourceName = r.SourceTagId != null ? context.Tags.Where(t => t.Id == r.SourceTagId).Select(t => t.Name).FirstOrDefault()
+                r.SourceTagId != null ? context.Tags.Where(t => t.Id == r.SourceTagId).Select(t => t.Name).FirstOrDefault()
                     : context.Genres.Where(g => g.Id == r.SourceGenreId).Select(g => g.Name).FirstOrDefault(),
-                TargetName = r.TargetTagId != null ? context.Tags.Where(t => t.Id == r.TargetTagId).Select(t => t.Name).FirstOrDefault()
+                r.TargetTagId != null ? context.Tags.Where(t => t.Id == r.TargetTagId).Select(t => t.Name).FirstOrDefault()
                     : context.Genres.Where(g => g.Id == r.TargetGenreId).Select(g => g.Name).FirstOrDefault()
-            }).ToListAsync(cancellationToken));
+            )).ToListAsync(cancellationToken));
 
     [HttpPost("implications")]
     public async Task<IActionResult> AddImplication(ImplicationInput input, CancellationToken cancellationToken)
@@ -79,7 +89,7 @@ public sealed class MetadataPolicyController(ApplicationDbContext context, IMeta
         var existing = await context.Set<MetadataImplication>().FirstOrDefaultAsync(r =>
             r.SourceTagId == input.SourceTagId && r.SourceGenreId == input.SourceGenreId &&
             r.TargetTagId == input.TargetTagId && r.TargetGenreId == input.TargetGenreId, cancellationToken);
-        if (existing != null) return Ok(existing);
+        if (existing != null) return Ok(ToDto(existing));
         var rule = new MetadataImplication
         {
             SourceTagId = input.SourceTagId, SourceGenreId = input.SourceGenreId,
@@ -87,7 +97,7 @@ public sealed class MetadataPolicyController(ApplicationDbContext context, IMeta
         };
         context.Add(rule);
         await context.SaveChangesAsync(cancellationToken);
-        return Ok(rule);
+        return Ok(ToDto(rule));
     }
 
     [HttpDelete("implications/{id:guid}")]
@@ -110,15 +120,18 @@ public sealed class MetadataPolicyController(ApplicationDbContext context, IMeta
     {
         var query = context.Tags.AsNoTracking().AsQueryable();
         if (withoutDescription) query = query.Where(t => t.Description == null || t.Description.Trim() == "");
+        skip = Math.Max(0, skip);
+        take = Math.Clamp(take, 1, 100);
         var total = await query.CountAsync(cancellationToken);
-        var data = await query.OrderBy(t => t.Name).ThenBy(t => t.Id).Skip(Math.Max(0, skip))
-            .Take(Math.Clamp(take, 1, 100)).Select(t => new
-            {
-                t.Id, t.Name, t.Description, t.IsGlobal, t.OwnerId, BooksCount = t.BookTags.Count,
-                Aliases = context.Set<MetadataAlias>().Where(a => a.TagId == t.Id).Select(a => a.Name).ToArray()
-            }).ToListAsync(cancellationToken);
-        return Ok(new { data, total, skip = Math.Max(0, skip), take = Math.Clamp(take, 1, 100) });
+        var data = await query.OrderBy(t => t.Name).ThenBy(t => t.Id).Skip(skip).Take(take)
+            .Select(t => new MetadataReviewTagDto(t.Id, t.Name, t.Description, t.IsGlobal, t.OwnerId, t.BookTags.Count,
+                context.Set<MetadataAlias>().Where(a => a.TagId == t.Id).Select(a => a.Name).ToArray()))
+            .ToListAsync(cancellationToken);
+        return Ok(PaginatedResult<MetadataReviewTagDto>.Create(skip, take, total, data));
     }
+
+    private static MetadataImplicationDto ToDto(MetadataImplication rule) => new(rule.Id, rule.SourceTagId,
+        rule.SourceGenreId, rule.TargetTagId, rule.TargetGenreId, null, null);
 
     private async Task<bool> ValidTarget(Guid? tagId, Guid? genreId, CancellationToken cancellationToken) =>
         tagId.HasValue != genreId.HasValue && (tagId.HasValue

@@ -20,7 +20,6 @@ public static class CrawlerTelemetry
 public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote, IServiceProvider services,
     IOptions<CrawlerOptions> options, ILogger<CrawlerWorker> logger)
 {
-    private static readonly string[] Terminal = ["completed", "failed", "cancelled"];
     private readonly CrawlerOptions _options = options.Value;
 
     public async Task<bool> TickAsync(CancellationToken ct)
@@ -32,19 +31,21 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
         await using (var transaction = await db.Database.BeginTransactionAsync(ct))
         {
             if (db.Database.IsNpgsql())
-                await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({914732832L})", ct);
-            var candidates = await db.CrawlerJobs.Where(j => !Terminal.Contains(j.Status) &&
-                    (j.NextAttemptAtUtc <= now || j.CancelRequested || j.ExpiresAtUtc <= now) && (j.LeaseUntilUtc == null || j.LeaseUntilUtc < now))
-                .OrderBy(j => j.Kind == "discovery" || j.Kind == "scan")
-                .ThenBy(j => j.Kind == "discovery").ThenBy(j => j.CreatedAtUtc).Take(100).ToListAsync(ct);
-            var running = await db.CrawlerJobs.Where(j => j.Kind == "download" && j.Submitted && !Terminal.Contains(j.Status))
+                await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({CrawlerLocks.Admission})", ct);
+            var running = await db.CrawlerJobs.Where(j => j.Kind == CrawlerJobKind.Download && j.Submitted && !CrawlerJobStatus.Terminal.Contains(j.Status))
                 .Select(j => j.OwnerId).ToListAsync(ct);
-            job = candidates.FirstOrDefault(j => j.Submitted || j.CancelRequested || j.ExpiresAtUtc <= now ||
-                (j.Kind != "download" || running.Count < _options.MaxConcurrentDownloads && !running.Contains(j.OwnerId)));
+            var downloadSlotFree = running.Count < _options.MaxConcurrentDownloads;
+            // Download limits are part of the query, so blocked downloads never hide due metadata jobs.
+            job = await db.CrawlerJobs.Where(j => !CrawlerJobStatus.Terminal.Contains(j.Status) &&
+                    (j.NextAttemptAtUtc <= now || j.CancelRequested || j.ExpiresAtUtc <= now) && (j.LeaseUntilUtc == null || j.LeaseUntilUtc < now) &&
+                    (j.Kind != CrawlerJobKind.Download || j.Submitted || j.CancelRequested || j.ExpiresAtUtc <= now ||
+                        downloadSlotFree && !running.Contains(j.OwnerId)))
+                .OrderBy(j => j.Kind == CrawlerJobKind.Discovery || j.Kind == CrawlerJobKind.Scan)
+                .ThenBy(j => j.Kind == CrawlerJobKind.Discovery).ThenBy(j => j.CreatedAtUtc).FirstOrDefaultAsync(ct);
             if (job == null) return false;
             job.LeaseUntilUtc = now.AddMinutes(5);
             // Reserve a remote slot before releasing admission lock.
-            job.Status = job.Status == "queued" ? "crawling" : job.Status;
+            job.Status = job.Status == CrawlerJobStatus.Queued ? CrawlerJobStatus.Crawling : job.Status;
             job.Submitted = true;
             await db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
@@ -64,17 +65,17 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
             if (cancelled) await remote.CancelAsync(job.Id, ct);
             var snapshot = await remote.GetAsync(job.Id, ct);
             if (snapshot == null && !cancelled) snapshot = await remote.SubmitAsync(job.Id, work, ct);
-            if (snapshot == null) job.Status = "cancelled";
-            else if (job.Kind == "download") await DownloadAsync(job, work, snapshot, ct);
+            if (snapshot == null) job.Status = CrawlerJobStatus.Cancelled;
+            else if (job.Kind == CrawlerJobKind.Download) await DownloadAsync(job, work, snapshot, ct);
             else await MetadataAsync(job, work, snapshot, ct);
-            if (!cancelled && snapshot?.NextRetryAt is { } retryAt && !Terminal.Contains(job.Status))
+            if (!cancelled && snapshot?.NextRetryAt is { } retryAt && !CrawlerJobStatus.Terminal.Contains(job.Status))
                 job.NextAttemptAtUtc = retryAt.ToUniversalTime();
-            if (job.ExpiresAtUtc <= now && !Terminal.Contains(job.Status))
+            if (job.ExpiresAtUtc <= now && !CrawlerJobStatus.Terminal.Contains(job.Status))
             {
-                job.Status = "failed";
+                job.Status = CrawlerJobStatus.Failed;
                 job.Error = "The crawler operation exceeded its 24-hour lifetime. Completed files remain available.";
             }
-            if (Terminal.Contains(job.Status))
+            if (CrawlerJobStatus.Terminal.Contains(job.Status))
                 CrawlerTelemetry.Operations.Add(1, new KeyValuePair<string, object?>("kind", job.Kind),
                     new KeyValuePair<string, object?>("status", job.Status));
         }
@@ -83,13 +84,13 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
         {
             logger.LogWarning("Crawler operation {JobId} unavailable; retry scheduled ({ErrorType}).", job.Id, ex.GetType().Name);
             job.NextAttemptAtUtc = DateTime.UtcNow.AddMinutes(1);
-            if (job.ExpiresAtUtc <= DateTime.UtcNow) { job.Status = "failed"; job.Error = "Crawler unavailable before the operation expired."; }
+            if (job.ExpiresAtUtc <= DateTime.UtcNow) { job.Status = CrawlerJobStatus.Failed; job.Error = "Crawler unavailable before the operation expired."; }
         }
         catch (ImportCapacityExceededException)
         {
             // A manual upload/review can temporarily occupy the owner's import slot.
             // Keep the generated files and retry, rather than losing the crawl result.
-            job.Status = "adding";
+            job.Status = CrawlerJobStatus.Adding;
             job.NextAttemptAtUtc = DateTime.UtcNow.AddSeconds(15);
             job.Error = "Finish or cancel your other EPUB import to add the generated files.";
         }
@@ -99,7 +100,7 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
             // Changes rejected by the failed step stay tracked and would fail the save below again.
             db.ChangeTracker.Clear();
             job = await db.CrawlerJobs.SingleAsync(j => j.Id == job.Id, stoppingToken);
-            job.Status = "failed";
+            job.Status = CrawlerJobStatus.Failed;
             job.Error = ex is ValidationException ? ex.Message : "The crawler operation could not be completed. Finished files remain available.";
             try { await remote.CancelAsync(job.Id, stoppingToken); }
             catch (Exception cancelError) when (cancelError is HttpRequestException ||
@@ -141,7 +142,7 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
             if (candidate == null) candidates.Add(new(key, novel.Title,
                 string.Equals(novel.Title.Trim(), work.Query?.Trim(), StringComparison.OrdinalIgnoreCase) ? "title" : "similar", [item]));
             else candidates[candidates.IndexOf(candidate)] = candidate with { Sources = candidate.Sources.Append(item).ToList() };
-            if (job.Kind == "scan" && CrawlerPlan.Terminal(result.Status))
+            if (job.Kind == CrawlerJobKind.Scan && CrawlerJobStatus.IsTerminal(result.Status))
             {
                 var siblings = await db.BookCrawlerSources.Where(s => s.Url == url && s.Id != source.Id).ToListAsync(ct);
                 foreach (var other in siblings)
@@ -154,12 +155,12 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
                 }
             }
         }
-        if (job.Kind is "search" or "discovery" or "refresh") job.ResultJson = CrawlerPlan.Serialize(new EpubSearchResult(candidates,
+        if (job.Kind is CrawlerJobKind.Search or CrawlerJobKind.Discovery or CrawlerJobKind.Refresh) job.ResultJson = CrawlerPlan.Serialize(new EpubSearchResult(candidates,
             result.SearchedSourceCount, result.DurationMs, result.Warnings, result.TotalSourceCount,
             result.CheckedLinkCount, result.TotalLinkCount, result.CurrentSource, result.NextRetryAt, result.RetryAttempt, work.Query, work.Scope, result.SkippedSourceCount));
         job.Status = result.Status;
         job.Error = result.Error;
-        if (job.Kind == "search" && job.Status == "completed" &&
+        if (job.Kind == CrawlerJobKind.Search && job.Status == CrawlerJobStatus.Completed &&
             string.Equals(work.Query?.Trim(), (await db.Books.Where(b => b.Id == job.BookId).Select(b => b.PrimaryTitle).SingleAsync(ct)).Trim(),
                 StringComparison.OrdinalIgnoreCase))
         {
@@ -175,13 +176,13 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
             saved.NextCheckAtUtc = saved.LastCheckedAtUtc.Value.AddMonths(1);
             saved.LastError = null;
         }
-        if (job.Kind == "discovery" && CrawlerPlan.Terminal(job.Status))
+        if (job.Kind == CrawlerJobKind.Discovery && CrawlerJobStatus.IsTerminal(job.Status))
         {
             var discovery = await db.BookCrawlerDiscoveries.SingleOrDefaultAsync(d => d.BookId == job.BookId, ct);
             if (discovery != null)
             {
                 discovery.LastError = result.Error;
-                if (job.Status == "completed")
+                if (job.Status == CrawlerJobStatus.Completed)
                 {
                     discovery.LastCheckedAtUtc = DateTime.UtcNow;
                     discovery.NextCheckAtUtc = discovery.LastCheckedAtUtc.Value.AddMonths(1);
@@ -190,7 +191,7 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
                 else discovery.NextCheckAtUtc = DateTime.UtcNow.AddHours(6);
             }
         }
-        if (job.Kind == "scan" && CrawlerPlan.Terminal(job.Status))
+        if (job.Kind == CrawlerJobKind.Scan && CrawlerJobStatus.IsTerminal(job.Status))
         {
             var sources = await db.BookCrawlerSources.Where(s => s.Url == work.Url).ToListAsync(ct);
             foreach (var source in sources)
@@ -205,7 +206,7 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
     {
         var dto = EpubCrawlerService.DownloadDto(job);
         var files = ActivatorUtilities.CreateInstance<BookFileService>(services, new CrawlerActor(job.OwnerId));
-        var remoteFinished = CrawlerPlan.Terminal(result.Status);
+        var remoteFinished = CrawlerJobStatus.IsTerminal(result.Status);
         for (var i = 0; i < result.Files.Count && i < dto.Files.Count; i++)
         {
             var state = dto.Files[i];
@@ -257,7 +258,7 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
         dto.NextRetryAt = result.NextRetryAt;
         dto.RetryAttempt = result.RetryAttempt;
         job.Status = remoteFinished
-            ? pending || ready.Any(i => dto.Files[i].Status is not ("added" or "ready")) ? "adding" : result.Status
+            ? pending || ready.Any(i => dto.Files[i].Status is not ("added" or "ready")) ? CrawlerJobStatus.Adding : result.Status
             : result.Status;
         job.Error = result.Error;
         job.ResultJson = CrawlerPlan.Serialize(dto);
@@ -330,8 +331,8 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
         if (!_options.Enabled) return;
         // Legacy metadata searches waited for a global retry. Searches now finish
         // after one pass; wake them to reconcile preserved partial results.
-        var metadataWaiting = await db.CrawlerJobs.Where(j => (j.Kind == "search" || j.Kind == "discovery") &&
-            j.Status == "queued" && j.NextAttemptAtUtc > DateTime.UtcNow && j.ResultJson != "{}").Take(100).ToListAsync(ct);
+        var metadataWaiting = await db.CrawlerJobs.Where(j => (j.Kind == CrawlerJobKind.Search || j.Kind == CrawlerJobKind.Discovery) &&
+            j.Status == CrawlerJobStatus.Queued && j.NextAttemptAtUtc > DateTime.UtcNow && j.ResultJson != "{}").Take(100).ToListAsync(ct);
         foreach (var job in metadataWaiting)
         {
             var result = CrawlerPlan.Read<EpubSearchResult>(job.ResultJson);
@@ -341,7 +342,7 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
         }
         await db.SaveChangesAsync(ct);
         var novelIds = db.Books.Where(b => b.ContentType.Slug == "novel").Select(b => b.Id);
-        await db.CrawlerJobs.Where(j => !novelIds.Contains(j.BookId) && !Terminal.Contains(j.Status))
+        await db.CrawlerJobs.Where(j => !novelIds.Contains(j.BookId) && !CrawlerJobStatus.Terminal.Contains(j.Status))
             .ExecuteUpdateAsync(s => s.SetProperty(j => j.CancelRequested, true), ct);
         Guid? cursor = null;
         for (var page = 0; page < 100; page++)
@@ -361,23 +362,27 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
         var supported = await remote.SourcesAsync(ct);
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         if (db.Database.IsNpgsql())
-            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({914732833L})", ct);
-        var domains = supported.Where(s => CrawlerPlan.AllowedHost(new Uri(s.Url).IdnHost))
-            .SelectMany(s => new[] { s.Domain, new Uri(s.Url).IdnHost }).Where(CrawlerPlan.AllowedHost)
+            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({CrawlerLocks.Maintenance})", ct);
+        // The source list comes from the crawler service; one malformed URL must not stop maintenance.
+        var domains = supported.Select(s => (s.Domain, Uri: Uri.TryCreate(s.Url, UriKind.Absolute, out var uri) ? uri : null))
+            .Where(s => s.Uri != null && CrawlerPlan.AllowedHost(s.Uri.IdnHost))
+            .SelectMany(s => new[] { s.Domain, s.Uri!.IdnHost }).Where(CrawlerPlan.AllowedHost)
             .Select(CrawlerPlan.SourceHost).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var links = await db.BookLinks.AsNoTracking().Where(l => novelIds.Contains(l.BookId))
             .Select(l => new { l.BookId, l.Url, l.Book.OwnerId }).ToListAsync(ct);
         var valid = links.Select(l => new { l.BookId, l.OwnerId, Url = CrawlerPlan.CanonicalUrl(l.Url) })
             .Where(l => l.Url != null && CrawlerPlan.SupportedUrl(l.Url, domains)).Distinct().ToList();
+        var linked = valid.Select(l => (l.BookId, l.Url!)).ToHashSet();
+        // shortcut: loads every source row (with its chapter list) each pass; project the columns if this grows slow.
         var sources = await db.BookCrawlerSources.ToListAsync(ct);
+        var byLink = sources.ToDictionary(s => (s.BookId, s.Url));
         foreach (var link in valid)
         {
-            var source = sources.Find(s => s.BookId == link.BookId && s.Url == link.Url);
-            if (source == null)
+            if (!byLink.TryGetValue((link.BookId, link.Url!), out var source))
             {
                 source = new BookCrawlerSource { OwnerId = link.OwnerId, BookId = link.BookId, Url = link.Url!,
                     SourceName = new Uri(link.Url!).Host, Tracked = true, NextScanAtUtc = DateTime.UtcNow };
-                db.BookCrawlerSources.Add(source); sources.Add(source);
+                db.BookCrawlerSources.Add(source); sources.Add(source); byLink[(source.BookId, source.Url)] = source;
             }
             source.Tracked = true;
             if (source.LastScannedAtUtc == null && source.LastError == null) source.NextScanAtUtc = DateTime.UtcNow;
@@ -385,25 +390,25 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
         var eligibleBooks = (await novelIds.ToListAsync(ct)).ToHashSet();
         foreach (var source in sources)
             source.Tracked = eligibleBooks.Contains(source.BookId) && CrawlerPlan.SupportedUrl(source.Url, domains) &&
-                (source.Selected || valid.Any(l => l.BookId == source.BookId && l.Url == source.Url));
+                (source.Selected || linked.Contains((source.BookId, source.Url)));
         var now = DateTime.UtcNow;
         await ScheduleDiscoveryAsync(now, ct);
         // Only one metadata scan per URL, including when several accounts track it.
-        var activeUrls = (await db.CrawlerJobs.Where(j => j.Kind == "scan" && !Terminal.Contains(j.Status)).ToListAsync(ct))
+        var activeUrls = (await db.CrawlerJobs.Where(j => j.Kind == CrawlerJobKind.Scan && !CrawlerJobStatus.Terminal.Contains(j.Status)).ToListAsync(ct))
             .Select(j => CrawlerPlan.Read<CrawlerWork>(j.RequestJson).Url).ToHashSet();
         foreach (var source in sources.Where(s => s.Tracked && s.NextScanAtUtc <= now).GroupBy(s => s.Url).Select(g => g.First()).Take(20))
         {
             if (activeUrls.Contains(source.Url)) continue;
-            db.CrawlerJobs.Add(new CrawlerJob { OwnerId = source.OwnerId, BookId = source.BookId, Kind = "scan",
+            db.CrawlerJobs.Add(new CrawlerJob { OwnerId = source.OwnerId, BookId = source.BookId, Kind = CrawlerJobKind.Scan,
                 RequestKey = Guid.NewGuid().ToString("N"), RequestJson = CrawlerPlan.Serialize(new CrawlerWork { Kind = "inspect", Url = source.Url }),
                 CreatedAtUtc = now, NextAttemptAtUtc = now, ExpiresAtUtc = now + _options.JobLifetime });
         }
-        CrawlerTelemetry.Queue.Record(await db.CrawlerJobs.CountAsync(j => !Terminal.Contains(j.Status), ct));
+        CrawlerTelemetry.Queue.Record(await db.CrawlerJobs.CountAsync(j => !CrawlerJobStatus.Terminal.Contains(j.Status), ct));
         foreach (var source in sources.Where(s => s.Tracked && s.LastScannedAtUtc != null))
             CrawlerTelemetry.ScanAge.Record((now - source.LastScannedAtUtc!.Value).TotalHours);
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
-        var old = await db.CrawlerJobs.Where(j => Terminal.Contains(j.Status) && j.ExpiresAtUtc < now).Take(50).ToListAsync(ct);
+        var old = await db.CrawlerJobs.Where(j => CrawlerJobStatus.Terminal.Contains(j.Status) && j.ExpiresAtUtc < now).Take(50).ToListAsync(ct);
         foreach (var job in old)
         {
             await remote.DeleteAsync(job.Id, ct);
@@ -425,13 +430,13 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
         await db.SaveChangesAsync(ct);
         // One library search actively runs at a time. A durable source cooldown
         // releases admission so an unrelated book can proceed while it waits.
-        if (await db.CrawlerJobs.AnyAsync(j => j.Kind == "discovery" && !Terminal.Contains(j.Status) &&
-            !(j.Status == "queued" && j.NextAttemptAtUtc > now), ct)) return;
+        if (await db.CrawlerJobs.AnyAsync(j => j.Kind == CrawlerJobKind.Discovery && !CrawlerJobStatus.Terminal.Contains(j.Status) &&
+            !(j.Status == CrawlerJobStatus.Queued && j.NextAttemptAtUtc > now), ct)) return;
         var eligible = from discovery in db.BookCrawlerDiscoveries
             join book in db.Books on discovery.BookId equals book.Id
             where book.ContentType.Slug == "novel" && discovery.NextCheckAtUtc <= now &&
-                !db.CrawlerJobs.Any(j => j.BookId == book.Id && j.Kind == "discovery" && !Terminal.Contains(j.Status)) &&
-                !db.CrawlerJobs.Any(j => j.BookId == book.Id && j.Kind == "search" && !Terminal.Contains(j.Status) && !j.CancelRequested && j.ExpiresAtUtc > now) &&
+                !db.CrawlerJobs.Any(j => j.BookId == book.Id && j.Kind == CrawlerJobKind.Discovery && !CrawlerJobStatus.Terminal.Contains(j.Status)) &&
+                !db.CrawlerJobs.Any(j => j.BookId == book.Id && j.Kind == CrawlerJobKind.Search && !CrawlerJobStatus.Terminal.Contains(j.Status) && !j.CancelRequested && j.ExpiresAtUtc > now) &&
                 (discovery.LastCheckedAtUtc == null ||
                     (book.Status.Slug != "completed" && book.Status.Slug != "complete" && book.Status.Slug != "dropped" &&
                      !db.BookCrawlerSources.Any(s => s.BookId == book.Id && s.Tracked)))
@@ -444,12 +449,12 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
         if (next == null) return;
         await EpubCrawlerService.LockBookAsync(db, next.Book.Id, ct);
         if (await db.CrawlerJobs.AnyAsync(j => j.BookId == next.Book.Id &&
-            (j.Kind == "search" || j.Kind == "discovery") && !Terminal.Contains(j.Status) && !j.CancelRequested && j.ExpiresAtUtc > now, ct)) return;
+            (j.Kind == CrawlerJobKind.Search || j.Kind == CrawlerJobKind.Discovery) && !CrawlerJobStatus.Terminal.Contains(j.Status) && !j.CancelRequested && j.ExpiresAtUtc > now, ct)) return;
         var urls = await db.BookLinks.Where(l => l.BookId == next.Book.Id).Select(l => l.Url).ToListAsync(ct);
         var work = new CrawlerWork { Kind = "search", Scope = "all", Query = next.Book.PrimaryTitle,
             Background = true, InitialDiscovery = next.Discovery.LastCheckedAtUtc == null,
             Urls = urls.Select(CrawlerPlan.CanonicalUrl).Where(u => u != null).Cast<string>().Distinct().ToList() };
-        db.CrawlerJobs.Add(new CrawlerJob { OwnerId = next.Book.OwnerId, BookId = next.Book.Id, Kind = "discovery",
+        db.CrawlerJobs.Add(new CrawlerJob { OwnerId = next.Book.OwnerId, BookId = next.Book.Id, Kind = CrawlerJobKind.Discovery,
             RequestKey = Guid.NewGuid().ToString("N"), RequestJson = CrawlerPlan.Serialize(work), CreatedAtUtc = now,
             NextAttemptAtUtc = now, ExpiresAtUtc = now + _options.JobLifetime });
     }

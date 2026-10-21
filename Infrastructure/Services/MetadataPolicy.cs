@@ -11,7 +11,13 @@ public sealed class MetadataPolicy(ApplicationDbContext context) : IMetadataPoli
     private async Task<ResolvedMetadata> ResolveCoreAsync(Guid ownerId, IEnumerable<string> tagNames,
         IEnumerable<string> genreNames, IEnumerable<Guid> genreIds, CancellationToken cancellationToken)
     {
-        var aliases = await context.Set<MetadataAlias>().AsNoTracking().ToListAsync(cancellationToken);
+        tagNames = tagNames.ToList();
+        genreNames = genreNames.ToList();
+        var normalizedNames = tagNames.Concat(genreNames).Where(name => !string.IsNullOrWhiteSpace(name))
+            .Select(MappingExtensions.NormalizeName).Distinct().ToList();
+        var aliases = await context.Set<MetadataAlias>().AsNoTracking()
+            .Where(a => normalizedNames.Contains(a.NormalizedName)).ToListAsync(cancellationToken);
+        // Tags and genres load in full: fuzzy matching (as in TagRepository) needs every candidate name.
         var rules = await context.Set<MetadataImplication>().AsNoTracking().ToListAsync(cancellationToken);
         var tags = await context.Tags.AsNoTracking().Where(t => t.IsGlobal || t.OwnerId == ownerId)
             .ToListAsync(cancellationToken);
