@@ -360,6 +360,7 @@ export function FileImportDialog({
           <div className="file-import-list">
             {job.entries.slice(0, visible).map((entry) => {
               const targetBookId = selectedTargetBookId(drafts[entry.id], entry.bookId)
+              const sortOrder = drafts[entry.id]?.sortOrder ?? entry.sortOrder
               return (
                 <div className="file-import-row" key={entry.id}>
                   <label className="file-check">
@@ -405,11 +406,14 @@ export function FileImportDialog({
                           <input
                             className={fieldClass}
                             type="number"
-                            min={0}
-                            max={1000000}
-                            value={drafts[entry.id]?.sortOrder ?? entry.sortOrder}
+                            min={1}
+                            max={1000001}
+                            value={Number.isNaN(sortOrder) ? '' : sortOrder + 1}
                             onChange={(e) =>
-                              updateDraft(entry, { sortOrder: Math.max(0, Number(e.target.value)) })
+                              updateDraft(entry, {
+                                sortOrder:
+                                  e.target.value === '' ? Number.NaN : Number(e.target.value) - 1,
+                              })
                             }
                           />
                         </label>

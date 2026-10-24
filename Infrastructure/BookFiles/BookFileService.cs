@@ -32,7 +32,7 @@ public sealed partial class BookFileService(
 
     public async Task<BookFileListDto> ListAsync(Guid bookId, CancellationToken ct)
     {
-        await OwnedBookAsync(bookId, user.RequiredId, ct);
+        var book = await OwnedBookAsync(bookId, user.RequiredId, ct);
         var files = await context.BookFiles.AsNoTracking()
             .Where(f => f.BookId == bookId && f.OwnerId == user.RequiredId)
             .OrderBy(f => f.SortOrder).ThenBy(f => f.Id).ToListAsync(ct);
@@ -43,7 +43,7 @@ public sealed partial class BookFileService(
             ? await context.PublicBookFiles.Where(p => p.SnapshotId == snapshotId)
                 .Select(p => p.BookFileId).ToListAsync(ct)
             : [];
-        return new BookFileListDto(files.Select(f => ToDto(f, shared.Contains(f.Id))).ToList(), snapshotId,
+        return new BookFileListDto(files.Select(f => ToDto(f, shared.Contains(f.Id), book.PrimaryTitle)).ToList(), snapshotId,
             await UsedBytesAsync(user.RequiredId, ct), _options.MaxOwnerStorageBytes, _options.MaxFileBytes,
             _options.MaxUploadBytes);
     }
@@ -56,12 +56,16 @@ public sealed partial class BookFileService(
             throw new EntityNotFoundException<PublicBookSnapshot, Guid>(snapshotId);
         }
 
+        var bookTitle = await (from s in context.PublicBookSnapshots
+            join b in context.Books on s.SourceBookId equals b.Id
+            where s.Id == snapshotId
+            select b.PrimaryTitle).SingleAsync(ct);
         return (await (from p in context.PublicBookFiles
             join f in context.BookFiles on p.BookFileId equals f.Id
             join s in context.PublicBookSnapshots on p.SnapshotId equals s.Id
             where s.Id == snapshotId && f.BookId == s.SourceBookId && f.OwnerId == s.OwnerId && f.DeletedAtUtc == null
             orderby f.SortOrder, f.Id
-            select f).AsNoTracking().ToListAsync(ct)).Select(f => ToDto(f, true)).ToList();
+            select f).AsNoTracking().ToListAsync(ct)).Select(f => ToDto(f, true, bookTitle)).ToList();
     }
 
     public async Task UpdateAsync(Guid bookId, Guid fileId, string title, CancellationToken ct)
@@ -192,7 +196,7 @@ public sealed partial class BookFileService(
             .OrderBy(f => f.SortOrder).ThenBy(f => f.Id).ToListAsync(ct);
         var filesByBook = files.ToLookup(f => f.BookId);
         return books.Select(b => new BookFileExportCandidateDto(b.Id, b.PrimaryTitle, b.Type,
-            filesByBook[b.Id].Select(f => ToDto(f, false)).ToList())).ToList();
+            filesByBook[b.Id].Select(f => ToDto(f, false, b.PrimaryTitle)).ToList())).ToList();
     }
 
     private async Task<Book> OwnedBookAsync(Guid id, Guid ownerId, CancellationToken ct)
@@ -215,9 +219,9 @@ public sealed partial class BookFileService(
         return await context.BookFiles.Where(f => f.OwnerId == ownerId).SumAsync(f => (long?)f.SizeBytes, ct) ?? 0;
     }
 
-    internal static BookFileDto ToDto(BookFile f, bool shared)
+    internal static BookFileDto ToDto(BookFile f, bool shared, string bookTitle)
     {
-        return new BookFileDto(f.Id, f.BookId, f.Title, f.OriginalFileName,
+        return new BookFileDto(f.Id, f.BookId, BookFileNames.DisplayTitle(f.Title, bookTitle), f.OriginalFileName,
             f.SortOrder, f.SizeBytes, f.Created, f.DeletedAtUtc, shared, f.FirstContentLabel, f.LastContentLabel);
     }
 

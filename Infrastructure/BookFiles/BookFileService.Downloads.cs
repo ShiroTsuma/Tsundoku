@@ -97,8 +97,9 @@ public sealed partial class BookFileService
         {
             var file =
                 (await AuthorizedFilesAsync([ticket.FileId.Value], ticket.OwnerId, ticket.SnapshotId, ct)).Single();
+            var bookTitle = await context.Books.Where(b => b.Id == file.BookId).Select(b => b.PrimaryTitle).SingleAsync(ct);
             return new BookFileDownloadResult(await storage.OpenReadAsync(file.StoragePath, ct), file.MimeType,
-                $"{SafeName(file.Title)}.epub");
+                BookFileNames.DownloadName(file.Title, bookTitle));
         }
 
         var job = await context.BookFileJobs.AsNoTracking().SingleOrDefaultAsync(
@@ -150,6 +151,7 @@ public sealed partial class BookFileService
         var books = await context.Books.AsNoTracking().Where(b => ids.Contains(b.Id))
             .Select(b => new { b.Id, b.PrimaryTitle, Type = b.ContentType.Name }).ToDictionaryAsync(b => b.Id, ct);
         var manifest = new BookFileManifest();
+        var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var budget = new ArchiveReadBudget(_options.MaxLibraryArchiveBytes);
         await using var target = new FileStream(JobPath(job.Id, "export.zip"), FileMode.CreateNew, FileAccess.Write,
             FileShare.None, 65536, true);
@@ -165,10 +167,15 @@ public sealed partial class BookFileService
                     await EnsureRunningAsync(job, ct);
                     // Check again before each copy; publication or deletion may have changed while queued.
                     await AuthorizedFilesAsync([file.Id], job.OwnerId, payload.SnapshotId, ct);
-                    var name = $"{file.SortOrder:D5}-{SafeName(file.Title)}-{file.Id:N}.epub";
+                    var name = BookFileNames.DownloadName(file.Title, book.PrimaryTitle);
                     var entryPath = payload.IncludeManifest
                         ? $"{SafeName(book.PrimaryTitle)}-{book.Id:N}/{name}"
                         : name;
+                    if (!usedNames.Add(entryPath))
+                    {
+                        entryPath = $"{entryPath[..^5]}-{file.Id:N}.epub";
+                        usedNames.Add(entryPath);
+                    }
                     var entry = archive.CreateEntry(entryPath, CompressionLevel.NoCompression);
                     await using (var source = await storage.OpenReadAsync(file.StoragePath, ct))
                     await using (var destination = entry.Open())

@@ -388,6 +388,9 @@ public sealed partial class BookFileService
     private async Task InspectImportAsync(BookFileJob job, BookFileJobPayload payload, CancellationToken ct)
     {
         var state = new ImportInspectionState();
+        if (job.BookId.HasValue)
+            state.FirstOrder = (await context.BookFiles.Where(f => f.BookId == job.BookId && f.OwnerId == job.OwnerId && f.DeletedAtUtc == null)
+                .MaxAsync(f => (int?)f.SortOrder, ct) ?? -1) + 1;
         var outerBudget = new ArchiveReadBudget(job.Kind == "LibraryImport"
             ? _options.MaxLibraryArchiveBytes
             : _options.MaxExtractedBytes);
@@ -536,7 +539,7 @@ public sealed partial class BookFileService
             Title = Path.GetFileNameWithoutExtension(fileName),
             Path = Path.GetFileName(path),
             SizeBytes = new FileInfo(path).Length,
-            SortOrder = payload.Entries.Count,
+            SortOrder = state.FirstOrder + payload.Entries.Count,
             BookId = job.BookId
         };
         payload.Entries.Add(entry);
@@ -717,6 +720,7 @@ public sealed partial class BookFileService
 
     private sealed class ImportInspectionState
     {
+        public int FirstOrder { get; set; }
         public Dictionary<(Guid, string, string), Guid?> BookMatches { get; } = new();
         public Dictionary<Guid, HashSet<string>> ExistingHashes { get; } = new();
         public HashSet<(Guid, string)> Seen { get; } = new();

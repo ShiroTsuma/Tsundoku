@@ -36,6 +36,57 @@ using TestSupport;
 public sealed class BookFileServiceTests
 {
     [Theory]
+    [InlineData("Volume 2", "nazwa-ksiazki-2.epub", "Volume 2")]
+    [InlineData("0002", "nazwa-ksiazki-2.epub", "Volume 2")]
+    [InlineData("Nazwa Książki-2", "nazwa-ksiazki-2.epub", "Volume 2")]
+    [InlineData("Nazwa Książki — Volume 2", "nazwa-ksiazki-2.epub", "Volume 2")]
+    [InlineData("Nazwa Książki", "nazwa-ksiazki.epub", "Nazwa Książki")]
+    [InlineData("Side story", "nazwa-ksiazki-side-story.epub", "Side story")]
+    public async Task DownloadNamesAndDisplayTitles_UseBookIdentity(string title, string expectedName, string expectedTitle)
+    {
+        using var h = new Harness();
+        var book = await h.AddBook("Nazwa Książki");
+        await h.Import(book.Id, Epub(title), "0001.epub");
+        var file = Assert.Single((await h.Service.ListAsync(book.Id, default)).Files);
+        Assert.Equal(expectedTitle, file.Title);
+        var snapshot = await h.Snapshot(book);
+        await h.Service.ShareAsync(book.Id, [file.Id], default);
+        Assert.Equal(expectedTitle, Assert.Single(await h.Service.ListPublicAsync(snapshot.Id, default)).Title);
+        foreach (var publicId in new Guid?[] { null, snapshot.Id })
+        {
+            var ticket = Assert.Single(await h.Service.CreateDownloadsAsync([file.Id], publicId, default));
+            var download = await h.Service.ConsumeDownloadAsync(TicketId(ticket), Token(ticket), default);
+            using (download.Content) Assert.Equal(expectedName, download.FileName);
+        }
+        var export = await h.Service.CreateExportAsync([file.Id], null, false, default);
+        await h.Service.ProcessNextAsync(default);
+        var zipTicket = await h.Service.CreateJobDownloadAsync(export.Id, default);
+        var zip = await h.Service.ConsumeDownloadAsync(TicketId(zipTicket), Token(zipTicket), default);
+        using (zip.Content)
+        using (var archive = new ZipArchive(zip.Content, ZipArchiveMode.Read))
+            Assert.Equal(expectedName, Assert.Single(archive.Entries).FullName);
+    }
+
+    [Fact]
+    public async Task ManualImportPreview_ContinuesAfterExistingOrder_AndIgnoresTrash()
+    {
+        using var h = new Harness();
+        var book = await h.AddBook("Series");
+        for (var n = 1; n <= 4; n++) await h.Import(book.Id, Epub($"Volume {n}"));
+        var old = (await h.Service.ListAsync(book.Id, default)).Files;
+        await h.Service.DeleteAsync(book.Id, old[3].Id, default);
+        using var upload = Zip(("4.epub", Epub("Volume 4")), ("5.epub", Epub("Volume 5")));
+        var job = await h.Service.CreateImportAsync(book.Id, Uploads(new BookFileUpload(upload, "next.zip")), default);
+        await h.Service.ProcessNextAsync(default);
+        var preview = await h.Service.GetJobAsync(job.Id, default);
+        Assert.Equal(new[] { 3, 4 }, preview.Entries.Select(e => e.SortOrder));
+        await h.Service.FinalizeAsync(job.Id, Select(preview, book.Id), default);
+        await h.Service.ProcessNextAsync(default);
+        Assert.Equal(new[] { 0, 1, 2, 3, 4 }, (await h.Service.ListAsync(book.Id, default)).Files
+            .Where(f => f.DeletedAtUtc == null).Select(f => f.SortOrder));
+    }
+
+    [Theory]
     [InlineData(false, "Volume 2")]
     [InlineData(true, "Volume 2")]
     [InlineData(false, "Volume 2: The Awakening")]
