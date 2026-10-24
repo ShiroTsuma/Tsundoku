@@ -96,6 +96,43 @@ beforeEach(() => {
 })
 
 describe('EPUB file UX', () => {
+  it('shows the next manual import position from one and allows clearing and editing it', async () => {
+    const user = userEvent.setup()
+    const job: FileJob = {
+      ...ready,
+      bookId: 'book-1',
+      kind: 'BookImport',
+      entries: [
+        {
+          id: 'next',
+          bookId: 'book-1',
+          bookTitle: 'Book',
+          contentType: 'Novel',
+          originalFileName: 'next.epub',
+          title: 'Volume 4',
+          sortOrder: 3,
+          sizeBytes: 1024,
+          isDuplicate: false,
+          error: null,
+        },
+      ],
+    }
+    vi.mocked(bookFilesApi.job).mockResolvedValue(job)
+    vi.mocked(bookFilesApi.confirm).mockResolvedValue({ ...job, status: 'CommitQueued' })
+    renderWithProviders(
+      <FileImportDialog bookId="book-1" initialJob={job} onClose={vi.fn()} onImported={vi.fn()} />,
+    )
+    const order = await screen.findByLabelText('Order')
+    expect(order).toHaveValue(4)
+    await user.clear(order)
+    expect(screen.getByRole('button', { name: 'Import selected (1)' })).toBeDisabled()
+    await user.type(order, '5')
+    await user.click(screen.getByRole('button', { name: 'Import selected (1)' }))
+    expect(bookFilesApi.confirm).toHaveBeenCalledWith('job-1', [
+      { entryId: 'next', bookId: 'book-1', title: 'Volume 4', sortOrder: 4 },
+    ])
+  })
+
   it('downloads one EPUB directly from its browsing row', async () => {
     const user = userEvent.setup()
     renderWithProviders(<BookFilesPanel bookId="book-1" />)
@@ -291,7 +328,7 @@ describe('EPUB file UX', () => {
     await user.type(title, 'Edited volume')
     const order = screen.getByLabelText('Order')
     await user.clear(order)
-    await user.type(order, '3')
+    await user.type(order, '4')
     await user.click(screen.getByRole('button', { name: 'Import selected (1)' }))
     expect(bookFilesApi.confirm).toHaveBeenCalledWith('job-1', [
       { entryId: 'entry-1', bookId: 'existing-book', title: 'Edited volume', sortOrder: 3 },

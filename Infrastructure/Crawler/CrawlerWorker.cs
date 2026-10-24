@@ -222,7 +222,7 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
             var existing = await db.BookFileJobs.AsNoTracking().SingleOrDefaultAsync(j => j.Id == importId, ct);
             BookFileJobDto imported;
             if (existing == null || existing.Status == "Uploading")
-                imported = await files.CreateImportAsync(job.BookId, Uploads(job.Id, group, dto.Files, ct), ct, operationId: importId);
+                imported = await files.CreateImportAsync(job.BookId, Uploads(job.Id, job.BookId, group, dto.Files, ct), ct, operationId: importId);
             else imported = await files.GetJobAsync(importId, ct);
             foreach (var index in group) dto.Files[index].ImportSessionId = importId;
             if (imported.Status is "Failed" or "Cancelled") throw new ValidationException(imported.Error ?? "The EPUB import was cancelled.");
@@ -293,14 +293,15 @@ public sealed class CrawlerWorker(ApplicationDbContext db, ICrawlerClient remote
         await transaction.CommitAsync(ct);
     }
 
-    private async IAsyncEnumerable<BookFileUpload> Uploads(Guid jobId, List<int> indexes,
+    private async IAsyncEnumerable<BookFileUpload> Uploads(Guid jobId, Guid bookId, List<int> indexes,
         List<EpubDownloadFile> files, [EnumeratorCancellation] CancellationToken ct)
     {
+        var bookTitle = await db.Books.Where(b => b.Id == bookId).Select(b => b.PrimaryTitle).SingleAsync(ct);
         foreach (var index in indexes)
         {
             await using var stream = await remote.OpenFileAsync(jobId, index, ct);
             // Names are generated locally; remote paths are never accepted.
-            yield return new BookFileUpload(stream, $"{index + 1:D4}.epub");
+            yield return new BookFileUpload(stream, BookFileNames.DownloadName(files[index].Title, bookTitle));
         }
     }
 
