@@ -1,1 +1,5 @@
 Web/docker-entrypoint.d/*.sh text eol=lf
+
+# Captured third-party pages used as parser test inputs.
+Application.UnitTests/Fixtures/**/*.html linguist-vendored
+Application.UnitTests/Fixtures/*.html linguist-vendored

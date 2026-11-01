@@ -20,7 +20,7 @@
   <a href="#features">Features</a> &middot;
   <a href="#quick-start">Quick start</a> &middot;
   <a href="#documentation">Documentation</a> &middot;
-  <a href="https://github.com/ShiroTsuma-github/Tsundoku/issues">Report an issue</a>
+  <a href="https://github.com/ShiroTsuma/Tsundoku/issues">Report an issue</a>
 </p>
 
 ---
@@ -83,7 +83,7 @@ Publish a snapshot of a book to make it discoverable on your instance. Other use
 **Requirements:** Docker with Compose and a PostgreSQL instance reachable from the API container. The committed Compose stack includes the application and monitoring services; provision PostgreSQL separately. Redis is optional.
 
 ```sh
-git clone https://github.com/ShiroTsuma-github/Tsundoku.git tsundoku
+git clone https://github.com/ShiroTsuma/Tsundoku.git tsundoku
 cd tsundoku
 cp .env.example .env
 ```
@@ -145,7 +145,7 @@ To work on the project, install the .NET SDK specified in [`global.json`](global
 
 ## Feedback and contributions
 
-Use [GitHub Issues](https://github.com/ShiroTsuma-github/Tsundoku/issues) for bug reports and feature proposals. For a bug, include the commit or branch, deployment method, steps to reproduce, and relevant logs with credentials removed. For changes to an import or parser, include a representative input where possible.
+Use [GitHub Issues](https://github.com/ShiroTsuma/Tsundoku/issues) for bug reports and feature proposals. For a bug, include the commit or branch, deployment method, steps to reproduce, and relevant logs with credentials removed. For changes to an import or parser, include a representative input where possible.
 
 ## License
 
