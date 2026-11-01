@@ -29,6 +29,19 @@ Tsundoku brings series from different reading sites into one personal catalog. T
 
 Run it on your own infrastructure with PostgreSQL and local file storage or an S3-compatible bucket. Each account has a private library; you choose which books and files to share with other users of your instance.
 
+![Tsundoku library with sample reading data](docs/images/library.png)
+
+*Current interface rendered with illustrative data from the project's UI test fixtures.*
+
+<details>
+<summary>Book details, progress and EPUB attachments</summary>
+
+![Book details with sample progress history and EPUB attachments](docs/images/book-details.png)
+
+*UI test fixture data; the screenshot does not contain a personal library.*
+
+</details>
+
 ## Features
 
 | Feature                     | Description                                                                                                                                     |
@@ -76,7 +89,7 @@ Use quotes for values with spaces, `-` to exclude a match, and `none` to find mi
 
 Publish a snapshot of a book to make it discoverable on your instance. Other users can copy its catalog information into their own libraries. EPUBs stay private until you select files to share; downloading shared files requires an account. Copying a book does not copy its attachments.
 
-**Development status:** Tsundoku is under active development. **Find EPUB** integrates with an optional private Lightnovel Crawler service for manual chapter downloads and EPUB generation. Tracked sources are checked every 60–72 hours without automatic downloads. Enable the service using the [crawler integration guide](docs/crawler-integration.md).
+**Development status:** Tsundoku is under active development. **Find EPUB** integrates with an optional private Lightnovel Crawler service for manual chapter downloads and EPUB generation. Tracked sources are checked every 60â€“72 hours without automatic downloads. Enable the service using the [crawler integration guide](docs/crawler-integration.md).
 
 ## Quick start
 
