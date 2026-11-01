@@ -29,16 +29,28 @@ Tsundoku brings series from different reading sites into one personal catalog. T
 
 Run it on your own infrastructure with PostgreSQL and local file storage or an S3-compatible bucket. Each account has a private library; you choose which books and files to share with other users of your instance.
 
-![Tsundoku library with sample reading data](docs/images/library.png)
+![Tsundoku library in card view](docs/images/library.png)
 
-*Current interface rendered with illustrative data from the project's UI test fixtures.*
+*Card view from a running self-hosted instance.*
 
 <details>
-<summary>Book details, progress and EPUB attachments</summary>
+<summary>Table view</summary>
 
-![Book details with sample progress history and EPUB attachments](docs/images/book-details.png)
+![Library table with reading progress, ratings and sorting](docs/images/library-table.png)
 
-*UI test fixture data; the screenshot does not contain a personal library.*
+</details>
+
+<details>
+<summary>Book details and reading history — I Shall Seal the Heavens</summary>
+
+![I Shall Seal the Heavens with metadata, rating and completed reading progress](docs/images/book-details.png)
+
+</details>
+
+<details>
+<summary>Reading statistics</summary>
+
+![Reading activity and chapter history from the deployed instance](docs/images/statistics.png)
 
 </details>
 
