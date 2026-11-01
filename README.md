@@ -29,7 +29,7 @@ Tsundoku brings series from different reading sites into one personal catalog. T
 
 Run it on your own infrastructure with PostgreSQL and local file storage or an S3-compatible bucket. Each account has a private library; you choose which books and files to share with other users of your instance.
 
-![Tsundoku library in card view](docs/images/library.png)
+![Tsundoku library in card view](docs/images/library-cards.png)
 
 *Card view from a running self-hosted instance.*
 
@@ -43,7 +43,7 @@ Run it on your own infrastructure with PostgreSQL and local file storage or an S
 <details>
 <summary>Book details and reading history — I Shall Seal the Heavens</summary>
 
-![I Shall Seal the Heavens with metadata, rating and completed reading progress](docs/images/book-details.png)
+![I Shall Seal the Heavens with metadata, rating and completed reading progress](docs/images/issth-details.png)
 
 </details>
 
